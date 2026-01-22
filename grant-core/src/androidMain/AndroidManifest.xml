@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+        Transparent Activity for handling grant requests
+
+        This activity is completely invisible to the user and handles
+        runtime grant requests from ViewModels without requiring
+        Fragment or Activity context in app code.
+
+        Key features:
+        - Zero visual impact (fully transparent)
+        - No entry in recent apps
+        - No back stack history
+        - Handles configuration changes gracefully
+        - Works from anywhere (ViewModel, Repository, etc.)
+    -->
+    <application>
+        <activity
+            android:name="dev.brewkits.grant.impl.GrantRequestActivity"
+            android:theme="@style/Theme.Transparent"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:stateNotNeeded="true"
+            android:windowSoftInputMode="stateHidden|adjustNothing" />
+    </application>
+
+</manifest>

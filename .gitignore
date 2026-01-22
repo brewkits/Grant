@@ -1,0 +1,61 @@
+# Kotlin Multiplatform / Gradle
+.gradle/
+build/
+!gradle-wrapper.jar
+*.iml
+.idea/caches/
+.idea/libraries/
+.idea/modules.xml
+.idea/workspace.xml
+.idea/navEditor.xml
+.idea/assetWizardSettings.xml
+.idea/jarRepositories.xml
+local.properties
+.DS_Store
+
+# Android
+*.apk
+*.ap_
+*.aab
+*.dex
+*.class
+bin/
+gen/
+out/
+captures/
+.externalNativeBuild
+.cxx
+
+# iOS / Xcode
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+!*.xcworkspace/contents.xcworkspacedata
+xcuserdata/
+*.xcscmblueprint
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+DerivedData/
+Frameworks/PermissionDemo.framework
+*.framework/
+!GrantDemoShared.framework/
+
+# Kotlin
+.kotlin/
+*.klib
+
+# Compose
+compose-desktop.properties
+
+# Temporary files
+*.swp
+*.swo
+*~
+.tmp/
+*.log
+*.bak
+
+# Reference files (keep in repo for now)
+# 2026-01-22-*.txt

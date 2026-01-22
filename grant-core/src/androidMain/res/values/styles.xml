@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Perfect Transparent Theme for Grant Request Activity
+
+        This theme ensures:
+        1. Zero visual impact - user never sees the activity
+        2. No blink/flash when activity starts
+        3. Works across all Android versions (API 26+)
+        4. Compatible with Material3 apps
+        5. Handles edge cases (rotation, multi-window, etc.)
+    -->
+    <style name="Theme.Transparent" parent="android:Theme.Translucent.NoTitleBar">
+        <!-- Core transparency -->
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+
+        <!-- Remove all decorations -->
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+
+        <!-- Prevent dimming and floating -->
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:backgroundDimAmount">0.0</item>
+
+        <!-- Remove animations to prevent blink/flash -->
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:windowEnterAnimation">@null</item>
+        <item name="android:windowExitAnimation">@null</item>
+
+        <!-- Additional transparency attributes (API 21+) -->
+        <item name="android:windowDrawsSystemBarBackgrounds">false</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+
+        <!-- Prevent activity from showing in overview/recents -->
+        <item name="android:windowDisablePreview">true</item>
+
+        <!-- Handle multi-window and split screen -->
+        <item name="android:windowSwipeToDismiss">false</item>
+
+        <!-- Ensure activity doesn't block touch events -->
+        <item name="android:windowCloseOnTouchOutside">false</item>
+    </style>
+</resources>

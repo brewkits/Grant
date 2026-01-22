@@ -1,0 +1,194 @@
+package dev.brewkits.grant.impl
+
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import kotlinx.coroutines.flow.MutableStateFlow
+import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
+
+/**
+ * Transparent Activity for handling runtime grant requests.
+ *
+ * This Activity:
+ * - Shows no UI (transparent theme)
+ * - Requests single or multiple grants at once
+ * - Returns the result via a StateFlow mapped by request ID
+ * - Finishes immediately after getting the result
+ * - Includes lifecycle safety to prevent memory leaks
+ *
+ * **Usage Pattern:**
+ * 1. PlatformGrantDelegate launches this Activity with grant(s) and unique request ID
+ * 2. Activity requests grant(s) and waits for user response
+ * 3. Result is posted to StateFlow keyed by request ID
+ * 4. Activity finishes
+ * 5. PlatformGrantDelegate receives result from its specific StateFlow
+ *
+ * **Thread Safety (Request ID Pattern):**
+ * - Each grant request gets a unique UUID
+ * - Results are stored in ConcurrentHashMap keyed by request ID
+ * - Prevents race conditions when multiple grants requested simultaneously
+ * - Automatic cleanup after result is consumed
+ *
+ * **Lifecycle Safety (learned from moko-grants):**
+ * - Registers lifecycle observer to cleanup on destroy
+ * - Prevents memory leaks from retained launcher references
+ * - Clears pending results when activity is destroyed
+ *
+ * **Multiple Grants (Android Best Practice):**
+ * - Uses RequestMultiplePermissions to show all grant dialogs together
+ * - Provides better UX by grouping related grants (e.g., FINE + COARSE Location)
+ * - System handles dialog flow automatically
+ */
+class GrantRequestActivity : ComponentActivity() {
+
+    private var requestMultipleGrantsLauncher: ActivityResultLauncher<Array<String>>? = null
+    private var currentGrants = arrayOf<String>()
+    private var requestId = ""
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        // Don't set any content view - keep activity completely empty
+        // This prevents any UI rendering and ensures zero visual impact
+
+        // Get request ID from intent
+        requestId = intent.getStringExtra(EXTRA_REQUEST_ID) ?: run {
+            finish()
+            return
+        }
+
+        currentGrants = intent.getStringArrayExtra(EXTRA_GRANTS) ?: run {
+            setResult(requestId, GrantResult.ERROR)
+            finish()
+            return
+        }
+
+        // Register grant launcher for multiple grants
+        requestMultipleGrantsLauncher = registerForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions()
+        ) { grantsResult: Map<String, Boolean> ->
+            // Determine overall result based on all grants
+            val allGranted = grantsResult.values.all { it }
+
+            val result = when {
+                allGranted -> GrantResult.GRANTED
+                grantsResult.any { (grant, granted) ->
+                    !granted && shouldShowRequestPermissionRationale(grant)
+                } -> GrantResult.DENIED
+                else -> GrantResult.DENIED_PERMANENTLY
+            }
+
+            setResult(requestId, result)
+            finish()
+        }
+
+        // Add lifecycle observer for cleanup
+        lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onDestroy(owner: LifecycleOwner) {
+                // Cleanup to prevent memory leaks
+                requestMultipleGrantsLauncher?.unregister()
+                requestMultipleGrantsLauncher = null
+
+                // Clear pending result if activity is destroyed without result
+                val flow = pendingResults[requestId]
+                if (flow?.value == null) {
+                    setResult(requestId, GrantResult.ERROR)
+                }
+            }
+        })
+
+        // Check if all grants are already granted
+        val allAlreadyGranted = currentGrants.all { grant ->
+            checkSelfPermission(grant) == PackageManager.PERMISSION_GRANTED
+        }
+
+        if (allAlreadyGranted) {
+            setResult(requestId, GrantResult.GRANTED)
+            finish()
+            return
+        }
+
+        // Request the grants (all at once for better UX)
+        requestMultipleGrantsLauncher?.launch(currentGrants)
+    }
+
+    private fun setResult(requestId: String, result: GrantResult) {
+        pendingResults[requestId]?.value = result
+    }
+
+    companion object {
+        private const val EXTRA_GRANTS = "grants"
+        private const val EXTRA_REQUEST_ID = "request_id"
+
+        /**
+         * Map of request ID to result StateFlow.
+         * Thread-safe ConcurrentHashMap prevents race conditions when multiple
+         * grants are requested simultaneously.
+         */
+        private val pendingResults = ConcurrentHashMap<String, MutableStateFlow<GrantResult?>>()
+
+        /**
+         * Launch this Activity to request one or more grants.
+         *
+         * **Android Best Practice:**
+         * - Requesting multiple related grants at once (e.g., FINE + COARSE Location)
+         *   provides better UX as the system can group them into a single dialog flow
+         * - This prevents showing multiple sequential dialogs for related grants
+         *
+         * @param context Android context
+         * @param androidGrants List of Android grant strings (e.g., [Manifest.permission.CAMERA])
+         * @return Unique request ID to track this grant request
+         */
+        fun requestGrants(context: Context, androidGrants: List<String>): String {
+            val requestId = UUID.randomUUID().toString()
+
+            // Create StateFlow for this request
+            pendingResults[requestId] = MutableStateFlow(null)
+
+            val intent = Intent(context, GrantRequestActivity::class.java).apply {
+                putExtra(EXTRA_GRANTS, androidGrants.toTypedArray())
+                putExtra(EXTRA_REQUEST_ID, requestId)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
+            }
+            context.startActivity(intent)
+
+            return requestId
+        }
+
+        /**
+         * Get the StateFlow for a specific request ID.
+         *
+         * @param requestId The unique request ID returned by requestGrant()
+         * @return StateFlow that will emit the result, or null if invalid request ID
+         */
+        internal fun getResultFlow(requestId: String): MutableStateFlow<GrantResult?>? {
+            return pendingResults[requestId]
+        }
+
+        /**
+         * Clean up after consuming result.
+         * Call this after receiving the grant result to prevent memory leaks.
+         *
+         * @param requestId The unique request ID to clean up
+         */
+        internal fun cleanup(requestId: String) {
+            pendingResults.remove(requestId)
+        }
+    }
+
+    enum class GrantResult {
+        GRANTED,
+        DENIED,
+        DENIED_PERMANENTLY,
+        ERROR
+    }
+}

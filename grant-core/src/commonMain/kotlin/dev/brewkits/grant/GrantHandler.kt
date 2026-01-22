@@ -1,0 +1,501 @@
+package dev.brewkits.grant
+
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+/**
+ * UI State for grant dialogs.
+ *
+ * This state drives the UI layer to show appropriate dialogs:
+ * - Rationale dialog when grant was denied softly
+ * - Settings guide dialog when grant is permanently denied
+ */
+data class GrantUiState(
+    /**
+     * Whether any grant dialog should be visible
+     */
+    val isVisible: Boolean = false,
+
+    /**
+     * Show rationale dialog (when user denied once, explain why we need it)
+     */
+    val showRationale: Boolean = false,
+
+    /**
+     * Show settings guide (when permanently denied, must go to Settings)
+     */
+    val showSettingsGuide: Boolean = false,
+
+    /**
+     * Optional custom message for rationale
+     */
+    val rationaleMessage: String? = null,
+
+    /**
+     * Optional custom message for settings guide
+     */
+    val settingsMessage: String? = null
+)
+
+/**
+ * Encapsulates ALL grant logic in a clean, reusable component.
+ *
+ * This class follows the **Composition Pattern** - ViewModels compose this handler
+ * instead of implementing grant logic themselves.
+ *
+ * **Benefits**:
+ * 1. **DRY**: Write grant logic once, reuse everywhere
+ * 2. **Clean ViewModels**: Reduce from 30+ lines to 3 lines
+ * 3. **Consistent UX**: All features follow same grant flow
+ * 4. **Testable**: Easy to mock and test
+ *
+ * **Usage in ViewModel**:
+ * ```kotlin
+ * class CameraViewModel(grantManager: grantManager) : ViewModel() {
+ *     val cameraGrant = GrantHandler(
+ *         grantManager = grantManager,
+ *         grant = AppGrant.CAMERA,
+ *         scope = viewModelScope // CRITICAL: Use viewModelScope!
+ *     )
+ *
+ *     fun onCaptureClick() {
+ *         cameraGrant.request {
+ *             // Only runs when grant is GRANTED
+ *             openCamera()
+ *         }
+ *     }
+ * }
+ * ```
+ *
+ * **Usage in UI (Compose)**:
+ * ```kotlin
+ * GrantDialogHandler(handler = viewModel.cameraGrant)
+ * ```
+ *
+ * @param grantManager The underlying grant manager
+ * @param grant The specific grant this handler manages
+ * @param scope CoroutineScope for launching grant requests.
+ *
+ *              **CRITICAL - Scope Requirements:**
+ *              - **MUST** use [viewModelScope] from a ViewModel
+ *              - Survives configuration changes (screen rotation)
+ *              - Automatically cancelled when ViewModel is cleared
+ *              - Prevents memory leaks
+ *
+ *              **DO NOT USE:**
+ *              - [GlobalScope]: Never cancelled, causes memory leaks
+ *              - [lifecycleScope]: Cancelled on config changes, breaks ongoing requests
+ *              - Custom scopes with short lifecycle
+ *              - Any scope that doesn't outlive the grant flow
+ *
+ *              **Example of CORRECT usage:**
+ *              ```kotlin
+ *              class MyViewModel : ViewModel() {
+ *                  val handler = GrantHandler(..., scope = viewModelScope) // ✅ Correct
+ *              }
+ *              ```
+ *
+ *              **Example of WRONG usage:**
+ *              ```kotlin
+ *              class MyFragment : Fragment() {
+ *                  val handler = GrantHandler(..., scope = lifecycleScope) // ❌ Wrong!
+ *                  // This breaks on screen rotation!
+ *              }
+ *              ```
+ */
+class GrantHandler(
+    private val grantManager: grantManager,
+    private val grant: AppGrant,
+    scope: CoroutineScope
+) {
+    private val scope: CoroutineScope
+
+    init {
+        // Store the scope (validation happens implicitly when first coroutine is launched)
+        this.scope = scope
+    }
+    private val _state = MutableStateFlow(GrantUiState())
+
+    /**
+     * UI state flow that UI layer observes to show dialogs
+     */
+    val state: StateFlow<GrantUiState> = _state.asStateFlow()
+
+    private val _status = MutableStateFlow(GrantStatus.NOT_DETERMINED)
+
+    /**
+     * Current grant status
+     */
+    val status: StateFlow<GrantStatus> = _status.asStateFlow()
+
+    private var onGrantedCallback: (() -> Unit)? = null
+
+    init {
+        // Initialize status on creation
+        refreshStatus()
+    }
+
+    /**
+     * Refresh the current grant status.
+     * Call this after user returns from Settings.
+     */
+    fun refreshStatus() {
+        scope.launch {
+            _status.value = grantManager.checkStatus(grant)
+        }
+    }
+
+    /**
+     * Main entry point for requesting grant.
+     *
+     * This function orchestrates the entire flow:
+     * 1. Check current status
+     * 2. If NOT_DETERMINED -> Request immediately
+     * 3. If DENIED -> Show rationale dialog
+     * 4. If DENIED_ALWAYS -> Show settings guide
+     * 5. If GRANTED -> Execute callback
+     *
+     * @param rationaleMessage Custom message for rationale dialog (optional)
+     * @param settingsMessage Custom message for settings dialog (optional)
+     * @param onGranted Callback that executes ONLY when grant is granted.
+     *                  **IMPORTANT**: Callback is cleared after execution to prevent memory leaks.
+     *
+     * **Example**:
+     * ```kotlin
+     * handler.request(
+     *     rationaleMessage = "We need camera to scan QR codes",
+     *     settingsMessage = "Camera is disabled. Enable it in Settings > Grants"
+     * ) {
+     *     println("Camera is ready!")
+     *     openCameraPreview()
+     * }
+     * ```
+     *
+     * **Callback Best Practices**:
+     * - Callback is automatically cleared after invocation to prevent memory leaks
+     * - Safe to capture ViewModel properties (they survive config changes)
+     * - Avoid capturing Activity/Fragment directly - use ViewModel events instead
+     * - Example (GOOD):
+     *   ```kotlin
+     *   handler.request { viewModel.navigateToCamera() } // ✅ ViewModel event
+     *   ```
+     * - Example (BAD):
+     *   ```kotlin
+     *   handler.request { activity.startCamera() } // ❌ Activity reference
+     *   ```
+     */
+    fun request(
+        rationaleMessage: String? = null,
+        settingsMessage: String? = null,
+        onGranted: () -> Unit
+    ) {
+        this.onGrantedCallback = onGranted
+
+        scope.launch {
+            val currentStatus = grantManager.checkStatus(grant)
+            _status.value = currentStatus
+            handleStatus(currentStatus, rationaleMessage, settingsMessage)
+        }
+    }
+
+    /**
+     * Called when user confirms rationale dialog and wants to proceed
+     */
+    fun onRationaleConfirmed() {
+        scope.launch {
+            // Hide dialog first to prevent user confusion
+            resetState()
+
+            val newStatus = grantManager.request(grant)
+            _status.value = newStatus
+
+            // Force a refresh after the request to ensure UI is in sync
+            refreshStatus()
+
+            handleStatus(newStatus, null, null)
+        }
+    }
+
+    /**
+     * Called when user clicks "Open Settings" button
+     */
+    fun onSettingsConfirmed() {
+        resetState()
+        grantManager.openSettings()
+    }
+
+    /**
+     * Called when user dismisses any dialog (Cancel/Outside tap)
+     */
+    fun onDismiss() {
+        resetState()
+        // Clear callback to prevent memory leak when grant flow is cancelled
+        onGrantedCallback = null
+    }
+
+    /**
+     * Request grant with custom UI callback handlers.
+     *
+     * This method provides an alternative to the state-based approach, allowing
+     * you to inject custom UI directly into the grant flow. Instead of
+     * observing state and showing dialogs, you provide callback functions that
+     * will be invoked when rationale or settings guidance is needed.
+     *
+     * **Use this when:**
+     * - You want full control over the UI (custom dialogs, bottom sheets, etc.)
+     * - You're using a non-Compose UI framework
+     * - You want to integrate with existing dialog systems
+     * - You prefer imperative UI over declarative state
+     *
+     * **Use the standard `request()` method when:**
+     * - Using Compose with GrantDialogHandler
+     * - Following the recommended state-based approach
+     * - You want consistent dialogs across the app
+     *
+     * @param rationaleMessage Default message to show in rationale UI
+     * @param settingsMessage Default message to show in settings UI
+     * @param onShowRationale Called when rationale should be shown.
+     *                        Parameters:
+     *                        - message: The rationale message
+     *                        - onConfirm: Call this when user confirms (will trigger grant request)
+     *                        - onDismiss: Call this when user dismisses (will cancel flow)
+     * @param onShowSettings Called when settings guidance should be shown.
+     *                       Parameters:
+     *                       - message: The settings message
+     *                       - onConfirm: Call this when user confirms (will open Settings)
+     *                       - onDismiss: Call this when user dismisses (will cancel flow)
+     * @param onGranted Callback that executes ONLY when grant is granted
+     *
+     * **Example (Custom Material Dialog)**:
+     * ```kotlin
+     * handler.requestWithCustomUi(
+     *     rationaleMessage = "Camera is needed to scan QR codes",
+     *     settingsMessage = "Please enable camera in Settings",
+     *     onShowRationale = { message, onConfirm, onDismiss ->
+     *         MaterialAlertDialogBuilder(context)
+     *             .setMessage(message)
+     *             .setPositiveButton("Continue") { _, _ -> onConfirm() }
+     *             .setNegativeButton("Cancel") { _, _ -> onDismiss() }
+     *             .show()
+     *     },
+     *     onShowSettings = { message, onConfirm, onDismiss ->
+     *         MaterialAlertDialogBuilder(context)
+     *             .setMessage(message)
+     *             .setPositiveButton("Open Settings") { _, _ -> onConfirm() }
+     *             .setNegativeButton("Cancel") { _, _ -> onDismiss() }
+     *             .show()
+     *     }
+     * ) {
+     *     // Grant granted
+     *     openCamera()
+     * }
+     * ```
+     *
+     * **Example (Bottom Sheet)**:
+     * ```kotlin
+     * handler.requestWithCustomUi(
+     *     onShowRationale = { message, onConfirm, onDismiss ->
+     *         showBottomSheet {
+     *             RationaleBottomSheet(
+     *                 message = message,
+     *                 onAccept = onConfirm,
+     *                 onCancel = onDismiss
+     *             )
+     *         }
+     *     },
+     *     // ...
+     * )
+     * ```
+     */
+    fun requestWithCustomUi(
+        rationaleMessage: String? = null,
+        settingsMessage: String? = null,
+        onShowRationale: (message: String, onConfirm: () -> Unit, onDismiss: () -> Unit) -> Unit,
+        onShowSettings: (message: String, onConfirm: () -> Unit, onDismiss: () -> Unit) -> Unit,
+        onGranted: () -> Unit
+    ) {
+        this.onGrantedCallback = onGranted
+
+        scope.launch {
+            val currentStatus = grantManager.checkStatus(grant)
+            _status.value = currentStatus
+            handleStatusWithCustomUi(
+                status = currentStatus,
+                rationaleMessage = rationaleMessage,
+                settingsMessage = settingsMessage,
+                onShowRationale = onShowRationale,
+                onShowSettings = onShowSettings
+            )
+        }
+    }
+
+    // --- Internal Logic ---
+
+    private suspend fun handleStatus(
+        status: GrantStatus,
+        rationaleMessage: String?,
+        settingsMessage: String?,
+        isFirstRequest: Boolean = false
+    ) {
+        when (status) {
+            GrantStatus.GRANTED -> {
+                resetState()
+                // Invoke callback and immediately clear to prevent memory leak
+                // (callback may hold reference to Activity/Fragment)
+                onGrantedCallback?.invoke()
+                onGrantedCallback = null
+            }
+            GrantStatus.NOT_DETERMINED -> {
+                // First time - request immediately
+                val result = grantManager.request(grant)
+
+                // Update status BEFORE handling to ensure StateFlow emits
+                _status.value = result
+
+                // Prevent infinite loop: only recurse if result changed
+                // If request() returns NOT_DETERMINED again, treat as soft denial
+                if (result != GrantStatus.NOT_DETERMINED) {
+                    // Mark as first request so we don't show dialogs immediately after user denies
+                    handleStatus(result, rationaleMessage, settingsMessage, isFirstRequest = true)
+                } else {
+                    // Unexpected: request returned NOT_DETERMINED (shouldn't happen normally)
+                    // Treat as soft denial to prevent infinite recursion
+                    handleStatus(GrantStatus.DENIED, rationaleMessage, settingsMessage)
+                }
+            }
+            GrantStatus.DENIED -> {
+                // Soft denial - show rationale
+                // Skip dialog if this was just denied from first system dialog (iOS behavior)
+                if (!isFirstRequest) {
+                    _state.update {
+                        it.copy(
+                            isVisible = true,
+                            showRationale = true,
+                            showSettingsGuide = false,
+                            rationaleMessage = rationaleMessage
+                        )
+                    }
+                } else {
+                    // Just update status, don't show dialog yet
+                    resetState()
+                    onGrantedCallback = null
+                }
+            }
+            GrantStatus.DENIED_ALWAYS -> {
+                // Permanent denial - show settings guide
+                // Skip dialog if this was just denied from first system dialog (iOS behavior)
+                // User just saw system dialog and clicked deny - don't immediately bombard with another dialog
+                if (!isFirstRequest) {
+                    _state.update {
+                        it.copy(
+                            isVisible = true,
+                            showRationale = false,
+                            showSettingsGuide = true,
+                            settingsMessage = settingsMessage
+                        )
+                    }
+                } else {
+                    // Just update status, don't show dialog yet
+                    // User can try again later and THEN we'll show the settings guide
+                    resetState()
+                    onGrantedCallback = null
+                }
+            }
+        }
+    }
+
+    private fun resetState() {
+        _state.update { GrantUiState() }
+    }
+
+    /**
+     * Internal handler for custom UI flow.
+     */
+    private suspend fun handleStatusWithCustomUi(
+        status: GrantStatus,
+        rationaleMessage: String?,
+        settingsMessage: String?,
+        onShowRationale: (message: String, onConfirm: () -> Unit, onDismiss: () -> Unit) -> Unit,
+        onShowSettings: (message: String, onConfirm: () -> Unit, onDismiss: () -> Unit) -> Unit
+    ) {
+        when (status) {
+            GrantStatus.GRANTED -> {
+                // Invoke callback and immediately clear to prevent memory leak
+                onGrantedCallback?.invoke()
+                onGrantedCallback = null
+            }
+            GrantStatus.NOT_DETERMINED -> {
+                // First time - request immediately
+                val result = grantManager.request(grant)
+                _status.value = result
+
+                // Prevent infinite loop: only recurse if result changed
+                if (result != GrantStatus.NOT_DETERMINED) {
+                    handleStatusWithCustomUi(
+                        status = result,
+                        rationaleMessage = rationaleMessage,
+                        settingsMessage = settingsMessage,
+                        onShowRationale = onShowRationale,
+                        onShowSettings = onShowSettings
+                    )
+                } else {
+                    // Treat as soft denial to prevent infinite recursion
+                    handleStatusWithCustomUi(
+                        status = GrantStatus.DENIED,
+                        rationaleMessage = rationaleMessage,
+                        settingsMessage = settingsMessage,
+                        onShowRationale = onShowRationale,
+                        onShowSettings = onShowSettings
+                    )
+                }
+            }
+            GrantStatus.DENIED -> {
+                // Soft denial - invoke rationale callback
+                val message = rationaleMessage ?: "This grant is required for this feature to work."
+
+                val onConfirm: () -> Unit = {
+                    scope.launch {
+                        val newStatus = grantManager.request(grant)
+                        _status.value = newStatus
+                        refreshStatus()
+                        handleStatusWithCustomUi(
+                            status = newStatus,
+                            rationaleMessage = rationaleMessage,
+                            settingsMessage = settingsMessage,
+                            onShowRationale = onShowRationale,
+                            onShowSettings = onShowSettings
+                        )
+                    }
+                }
+
+                val onDismiss: () -> Unit = {
+                    // Clear callback to prevent memory leak
+                    onGrantedCallback = null
+                }
+
+                onShowRationale(message, onConfirm, onDismiss)
+            }
+            GrantStatus.DENIED_ALWAYS -> {
+                // Permanent denial - invoke settings callback
+                val message = settingsMessage ?: "Grant denied. Please enable it in Settings."
+
+                val onConfirm: () -> Unit = {
+                    grantManager.openSettings()
+                    // Clear callback - user needs to return to app and retry
+                    onGrantedCallback = null
+                }
+
+                val onDismiss: () -> Unit = {
+                    // Clear callback to prevent memory leak
+                    onGrantedCallback = null
+                }
+
+                onShowSettings(message, onConfirm, onDismiss)
+            }
+        }
+    }
+}

@@ -1,0 +1,48 @@
+[versions]
+agp = "8.13.2"
+android-compileSdk = "36"
+android-minSdk = "26"
+android-targetSdk = "36"
+androidx-activity = "1.12.1"
+androidx-appcompat = "1.7.1"
+androidx-core = "1.17.0"
+androidx-lifecycle = "2.9.6"
+composeMultiplatform = "1.9.3"
+kotlin = "2.1.21"
+
+koin = "4.1.1"
+kotlinx-coroutines = "1.10.2"
+moko-grants = "0.20.1"
+
+[libraries]
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidx-core" }
+androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "androidx-appcompat" }
+androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity" }
+androidx-lifecycle-viewmodel = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel", version.ref = "androidx-lifecycle" }
+androidx-lifecycle-viewmodelCompose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidx-lifecycle" }
+
+koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
+koin-android = { module = "io.insert-koin:koin-android", version.ref = "koin" }
+koin-compose = { module = "io.insert-koin:koin-compose", version.ref = "koin" }
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
+
+# Moko Grants
+moko-grants = { module = "dev.icerock.moko:grants", version.ref = "moko-grants" }
+moko-grants-compose = { module = "dev.icerock.moko:grants-compose", version.ref = "moko-grants" }
+moko-grants-camera = { module = "dev.icerock.moko:grants-camera", version.ref = "moko-grants" }
+moko-grants-gallery = { module = "dev.icerock.moko:grants-gallery", version.ref = "moko-grants" }
+moko-grants-storage = { module = "dev.icerock.moko:grants-storage", version.ref = "moko-grants" }
+moko-grants-location = { module = "dev.icerock.moko:grants-location", version.ref = "moko-grants" }
+moko-grants-contacts = { module = "dev.icerock.moko:grants-contacts", version.ref = "moko-grants" }
+moko-grants-microphone = { module = "dev.icerock.moko:grants-microphone", version.ref = "moko-grants" }
+moko-grants-bluetooth = { module = "dev.icerock.moko:grants-bluetooth", version.ref = "moko-grants" }
+moko-grants-notifications = { module = "dev.icerock.moko:grants-notifications", version.ref = "moko-grants" }
+
+[plugins]
+androidApplication = { id = "com.android.application", version.ref = "agp" }
+androidLibrary = { id = "com.android.library", version.ref = "agp" }
+composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
+composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
