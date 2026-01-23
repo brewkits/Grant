@@ -74,7 +74,7 @@ User Action → Check Status → Show Rationale (if needed) → Request System D
 
 ```kotlin
 // ViewModel
-class FeatureViewModel(grantManager: grantManager) : ViewModel() {
+class FeatureViewModel(grantManager: GrantManager) : ViewModel() {
     val grantHandler = GrantHandler(
         grantManager = grantManager,
         grant = AppGrant.CAMERA,
@@ -285,7 +285,7 @@ Add usage description for each grant:
 
 ❌ **Bad** - Request on app launch:
 ```kotlin
-class ViewModel(manager: grantManager) {
+class ViewModel(manager: GrantManager) {
     init {
         requestCameraGrant() // User hasn't interacted yet!
     }
@@ -294,7 +294,7 @@ class ViewModel(manager: grantManager) {
 
 ✅ **Good** - Request on user action:
 ```kotlin
-class ViewModel(manager: grantManager) {
+class ViewModel(manager: GrantManager) {
     fun onTakePhotoClick() {
         cameraGrant.request { openCamera() }
     }

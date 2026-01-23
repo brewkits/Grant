@@ -1,0 +1,17 @@
+&lt;component name="ProjectRunConfigurationManager"&gt;
+  &lt;configuration default="false" name="iosApp (iPad Pro)" type="ShellConfigurationType"&gt;
+    &lt;option name="SCRIPT_TEXT" value="" /&gt;
+    &lt;option name="INDEPENDENT_SCRIPT_PATH" value="true" /&gt;
+    &lt;option name="SCRIPT_PATH" value="$PROJECT_DIR$/.run-ios-from-studio.sh" /&gt;
+    &lt;option name="SCRIPT_OPTIONS" value="&amp;quot;iPad Pro 11-inch (M4)&amp;quot;" /&gt;
+    &lt;option name="INDEPENDENT_SCRIPT_WORKING_DIRECTORY" value="true" /&gt;
+    &lt;option name="SCRIPT_WORKING_DIRECTORY" value="$PROJECT_DIR$" /&gt;
+    &lt;option name="INDEPENDENT_INTERPRETER_PATH" value="true" /&gt;
+    &lt;option name="INTERPRETER_PATH" value="/bin/bash" /&gt;
+    &lt;option name="INTERPRETER_OPTIONS" value="" /&gt;
+    &lt;option name="EXECUTE_IN_TERMINAL" value="true" /&gt;
+    &lt;option name="EXECUTE_SCRIPT_FILE" value="true" /&gt;
+    &lt;envs /&gt;
+    &lt;method v="2" /&gt;
+  &lt;/configuration&gt;
+&lt;/component&gt;

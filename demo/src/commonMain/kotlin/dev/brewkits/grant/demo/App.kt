@@ -4,7 +4,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import dev.brewkits.grant.grantManager
+import dev.brewkits.grant.GrantManager
 import org.koin.compose.koinInject
 
 /**
@@ -16,7 +16,7 @@ fun App() {
     BindGrantsController()
 
     MaterialTheme {
-        val grantManager = koinInject<grantManager>()
+        val grantManager = koinInject<GrantManager>()
         val scope = rememberCoroutineScope()
 
         val viewModel = remember {

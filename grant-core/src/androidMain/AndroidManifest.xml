@@ -15,7 +15,27 @@
         - Handles configuration changes gracefully
         - Works from anywhere (ViewModel, Repository, etc.)
     -->
-    <application>
+
+    <!--
+        Backup Rules:
+
+        Grant library uses SharedPreferences to track "has requested permission X"
+        to solve Android's "Dead Click" issue after app restart.
+
+        However, we MUST exclude this from backup to prevent false state after
+        app reinstall:
+        - If backed up: Reinstalled app thinks permission was requested before
+        - But system sees: Fresh install (permission never requested)
+        - Result: Inconsistent state causes UX issues
+
+        Solution: Exclude from backup/restore so each install starts fresh.
+
+        Note: App developers can override these rules in their app's manifest
+        if they need different backup behavior.
+    -->
+    <application
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules">
         <activity
             android:name="dev.brewkits.grant.impl.GrantRequestActivity"
             android:theme="@style/Theme.Transparent"

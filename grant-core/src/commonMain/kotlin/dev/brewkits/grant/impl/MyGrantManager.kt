@@ -1,7 +1,7 @@
 package dev.brewkits.grant.impl
 
 import dev.brewkits.grant.AppGrant
-import dev.brewkits.grant.grantManager
+import dev.brewkits.grant.GrantManager
 import dev.brewkits.grant.GrantStatus
 
 /**
@@ -25,9 +25,9 @@ import dev.brewkits.grant.GrantStatus
  *
  * **Implementation learned from moko-grants but kept independent.**
  */
-class MygrantManager(
+class MyGrantManager(
     private val platformDelegate: PlatformGrantDelegate
-) : grantManager {
+) : GrantManager {
 
     override suspend fun checkStatus(grant: AppGrant): GrantStatus {
         return platformDelegate.checkStatus(grant)

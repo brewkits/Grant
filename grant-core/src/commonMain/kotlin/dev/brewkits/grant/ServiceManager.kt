@@ -10,7 +10,7 @@ package dev.brewkits.grant
  *
  * **Example**:
  * ```kotlin
- * val locationGranted = grantManager.checkStatus(GrantType.LOCATION) == GrantStatus.GRANTED
+ * val locationGranted = GrantManager.checkStatus(GrantType.LOCATION) == GrantStatus.GRANTED
  * val gpsEnabled = serviceManager.isServiceEnabled(ServiceType.LOCATION_GPS)
  *
  * if (locationGranted && !gpsEnabled) {

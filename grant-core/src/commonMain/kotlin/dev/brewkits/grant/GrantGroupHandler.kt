@@ -66,7 +66,7 @@ data class GrantGroupUiState(
  *              See [GrantHandler] documentation for detailed scope requirements.
  */
 class GrantGroupHandler(
-    private val grantManager: grantManager,
+    private val grantManager: GrantManager,
     private val grants: List<AppGrant>,
     scope: CoroutineScope
 ) {

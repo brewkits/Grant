@@ -1,10 +1,10 @@
 package dev.brewkits.grant
 
-import dev.brewkits.grant.impl.MygrantManager
+import dev.brewkits.grant.impl.MyGrantManager
 import dev.brewkits.grant.impl.PlatformGrantDelegate
 
 /**
- * Factory to create grantManager instances without dependency injection framework.
+ * Factory to create GrantManager instances without dependency injection framework.
  *
  * **Use this if you don't want to use Koin or any DI framework.**
  *
@@ -13,13 +13,13 @@ import dev.brewkits.grant.impl.PlatformGrantDelegate
  * ### Android:
  * ```kotlin
  * class MainActivity : ComponentActivity() {
- *     private val grantManager by lazy {
+ *     private val GrantManager by lazy {
  *         GrantFactory.create(applicationContext)
  *     }
  *
  *     override fun onCreate(savedInstanceState: Bundle?) {
  *         super.onCreate(savedInstanceState)
- *         // Use grantManager
+ *         // Use GrantManager
  *     }
  * }
  * ```
@@ -27,11 +27,11 @@ import dev.brewkits.grant.impl.PlatformGrantDelegate
  * ### iOS:
  * ```kotlin
  * class ViewController : UIViewController {
- *     private val grantManager = GrantFactory.create()
+ *     private val GrantManager = GrantFactory.create()
  *
  *     override fun viewDidLoad() {
  *         super.viewDidLoad()
- *         // Use grantManager
+ *         // Use GrantManager
  *     }
  * }
  * ```
@@ -49,18 +49,18 @@ import dev.brewkits.grant.impl.PlatformGrantDelegate
  */
 object GrantFactory {
     /**
-     * Create a grantManager instance.
+     * Create a GrantManager instance.
      *
      * @param context Platform-specific context:
      *                - Android: android.content.Context (required)
      *                - iOS: Not needed (pass null or omit)
-     * @return grantManager instance ready to use
+     * @return GrantManager instance ready to use
      *
      * @throws IllegalArgumentException on Android if context is not provided
      */
-    fun create(context: Any? = null): grantManager {
+    fun create(context: Any? = null): GrantManager {
         val delegate = createPlatformDelegate(context)
-        return MygrantManager(delegate)
+        return MyGrantManager(delegate)
     }
 }
 

@@ -55,9 +55,9 @@ data class GrantUiState(
  *
  * **Usage in ViewModel**:
  * ```kotlin
- * class CameraViewModel(grantManager: grantManager) : ViewModel() {
+ * class CameraViewModel(GrantManager: GrantManager) : ViewModel() {
  *     val cameraGrant = GrantHandler(
- *         grantManager = grantManager,
+ *         GrantManager = GrantManager,
  *         grant = AppGrant.CAMERA,
  *         scope = viewModelScope // CRITICAL: Use viewModelScope!
  *     )
@@ -108,7 +108,7 @@ data class GrantUiState(
  *              ```
  */
 class GrantHandler(
-    private val grantManager: grantManager,
+    private val grantManager: GrantManager,
     private val grant: AppGrant,
     scope: CoroutineScope
 ) {
@@ -133,6 +133,18 @@ class GrantHandler(
     val status: StateFlow<GrantStatus> = _status.asStateFlow()
 
     private var onGrantedCallback: (() -> Unit)? = null
+
+    /**
+     * Tracks if we've shown the rationale dialog to the user.
+     * This helps us decide whether to show Settings guide immediately.
+     *
+     * Platform differences:
+     * - Android: User goes through rationale flow before permanent denial
+     *            If rationale was shown → Help with Settings guide
+     * - iOS: No rationale flow (first denial = permanent)
+     *        Only show Settings guide on second click
+     */
+    private var hasShownRationaleDialog = false
 
     init {
         // Initialize status on creation
@@ -216,7 +228,9 @@ class GrantHandler(
             // Force a refresh after the request to ensure UI is in sync
             refreshStatus()
 
-            handleStatus(newStatus, null, null)
+            // Mark as first request to prevent showing another dialog immediately
+            // User just saw system dialog - don't bombard with rationale again if denied
+            handleStatus(newStatus, null, null, isFirstRequest = true)
         }
     }
 
@@ -344,6 +358,7 @@ class GrantHandler(
         when (status) {
             GrantStatus.GRANTED -> {
                 resetState()
+                hasShownRationaleDialog = false  // Reset flag when granted
                 // Invoke callback and immediately clear to prevent memory leak
                 // (callback may hold reference to Activity/Fragment)
                 onGrantedCallback?.invoke()
@@ -369,8 +384,14 @@ class GrantHandler(
             }
             GrantStatus.DENIED -> {
                 // Soft denial - show rationale
-                // Skip dialog if this was just denied from first system dialog (iOS behavior)
+                // Skip dialog if this was just denied from first system dialog
+                // This prevents bombarding user with 2 dialogs in a row:
+                // System dialog → Rationale dialog (bad UX)
+                //
+                // Only show rationale on subsequent requests when user explicitly
+                // clicks the feature button again.
                 if (!isFirstRequest) {
+                    hasShownRationaleDialog = true  // Mark that we showed rationale
                     _state.update {
                         it.copy(
                             isVisible = true,
@@ -380,16 +401,28 @@ class GrantHandler(
                         )
                     }
                 } else {
-                    // Just update status, don't show dialog yet
+                    // Just denied from system dialog - don't show rationale yet
+                    // User can try again later and THEN we'll show rationale
                     resetState()
                     onGrantedCallback = null
                 }
             }
             GrantStatus.DENIED_ALWAYS -> {
                 // Permanent denial - show settings guide
-                // Skip dialog if this was just denied from first system dialog (iOS behavior)
-                // User just saw system dialog and clicked deny - don't immediately bombard with another dialog
-                if (!isFirstRequest) {
+                //
+                // Platform differences:
+                // - Android: User goes through rationale flow before permanent denial
+                //           If rationale shown → They tried to grant → Help with Settings
+                // - iOS: First denial = permanent (no soft denial, no rationale)
+                //        Don't show Settings after first denial
+                //
+                // Solution: Check if user saw rationale OR clicked again
+                // - hasShownRationaleDialog = true: User went through flow → Show guide
+                // - isFirstRequest = false: User clicked again → Show guide
+                // - Otherwise: Don't show yet (user just denied for first time)
+                val shouldShowSettingsGuide = hasShownRationaleDialog || !isFirstRequest
+
+                if (shouldShowSettingsGuide) {
                     _state.update {
                         it.copy(
                             isVisible = true,
@@ -399,8 +432,9 @@ class GrantHandler(
                         )
                     }
                 } else {
-                    // Just update status, don't show dialog yet
-                    // User can try again later and THEN we'll show the settings guide
+                    // Just denied from system dialog - don't show settings guide yet
+                    // User can try again later and THEN we'll show guide
+                    // This prevents bad UX: System dialog → Settings dialog (2 dialogs in a row!)
                     resetState()
                     onGrantedCallback = null
                 }

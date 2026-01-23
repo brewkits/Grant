@@ -1,10 +1,10 @@
 package dev.brewkits.grant.di
 
 import dev.brewkits.grant.GrantAndServiceChecker
-import dev.brewkits.grant.grantManager
+import dev.brewkits.grant.GrantManager
 import dev.brewkits.grant.ServiceManager
 import dev.brewkits.grant.ServiceFactory
-import dev.brewkits.grant.impl.MygrantManager
+import dev.brewkits.grant.impl.MyGrantManager
 import dev.brewkits.grant.impl.PlatformGrantDelegate
 import org.koin.core.module.Module
 import org.koin.dsl.module
@@ -15,7 +15,7 @@ import org.koin.dsl.module
  * Provides production-ready, platform-specific grant implementation.
  *
  * **Architecture**:
- * - grantManager: Handles grant requests
+ * - GrantManager: Handles grant requests
  * - ServiceManager: Checks system services (GPS, Bluetooth, etc.)
  * - GrantAndServiceChecker: Convenience API combining both
  *
@@ -32,8 +32,8 @@ import org.koin.dsl.module
  */
 val grantModule = module {
     // Grant Manager
-    single<grantManager> {
-        MygrantManager(
+    single<GrantManager> {
+        MyGrantManager(
             platformDelegate = get() // Provided by platform-specific module
         )
     }

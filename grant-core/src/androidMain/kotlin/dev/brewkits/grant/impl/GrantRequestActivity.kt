@@ -79,10 +79,26 @@ class GrantRequestActivity : ComponentActivity() {
 
             val result = when {
                 allGranted -> GrantResult.GRANTED
-                grantsResult.any { (grant, granted) ->
-                    !granted && shouldShowRequestPermissionRationale(grant)
-                } -> GrantResult.DENIED
-                else -> GrantResult.DENIED_PERMANENTLY
+                else -> {
+                    // Check if ALL denied permissions are permanently denied
+                    // If at least one denied permission can still show rationale, return DENIED
+                    // Only return DENIED_PERMANENTLY if ALL denied permissions are permanent
+                    val deniedGrants = grantsResult.filter { !it.value }.keys
+
+                    val rationaleStatus = deniedGrants.map { grant ->
+                        val canShow = shouldShowRequestPermissionRationale(grant)
+                        grant to canShow
+                    }
+
+                    val anyCanShowRationale = rationaleStatus.any { it.second }
+
+                    if (anyCanShowRationale) {
+                        GrantResult.DENIED
+                    } else {
+                        // All denied permissions are permanently denied
+                        GrantResult.DENIED_PERMANENTLY
+                    }
+                }
             }
 
             setResult(requestId, result)

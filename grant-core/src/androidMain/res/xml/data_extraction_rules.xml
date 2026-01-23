@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Data extraction rules for Grant library (Android 12+)
+
+  This file excludes grant_request_history SharedPreferences from
+  device-to-device transfer and cloud backup on Android 12+.
+
+  Ensures each installation starts with fresh permission state.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <!-- Exclude grant request history from cloud backup -->
+        <exclude domain="sharedpref" path="grant_request_history.xml"/>
+    </cloud-backup>
+    <device-transfer>
+        <!-- Exclude grant request history from device transfer -->
+        <exclude domain="sharedpref" path="grant_request_history.xml"/>
+    </device-transfer>
+</data-extraction-rules>

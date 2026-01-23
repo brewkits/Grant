@@ -12,10 +12,10 @@ package dev.brewkits.grant
  * - No coupling between business logic and third-party libraries
  * - Simplified testing (mock this interface)
  *
- * @see MokograntManager for the default implementation
+ * @see MyGrantManager for the default implementation
  * @see GrantHandler for ViewModel usage patterns
  */
-interface grantManager {
+interface GrantManager {
     /**
      * Checks the current status of a grant WITHOUT showing any UI.
      *

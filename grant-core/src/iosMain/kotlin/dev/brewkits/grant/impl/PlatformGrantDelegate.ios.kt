@@ -5,6 +5,7 @@ import dev.brewkits.grant.GrantStatus
 import dev.brewkits.grant.delegates.BluetoothManagerDelegate
 import dev.brewkits.grant.delegates.LocationManagerDelegate
 import dev.brewkits.grant.utils.GrantLogger
+import dev.brewkits.grant.utils.SimulatorDetector
 import dev.brewkits.grant.utils.mainContinuation
 import dev.brewkits.grant.utils.mainContinuation2
 import dev.brewkits.grant.utils.runOnMain
@@ -95,9 +96,19 @@ actual class PlatformGrantDelegate {
     actual fun openSettings() {
         try {
             val settingsUrl = NSURL(string = UIApplicationOpenSettingsURLString)
-            if (UIApplication.sharedApplication.canOpenURL(settingsUrl)) {
-                UIApplication.sharedApplication.openURL(settingsUrl)
-                GrantLogger.i("iOSGrant", "Opened app settings")
+            if (settingsUrl != null && UIApplication.sharedApplication.canOpenURL(settingsUrl)) {
+                // Use non-deprecated API: open(_:options:completionHandler:)
+                UIApplication.sharedApplication.openURL(
+                    settingsUrl,
+                    options = emptyMap<Any?, Any>(),
+                    completionHandler = { success ->
+                        if (success) {
+                            GrantLogger.i("iOSGrant", "Opened app settings")
+                        } else {
+                            GrantLogger.e("iOSGrant", "Failed to open settings URL")
+                        }
+                    }
+                )
             } else {
                 GrantLogger.e("iOSGrant", "Cannot open settings URL")
             }
@@ -296,6 +307,16 @@ actual class PlatformGrantDelegate {
     // --- Motion / Activity Recognition ---
 
     private fun checkMotionStatus(): GrantStatus {
+        // iOS Simulator: Motion works but may not return real data
+        // Return GRANTED to allow testing without blocking
+        if (SimulatorDetector.isSimulator) {
+            GrantLogger.i(
+                "iOSGrant",
+                "Running on ${SimulatorDetector.simulatorType} - Motion permission dialog works, returning GRANTED"
+            )
+            return GrantStatus.GRANTED
+        }
+
         // CMMotionActivityManager authorization status
         return when (CMMotionActivityManager.authorizationStatus()) {
             CMAuthorizationStatusAuthorized -> GrantStatus.GRANTED
@@ -307,6 +328,16 @@ actual class PlatformGrantDelegate {
     }
 
     private suspend fun requestMotionGrant(): GrantStatus {
+        // iOS Simulator: Motion dialog works but data collection may not work
+        // Return GRANTED to allow testing
+        if (SimulatorDetector.isSimulator) {
+            GrantLogger.i(
+                "iOSGrant",
+                "Running on ${SimulatorDetector.simulatorType} - Returning GRANTED for Motion (data collection may not work)"
+            )
+            return GrantStatus.GRANTED
+        }
+
         val currentStatus = checkMotionStatus()
         if (currentStatus != GrantStatus.NOT_DETERMINED) {
             return currentStatus

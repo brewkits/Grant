@@ -2,7 +2,7 @@ package dev.brewkits.grant.demo
 
 import dev.brewkits.grant.AppGrant
 import dev.brewkits.grant.GrantHandler
-import dev.brewkits.grant.grantManager
+import dev.brewkits.grant.GrantManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
  * - **Dangerous**: Grants accessing sensitive data (e.g., CAMERA, LOCATION, CONTACTS)
  */
 class GrantDemoViewModel(
-    private val grantManager: grantManager,
+    private val grantManager: GrantManager,
     private val scope: CoroutineScope
 ) {
     // ==============================================

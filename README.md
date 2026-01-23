@@ -31,11 +31,14 @@ KMP Grant provides:
 - No coupling between business logic and UI
 - Easy to test and maintain
 
-### 🔄 Complete Grant Flow
-- Check status without UI
-- Request with automatic system dialog
-- Handle rationale (soft denial)
-- Handle permanent denial with settings navigation
+### 🔄 Intelligent Grant Flow
+- **Automatic Status Detection** - Distinguishes between NOT_DETERMINED, DENIED, and DENIED_ALWAYS
+- **Smart Dialog Management** - Shows the right dialog at the right time:
+  - System dialog for first-time requests
+  - Rationale dialog when user denies (explains why permission is needed)
+  - Settings guide dialog when permanently denied (directs user to Settings)
+- **Zero Configuration** - Works out of the box, no manual dialog management needed
+- **Platform-Aware** - Handles Android's `shouldShowRequestPermissionRationale` and iOS authorization states correctly
 - Lifecycle-safe on Android, Main thread-safe on iOS
 
 ### 🎨 UI Framework Agnostic
@@ -49,6 +52,55 @@ KMP Grant provides:
 - Eliminates boilerplate code
 - Consistent UX across features
 - Built-in state management
+
+### ⚡ Advanced Features
+
+#### Multiple Permissions Support
+- **Smart permission grouping** - Automatically handles platform-specific permission requirements
+- **Android 12+ Location** - Requests both FINE and COARSE permissions together (required by Android 12+)
+- **Android 11+ Background Location** - Intelligent 2-step request (foreground first, then background)
+- **Gallery Permissions** - Auto-handles Android 13+ media permissions vs older READ_EXTERNAL_STORAGE
+
+#### Open Settings Integration
+- **Android**: Direct navigation to app's permission settings page
+- **iOS**: Opens app settings via `UIApplicationOpenSettingsURLString`
+- **Automatic guidance** - GrantHandler shows "Open Settings" button when DENIED_ALWAYS
+
+#### Service Status Checking (Exclusive Feature)
+- **LocationService** - Check if GPS/Location services are enabled (not just permission)
+- **BluetoothService** - Check if Bluetooth is turned on
+- **InternetService** - Check network connectivity
+- **Why it matters**: Permission granted ≠ Service enabled. Users need both!
+
+Example:
+```kotlin
+// Check both permission AND service status
+val locationReady = grantManager.checkStatus(AppGrant.LOCATION) == GrantStatus.GRANTED &&
+                   serviceManager.checkLocationService() == ServiceStatus.ENABLED
+
+if (!locationReady) {
+    // Guide user to enable location service
+    serviceManager.openLocationSettings()
+}
+```
+
+### 📊 Comparison with moko-permissions
+
+Grant library was inspired by [moko-permissions](https://github.com/icerockdev/moko-permissions) but includes several improvements:
+
+| Feature | moko-permissions | Grant |
+|---------|-----------------|-------|
+| Multiple permissions support | ✅ | ✅ |
+| openSettings() | ✅ | ✅ Better error handling |
+| Automatic UI dialogs | ❌ Manual | ✅ GrantHandler pattern |
+| Android 11+ background location | ⚠️ Request all at once | ✅ Proper 2-step flow |
+| Service status checking | ❌ | ✅ Exclusive feature |
+| iOS Simulator support | ⚠️ Hardware fails | ✅ **Auto mock (Bluetooth, Motion)** |
+| Exception-based errors | ✅ try-catch | ✅ Status enum (cleaner) |
+| Demo quality | Basic sample | ✅ Production-ready demo |
+
+📖 **See detailed comparison**: [docs/COMPARISON_WITH_MOKO.md](docs/COMPARISON_WITH_MOKO.md)
+📖 **Best practices guide**: [docs/BEST_PRACTICES.md](docs/BEST_PRACTICES.md)
 
 ## 📦 Installation
 
@@ -190,12 +242,12 @@ fun initKoin() {
 
 ```kotlin
 class CameraViewModel(
-    grantManager: GrantManager
+    GrantManager: GrantManager
 ) : ViewModel() {
 
     // Compose this handler (NO boilerplate code!)
     val cameraGrant = GrantHandler(
-        grantManager = grantManager,
+        GrantManager = GrantManager,
         grant = GrantType.CAMERA,
         scope = viewModelScope
     )
@@ -302,6 +354,119 @@ fun GrantDialogHandler(handler: GrantHandler) {
 
 *iOS uses sandboxed storage, no grant needed
 
+## 🚀 Advanced Features
+
+### 🧠 Intelligent Dialog Flow (Zero Configuration Required)
+
+One of the most powerful features of KMP Grant is its **automatic dialog management**. Unlike other grant libraries that require manual state tracking, KMP Grant intelligently determines which dialog to show based on the grant's current state.
+
+#### How It Works
+
+```kotlin
+// Just call request() - the library handles everything!
+locationGrant.request {
+    // Only runs when granted
+    startLocationTracking()
+}
+```
+
+The library automatically:
+
+1. **Detects Grant State**
+   - Uses `checkStatus()` to determine if grant is NOT_DETERMINED, DENIED, or DENIED_ALWAYS
+   - On Android: Leverages `shouldShowRequestPermissionRationale()` for accurate state detection
+   - On iOS: Maps native authorization statuses correctly
+
+2. **Shows Appropriate Dialog**
+   - **First Time (NOT_DETERMINED)** → Shows system grant dialog
+   - **After Denial (DENIED)** → Shows rationale dialog explaining why the grant is needed
+   - **Permanently Denied (DENIED_ALWAYS)** → Shows settings guide dialog directing user to Settings
+
+3. **Handles User Actions**
+   - Rationale Confirmed → Requests grant again
+   - Settings Confirmed → Opens app settings
+   - Dismissed → Cleans up and prevents memory leaks
+
+#### Platform-Specific Intelligence
+
+**Android:**
+- Correctly handles `shouldShowRequestPermissionRationale()` logic
+- Works with multi-permission requests (e.g., Location Always = FINE + COARSE + BACKGROUND)
+- Detects when user ticks "Don't ask again"
+- Handles API level differences (Android 11+ location, Android 13+ media permissions)
+
+**iOS:**
+- Maps iOS authorization statuses to grant states
+- Handles "While Using" vs "Always" for location
+- Properly detects when user denies vs. when permission is restricted
+
+#### Example: Complete Flow
+
+```kotlin
+// ViewModel - Just 3 lines!
+val cameraGrant = GrantHandler(
+    grantManager = grantManager,
+    grant = GrantType.CAMERA,
+    scope = viewModelScope
+)
+
+fun onTakePhotoClick() {
+    cameraGrant.request(
+        rationaleMessage = "Camera access is needed to take photos for your profile",
+        settingsMessage = "Camera is disabled. Please enable it in Settings > Permissions"
+    ) {
+        openCamera() // Only executes when granted
+    }
+}
+
+// UI - Automatic dialog handling
+@Composable
+fun CameraScreen(viewModel: CameraViewModel) {
+    // This composable observes state and shows the right dialog automatically
+    GrantDialogHandler(handler = viewModel.cameraGrant)
+
+    // Your UI
+    Button(onClick = { viewModel.onTakePhotoClick() }) {
+        Text("Take Photo")
+    }
+}
+```
+
+**User Journey:**
+
+1. **Click "Take Photo"** (first time)
+   - System dialog appears: "Allow Camera access?"
+   - User denies → Rationale dialog appears automatically
+   - User clicks "Grant Permission" → System dialog appears again
+   - User grants → Camera opens ✅
+
+2. **Click "Take Photo"** (after denying twice)
+   - Settings guide dialog appears automatically
+   - User clicks "Open Settings" → App settings opens
+   - User enables camera → Returns to app
+   - Click "Take Photo" again → Camera opens ✅
+
+**No manual state management. No if-else chains. Just works.**
+
+### 📊 Grant Status Checking
+
+Check grant status at any time without showing UI:
+
+```kotlin
+val cameraStatus = grantManager.checkStatus(GrantType.CAMERA)
+when (cameraStatus) {
+    GrantStatus.GRANTED -> showCameraButton()
+    GrantStatus.NOT_DETERMINED -> showGrantPrompt()
+    GrantStatus.DENIED -> showRationale()
+    GrantStatus.DENIED_ALWAYS -> showSettingsGuide()
+}
+```
+
+This is useful for:
+- Showing/hiding features based on grant status
+- Pre-checking grants before starting workflows
+- Displaying grant status in settings screens
+
 ## 🏗️ Architecture
 
 ### Core Components
@@ -338,32 +503,43 @@ fun GrantDialogHandler(handler: GrantHandler) {
 
 ## 📚 Documentation
 
+### 📖 [Complete Documentation Index](docs/README.md)
+
+### Essential Guides
+- [✨ Best Practices](docs/BEST_PRACTICES.md) - **Start here!** Learned from moko-permissions and real-world usage
+- [📊 Comparison with moko-permissions](docs/COMPARISON_WITH_MOKO.md) - Feature comparison and architectural differences
+- [📋 Changelog](CHANGELOG.md) - **What's new!** All bug fixes and enhancements
+
 ### Library Documentation (grant-core)
-- [📖 Complete Grant Guide](grant-core/docs/GRANTS.md)
-- [🏗️ Architecture & Design Patterns](grant-core/docs/ARCHITECTURE.md)
-- [⚡ Quick Start Tutorial](grant-core/docs/QUICK_START.md)
-- [🍎 iOS Setup Guide](grant-core/docs/QUICK_START_iOS.md)
-- [🔧 Transparent Activity Guide](grant-core/docs/TRANSPARENT_ACTIVITY_GUIDE.md)
-- [🧪 Testing Strategy](grant-core/docs/TESTING.md)
+- [📖 Complete Grant Guide](docs/grant-core/GRANTS.md)
+- [🏗️ Architecture & Design Patterns](docs/grant-core/ARCHITECTURE.md)
+- [⚡ Quick Start Tutorial](docs/grant-core/QUICK_START.md)
+- [🍎 iOS Setup Guide](docs/grant-core/QUICK_START_iOS.md)
+- [🔧 Transparent Activity Guide](docs/grant-core/TRANSPARENT_ACTIVITY_GUIDE.md)
+- [🧪 Testing Strategy](docs/grant-core/TESTING.md)
+
+### iOS Development from Android Studio
+- [🚀 iOS Setup for Android Studio](docs/ios/IOS_SETUP_ANDROID_STUDIO.md)
+- [⚡ Quick Start iOS](docs/ios/QUICK_START_IOS_ANDROID_STUDIO.md)
 
 ### Demo App Documentation
-- [🎨 Demo App Guide](demo/docs/DEMO_GUIDE.md)
-- [⚙️ Demo Setup](demo/docs/DEMO_SETUP.md)
+- [🎨 Demo App Guide](docs/demo/DEMO_GUIDE.md)
+- [⚙️ Demo Setup](docs/demo/DEMO_SETUP.md)
 
 ## 💡 Advanced Usage
 
 ### Multiple Grants
 
 ```kotlin
-class ProfileViewModel(grantManager: GrantManager) : ViewModel() {
+class ProfileViewModel(GrantManager: GrantManager) : ViewModel() {
     val cameraGrant = GrantHandler(
-        grantManager,
+        GrantManager,
         GrantType.CAMERA,
         viewModelScope
     )
 
     val galleryGrant = GrantHandler(
-        grantManager,
+        GrantManager,
         GrantType.GALLERY,
         viewModelScope
     )
@@ -392,9 +568,9 @@ cameraGrant.request(
 ### Grant Groups
 
 ```kotlin
-class LocationViewModel(grantManager: GrantManager) : ViewModel() {
+class LocationViewModel(GrantManager: GrantManager) : ViewModel() {
     val locationGroup = GrantGroupHandler(
-        grantManager = grantManager,
+        GrantManager = GrantManager,
         grants = listOf(
             GrantType.LOCATION,
             GrantType.LOCATION_ALWAYS
@@ -417,12 +593,12 @@ class LocationViewModel(grantManager: GrantManager) : ViewModel() {
 
 ```kotlin
 class FeatureViewModel(
-    private val grantManager: GrantManager
+    private val GrantManager: GrantManager
 ) : ViewModel() {
 
     fun checkCameraGrant() {
         viewModelScope.launch {
-            val status = grantManager.checkStatus(GrantType.CAMERA)
+            val status = GrantManager.checkStatus(GrantType.CAMERA)
             when (status) {
                 GrantStatus.GRANTED -> {
                     // Camera available

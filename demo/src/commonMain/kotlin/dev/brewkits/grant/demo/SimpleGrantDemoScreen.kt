@@ -9,12 +9,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.brewkits.grant.AppGrant
+import kotlinx.coroutines.launch
 
 /**
  * Simplified demo screen showing all available grants.
@@ -24,6 +26,20 @@ fun SimpleGrantDemoScreen(
     viewModel: GrantDemoViewModel,
     modifier: Modifier = Modifier
 ) {
+    // Snackbar state for success messages
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    // Helper function to show success message
+    fun showSuccess(grantName: String) {
+        scope.launch {
+            snackbarHostState.showSnackbar(
+                message = "✓ $grantName granted successfully!",
+                duration = SnackbarDuration.Short
+            )
+        }
+    }
+
     // Handle grant dialogs for all grants
     GrantDialogHandler(handler = viewModel.cameraGrant)
     GrantDialogHandler(handler = viewModel.microphoneGrant)
@@ -36,25 +52,50 @@ fun SimpleGrantDemoScreen(
     GrantDialogHandler(handler = viewModel.galleryGrant)
     GrantDialogHandler(handler = viewModel.motionGrant)
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // Header
-        Text(
-            text = "KMP Grant Demo",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold
-        )
+    Scaffold(
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState) { data ->
+                Snackbar(
+                    snackbarData = data,
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(paddingValues)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+        // Header with better styling
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer
+            ),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "🔐 KMP Grant Demo",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
 
-        Text(
-            text = "Test all grant types with real platform implementations.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+                Text(
+                    text = "Test all permission types with real platform implementations.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                )
+            }
+        }
 
         // Platform Differences Info Card
         PlatformDifferencesCard()
@@ -136,7 +177,8 @@ fun SimpleGrantDemoScreen(
             title = "Camera",
             description = "Photo/video capture, QR scanning",
             icon = "📷",
-            handler = viewModel.cameraGrant
+            handler = viewModel.cameraGrant,
+            onSuccess = ::showSuccess
         )
 
         // Microphone
@@ -144,7 +186,8 @@ fun SimpleGrantDemoScreen(
             title = "Microphone",
             description = "Audio recording, voice notes",
             icon = "🎤",
-            handler = viewModel.microphoneGrant
+            handler = viewModel.microphoneGrant,
+            onSuccess = ::showSuccess
         )
 
         // Location
@@ -152,7 +195,8 @@ fun SimpleGrantDemoScreen(
             title = "Location",
             description = "Maps, location-based services",
             icon = "📍",
-            handler = viewModel.locationGrant
+            handler = viewModel.locationGrant,
+            onSuccess = ::showSuccess
         )
 
         // Location Always
@@ -160,7 +204,8 @@ fun SimpleGrantDemoScreen(
             title = "Location Always",
             description = "Background location tracking",
             icon = "🌍",
-            handler = viewModel.locationAlwaysGrant
+            handler = viewModel.locationAlwaysGrant,
+            onSuccess = ::showSuccess
         )
 
         // Storage
@@ -168,7 +213,8 @@ fun SimpleGrantDemoScreen(
             title = "Storage",
             description = "Read/write files",
             icon = "💾",
-            handler = viewModel.storageGrant
+            handler = viewModel.storageGrant,
+            onSuccess = ::showSuccess
         )
 
         // Gallery
@@ -176,7 +222,8 @@ fun SimpleGrantDemoScreen(
             title = "Gallery",
             description = "Access photo library",
             icon = "🖼️",
-            handler = viewModel.galleryGrant
+            handler = viewModel.galleryGrant,
+            onSuccess = ::showSuccess
         )
 
         // Contacts
@@ -184,7 +231,8 @@ fun SimpleGrantDemoScreen(
             title = "Contacts",
             description = "Read contact list",
             icon = "👥",
-            handler = viewModel.contactsGrant
+            handler = viewModel.contactsGrant,
+            onSuccess = ::showSuccess
         )
 
         // Notifications
@@ -192,7 +240,8 @@ fun SimpleGrantDemoScreen(
             title = "Notifications",
             description = "Push notifications",
             icon = "🔔",
-            handler = viewModel.notificationGrant
+            handler = viewModel.notificationGrant,
+            onSuccess = ::showSuccess
         )
 
         // Bluetooth
@@ -200,17 +249,20 @@ fun SimpleGrantDemoScreen(
             title = "Bluetooth",
             description = "Bluetooth connectivity",
             icon = "📡",
-            handler = viewModel.bluetoothGrant
+            handler = viewModel.bluetoothGrant,
+            onSuccess = ::showSuccess
         )
 
         GrantCard(
             title = "Motion & Fitness",
             description = "Step counting, activity recognition",
             icon = "🏃",
-            handler = viewModel.motionGrant
+            handler = viewModel.motionGrant,
+            onSuccess = ::showSuccess
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+        }
     }
 }
 
@@ -330,40 +382,46 @@ private fun DemoScenarioCard(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.secondaryContainer
-        )
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSecondaryContainer
             )
 
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
             )
 
             Button(
                 onClick = onClick,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
             ) {
-                Text(buttonText)
+                Text(buttonText, fontWeight = FontWeight.Medium)
             }
 
             if (result.isNotEmpty()) {
                 Card(
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
                     )
                 ) {
                     Text(
-                        text = result,
+                        text = "Result: $result",
                         style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(12.dp)
                     )
                 }
@@ -378,6 +436,7 @@ private fun GrantCard(
     description: String,
     icon: String,
     handler: dev.brewkits.grant.GrantHandler,
+    onSuccess: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val GrantStatus by handler.status.collectAsState()
@@ -391,7 +450,8 @@ private fun GrantCard(
                 dev.brewkits.grant.GrantStatus.DENIED,
                 dev.brewkits.grant.GrantStatus.NOT_DETERMINED -> MaterialTheme.colorScheme.surfaceVariant
             }
-        )
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
@@ -423,23 +483,35 @@ private fun GrantCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
-                    // Status badge
-                    Text(
-                        text = when (GrantStatus) {
-                            dev.brewkits.grant.GrantStatus.GRANTED -> "✓ Granted"
-                            dev.brewkits.grant.GrantStatus.DENIED -> "✗ Denied"
-                            dev.brewkits.grant.GrantStatus.DENIED_ALWAYS -> "⚠️ Denied Always"
-                            dev.brewkits.grant.GrantStatus.NOT_DETERMINED -> "? Not Determined"
-                        },
-                        style = MaterialTheme.typography.labelSmall,
+                    // Status badge with background
+                    Surface(
                         color = when (GrantStatus) {
-                            dev.brewkits.grant.GrantStatus.GRANTED -> MaterialTheme.colorScheme.primary
-                            dev.brewkits.grant.GrantStatus.DENIED_ALWAYS -> MaterialTheme.colorScheme.error
-                            dev.brewkits.grant.GrantStatus.DENIED,
-                            dev.brewkits.grant.GrantStatus.NOT_DETERMINED -> MaterialTheme.colorScheme.onSurfaceVariant
+                            dev.brewkits.grant.GrantStatus.GRANTED -> MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                            dev.brewkits.grant.GrantStatus.DENIED_ALWAYS -> MaterialTheme.colorScheme.error.copy(alpha = 0.15f)
+                            dev.brewkits.grant.GrantStatus.DENIED -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f)
+                            dev.brewkits.grant.GrantStatus.NOT_DETERMINED -> MaterialTheme.colorScheme.surfaceVariant
                         },
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
+                        shape = MaterialTheme.shapes.small,
+                        modifier = Modifier.padding(top = 6.dp)
+                    ) {
+                        Text(
+                            text = when (GrantStatus) {
+                                dev.brewkits.grant.GrantStatus.GRANTED -> "✓ Granted"
+                                dev.brewkits.grant.GrantStatus.DENIED -> "✗ Denied"
+                                dev.brewkits.grant.GrantStatus.DENIED_ALWAYS -> "⚠️ Denied Always"
+                                dev.brewkits.grant.GrantStatus.NOT_DETERMINED -> "? Not Determined"
+                            },
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Medium,
+                            color = when (GrantStatus) {
+                                dev.brewkits.grant.GrantStatus.GRANTED -> MaterialTheme.colorScheme.primary
+                                dev.brewkits.grant.GrantStatus.DENIED_ALWAYS -> MaterialTheme.colorScheme.error
+                                dev.brewkits.grant.GrantStatus.DENIED -> MaterialTheme.colorScheme.tertiary
+                                dev.brewkits.grant.GrantStatus.NOT_DETERMINED -> MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
                 }
             }
 
@@ -449,12 +521,23 @@ private fun GrantCard(
                         rationaleMessage = "$title is required for this feature.",
                         settingsMessage = "$title access is disabled. Enable it in Settings."
                     ) {
-                        // Success callback
+                        // Success callback - show snackbar
+                        onSuccess(title)
                     }
                 },
-                enabled = GrantStatus != dev.brewkits.grant.GrantStatus.GRANTED
+                enabled = GrantStatus != dev.brewkits.grant.GrantStatus.GRANTED,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (GrantStatus == dev.brewkits.grant.GrantStatus.GRANTED)
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                    else
+                        MaterialTheme.colorScheme.primary,
+                    disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                )
             ) {
-                Text(if (GrantStatus == dev.brewkits.grant.GrantStatus.GRANTED) "Granted" else "Request")
+                Text(
+                    text = if (GrantStatus == dev.brewkits.grant.GrantStatus.GRANTED) "✓ Granted" else "Request",
+                    fontWeight = FontWeight.Medium
+                )
             }
         }
     }

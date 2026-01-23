@@ -1,6 +1,8 @@
 package dev.brewkits.grant.delegates
 
 import dev.brewkits.grant.GrantStatus
+import dev.brewkits.grant.utils.GrantLogger
+import dev.brewkits.grant.utils.SimulatorDetector
 import dev.brewkits.grant.utils.mainContinuation
 import kotlinx.coroutines.suspendCancellableCoroutine
 import platform.CoreBluetooth.*
@@ -33,6 +35,16 @@ internal class BluetoothManagerDelegate : NSObject(), CBCentralManagerDelegatePr
      * @return Current grant status
      */
     fun checkStatus(): GrantStatus {
+        // iOS Simulator doesn't support Bluetooth hardware
+        // Return GRANTED to allow testing without blocking
+        if (SimulatorDetector.isSimulator) {
+            GrantLogger.i(
+                "BluetoothDelegate",
+                "Running on ${SimulatorDetector.simulatorType} - Bluetooth not supported, returning GRANTED for testing"
+            )
+            return GrantStatus.GRANTED
+        }
+
         // Create temporary manager to check state
         val tempManager = CBCentralManager(delegate = null, queue = null)
 
@@ -60,6 +72,16 @@ internal class BluetoothManagerDelegate : NSObject(), CBCentralManagerDelegatePr
      * @return The resulting grant status
      */
     suspend fun requestBluetoothAccess(): GrantStatus {
+        // iOS Simulator doesn't support Bluetooth hardware
+        // Return GRANTED immediately to allow testing
+        if (SimulatorDetector.isSimulator) {
+            GrantLogger.i(
+                "BluetoothDelegate",
+                "Running on ${SimulatorDetector.simulatorType} - Returning GRANTED for testing (Bluetooth not supported on simulator)"
+            )
+            return GrantStatus.GRANTED
+        }
+
         return suspendCancellableCoroutine { cont ->
             continuation = cont
 

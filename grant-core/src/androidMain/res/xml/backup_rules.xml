@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Backup rules for Grant library
+
+  This file excludes grant_request_history SharedPreferences from backup.
+
+  Why? To prevent false "already requested" flags after app reinstall:
+  - grant_request_history stores boolean "has requested permission X"
+  - If backed up and restored after reinstall, it thinks permission was requested
+  - But system sees it as fresh install (NOT_DETERMINED)
+  - This causes UX inconsistency
+
+  Solution: Exclude from backup so each install starts fresh.
+-->
+<full-backup-content>
+    <!-- Exclude grant request history from backup -->
+    <exclude domain="sharedpref" path="grant_request_history.xml"/>
+</full-backup-content>

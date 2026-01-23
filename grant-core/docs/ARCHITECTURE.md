@@ -36,7 +36,7 @@ This document explains the architectural decisions behind KMP Grant library and 
 ┌───────────────────────▼─────────────────────────────────┐
 │         Implementation Layer (Custom - commonMain)       │
 │                                                           │
-│  • MygrantManager                                   │
+│  • MyGrantManager                                   │
 │  • PlatformGrantDelegate (expect/actual)            │
 └───────────────────────┬─────────────────────────────────┘
                         │ platform-specific
@@ -78,7 +78,7 @@ class CameraViewModel(
 
 // ✅ GOOD: Depend on abstraction
 class CameraViewModel(
-    private val grantManager: grantManager  // Platform-agnostic!
+    private val grantManager: GrantManager  // Platform-agnostic!
 ) {
     suspend fun requestCamera() {
         val status = grantManager.checkStatus(AppGrant.CAMERA)
@@ -101,7 +101,7 @@ class CameraViewModel(
 
 ```kotlin
 // ❌ BAD: 40+ lines of boilerplate per grant
-class CameraViewModel(private val manager: grantManager) : ViewModel() {
+class CameraViewModel(private val manager: GrantManager) : ViewModel() {
     private val _showRationale = MutableStateFlow(false)
     val showRationale = _showRationale.asStateFlow()
 
@@ -156,7 +156,7 @@ class CameraViewModel(private val manager: grantManager) : ViewModel() {
 
 ```kotlin
 // ✅ GOOD: 3 lines!
-class CameraViewModel(manager: grantManager) : ViewModel() {
+class CameraViewModel(manager: GrantManager) : ViewModel() {
     val cameraGrant = GrantHandler(
         manager,
         AppGrant.CAMERA,
@@ -180,7 +180,7 @@ class CameraViewModel(manager: grantManager) : ViewModel() {
 **Implementation**: Platform-specific code via Kotlin Multiplatform
 
 ```kotlin
-// commonMain/kotlin/.../impl/MygrantManager.kt
+// commonMain/kotlin/.../impl/MyGrantManager.kt
 expect class PlatformGrantDelegate {
     suspend fun checkStatus(grant: AppGrant): GrantStatus
     suspend fun request(grant: AppGrant): GrantStatus
@@ -232,7 +232,7 @@ actual class PlatformGrantDelegate {
 
 **Benefits**:
 - ✅ **Type Safety**: Compiler ensures platform implementations exist
-- ✅ **Shared Logic**: Common code in `MygrantManager`
+- ✅ **Shared Logic**: Common code in `MyGrantManager`
 - ✅ **Platform Flexibility**: Each platform can optimize independently
 
 ### 4. State Flow Pattern
@@ -344,7 +344,7 @@ class GrantRequestActivity : ComponentActivity() {
 
 ```kotlin
 class CameraViewModelTest {
-    private lateinit var mockManager: grantManager
+    private lateinit var mockManager: GrantManager
     private lateinit var viewModel: CameraViewModel
 
     @Before
@@ -538,7 +538,7 @@ val faceIdGrant = GrantHandler(
 Want to use a different implementation? Just implement the interface:
 
 ```kotlin
-class MyCustomgrantManager : grantManager {
+class MyCustomGrantManager : GrantManager {
     override suspend fun checkStatus(grant: AppGrant): GrantStatus {
         // Your custom logic
         // Could use different library, API, or approach
@@ -555,7 +555,7 @@ class MyCustomgrantManager : grantManager {
 
 // Update DI module
 val grantModule = module {
-    single<grantManager> { MyCustomgrantManager() }
+    single<grantManager> { MyCustomGrantManager() }
 }
 ```
 
@@ -567,7 +567,7 @@ All app code continues to work unchanged!
 
 ```kotlin
 // ❌ BAD: Request without user action
-class ViewModel(manager: grantManager) {
+class ViewModel(manager: GrantManager) {
     init {
         viewModelScope.launch {
             manager.request(AppGrant.CAMERA)  // Violates UX guidelines!
@@ -576,7 +576,7 @@ class ViewModel(manager: grantManager) {
 }
 
 // ✅ GOOD: Request on user action
-class ViewModel(manager: grantManager) {
+class ViewModel(manager: GrantManager) {
     fun onCaptureClick() {
         cameraGrant.request { openCamera() }
     }
@@ -618,7 +618,7 @@ class ViewModel(private val context: Context) {  // Android-specific!
 }
 
 // ✅ GOOD: Use abstraction
-class ViewModel(private val manager: grantManager) {  // Platform-agnostic!
+class ViewModel(private val manager: GrantManager) {  // Platform-agnostic!
     suspend fun checkCamera() {
         val status = manager.checkStatus(AppGrant.CAMERA)
         // ...

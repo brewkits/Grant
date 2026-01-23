@@ -1,7 +1,7 @@
 package dev.brewkits.grant.impl
 
 import dev.brewkits.grant.AppGrant
-import dev.brewkits.grant.grantManager
+import dev.brewkits.grant.GrantManager
 import dev.brewkits.grant.GrantStatus
 import kotlinx.coroutines.delay
 
@@ -18,7 +18,7 @@ import kotlinx.coroutines.delay
  * 2. Settings dialog (after second denial)
  * 3. Success callback (after grant)
  */
-class SimplegrantManager : grantManager {
+class SimpleGrantManager : GrantManager {
 
     private val grantedGrants = mutableSetOf<AppGrant>()
     private val requestCount = mutableMapOf<AppGrant, Int>()
@@ -99,17 +99,14 @@ class SimplegrantManager : grantManager {
                 when (count) {
                     0 -> {
                         // First time: User denies
-                        println("📱 [Mock] First request for $grant → User DENIED")
                         GrantStatus.DENIED
                     }
                     1 -> {
                         // Second time: User denies permanently
-                        println("📱 [Mock] Second request for $grant → User DENIED PERMANENTLY")
                         GrantStatus.DENIED_ALWAYS
                     }
                     else -> {
                         // Third time: User goes to settings and grants
-                        println("📱 [Mock] User went to settings and GRANTED $grant")
                         grantedGrants.add(grant)
                         GrantStatus.GRANTED
                     }
@@ -119,9 +116,8 @@ class SimplegrantManager : grantManager {
     }
 
     override fun openSettings() {
-        println("🔧 [Mock] Opening app settings...")
-        println("💡 In real app, user would enable grant here.")
-        println("💡 After enabling, trigger grant check again.")
+        // Mock implementation - does nothing
+        // In real app, this would open system settings
     }
 
     /**
@@ -130,6 +126,5 @@ class SimplegrantManager : grantManager {
     fun reset() {
         grantedGrants.clear()
         requestCount.clear()
-        println("🔄 [Mock] Simulation reset")
     }
 }

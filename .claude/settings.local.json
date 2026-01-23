@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew tasks:*)",
+      "Bash(./gradlew:*)",
+      "Bash(xcodebuild:*)",
+      "Bash(adb shell:*)",
+      "Bash(grep:*)",
+      "Bash(for file in *.md)",
+      "Bash(do sed -i '' 's/MygrantManager/MyGrantManager/g' \"$file\")",
+      "Bash(done)",
+      "Bash(do sed -i '' 's/SimplegrantManager/SimpleGrantManager/g' \"$file\")",
+      "Bash(find:*)",
+      "Bash(xcrun simctl:*)",
+      "Bash(chmod:*)",
+      "Bash(./list-ios-simulators.sh:*)",
+      "Bash(tree:*)",
+      "Bash(wc:*)",
+      "Bash(plutil:*)",
+      "Bash(xargs:*)",
+      "Bash(ls:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

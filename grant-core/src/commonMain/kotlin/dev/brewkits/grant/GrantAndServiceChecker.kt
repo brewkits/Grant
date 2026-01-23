@@ -21,7 +21,7 @@ package dev.brewkits.grant
  * ```
  */
 class GrantAndServiceChecker(
-    private val grantManager: grantManager,
+    private val grantManager: GrantManager,
     private val serviceManager: ServiceManager
 ) {
     /**

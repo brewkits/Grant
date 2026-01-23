@@ -19,21 +19,114 @@ actual class PlatformGrantDelegate(
 ) {
     private val requestMutex = Mutex()
 
+    // Cache of last request results to track denied vs not_determined states
+    // Key: AppGrant, Value: Last known status
+    private val statusCache = mutableMapOf<AppGrant, GrantStatus>()
+
+    // ✅ FIX: SharedPreferences to persist "has requested before" flag
+    // This survives app restart and helps distinguish NOT_DETERMINED vs DENIED
+    // IMPORTANT: We only save boolean "requested or not", NOT the actual status
+    // (status can change if user modifies in Settings, but "requested" is a fact)
+    private val prefs by lazy {
+        context.getSharedPreferences("grant_request_history", Context.MODE_PRIVATE)
+    }
+
+    /**
+     * Check if this grant has been requested before (persisted across app restarts)
+     */
+    private fun isRequestedBefore(grant: AppGrant): Boolean {
+        return prefs.getBoolean("requested_${grant.name}", false)
+    }
+
+    /**
+     * Mark this grant as "has been requested" (persist to disk)
+     */
+    private fun setRequested(grant: AppGrant) {
+        prefs.edit().putBoolean("requested_${grant.name}", true).apply()
+    }
+
     actual suspend fun checkStatus(grant: AppGrant): GrantStatus {
         // 1. Check Override first (Custom logic for specific OS versions)
         getGrantStatusOverride(grant)?.let { return it }
+
+        // 2. Special handling for LOCATION_ALWAYS on Android 11+
+        // Need to check if we're in "partial granted" state (foreground yes, background no)
+        if (grant == AppGrant.LOCATION_ALWAYS && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val hasForeground = listOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ).all {
+                ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+            }
+
+            val hasBackground = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_BACKGROUND_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+
+            return when {
+                hasBackground -> {
+                    // Has background = has everything
+                    statusCache.remove(grant)
+                    GrantStatus.GRANTED
+                }
+                hasForeground -> {
+                    // Has foreground but not background = still need to request
+                    // Return NOT_DETERMINED so next request() will ask for background
+                    GrantStatus.NOT_DETERMINED
+                }
+                else -> {
+                    // No foreground yet - check cache first
+                    statusCache[grant]?.let { return it }
+
+                    // Check if requested before (survives app restart)
+                    if (isRequestedBefore(grant)) {
+                        return GrantStatus.DENIED
+                    }
+
+                    // Never requested
+                    GrantStatus.NOT_DETERMINED
+                }
+            }
+        }
 
         val androidGrants = grant.toAndroidGrants()
 
         // If list is empty (e.g., requesting Notification on older Android versions), default to GRANTED
         if (androidGrants.isEmpty()) return GrantStatus.GRANTED
 
-        // 2. Check standard grants
+        // 3. Check if all grants are granted
         val allGranted = androidGrants.all { androidGrant ->
             ContextCompat.checkSelfPermission(context, androidGrant) == PackageManager.PERMISSION_GRANTED
         }
 
-        return if (allGranted) GrantStatus.GRANTED else GrantStatus.NOT_DETERMINED
+        if (allGranted) {
+            // Clear cache when granted
+            statusCache.remove(grant)
+            return GrantStatus.GRANTED
+        }
+
+        // 4. Check cache for previous denial status (in-memory, current session)
+        // If we previously got DENIED or DENIED_ALWAYS, return that
+        // This allows GrantHandler to know the difference between:
+        // - Never asked (NOT_DETERMINED)
+        // - Previously denied (DENIED or DENIED_ALWAYS)
+        statusCache[grant]?.let { cachedStatus ->
+            if (cachedStatus == GrantStatus.DENIED || cachedStatus == GrantStatus.DENIED_ALWAYS) {
+                return cachedStatus
+            }
+        }
+
+        // 5. Check SharedPreferences to see if we've requested before (survives app restart)
+        // ✅ FIX: This solves "Dead Click" issue after app restart
+        // If not granted AND requested before → User must have denied it → Return DENIED
+        // This allows UI to show rationale/settings dialog instead of system dialog again
+        if (isRequestedBefore(grant)) {
+            return GrantStatus.DENIED
+        }
+
+        // 6. Not granted, no cache, never requested - must be NOT_DETERMINED (first time)
+        return GrantStatus.NOT_DETERMINED
     }
 
     actual suspend fun request(grant: AppGrant): GrantStatus = requestMutex.withLock {
@@ -46,9 +139,18 @@ actual class PlatformGrantDelegate(
         val allGranted = androidGrants.all { androidGrant ->
             ContextCompat.checkSelfPermission(context, androidGrant) == PackageManager.PERMISSION_GRANTED
         }
-        if (allGranted) return@withLock GrantStatus.GRANTED
+        if (allGranted) {
+            // Clear cache when granted
+            statusCache.remove(grant)
+            return@withLock GrantStatus.GRANTED
+        }
 
-        return@withLock try {
+        // ✅ FIX: Mark as "requested" before showing system dialog
+        // This ensures checkStatus() will return DENIED after app restart (not NOT_DETERMINED)
+        // Prevents "Dead Click" issue where clicking does nothing after restart
+        setRequested(grant)
+
+        val status = try {
             val requestId = GrantRequestActivity.requestGrants(context, androidGrants)
             val resultFlow = GrantRequestActivity.getResultFlow(requestId)
                 ?: return@withLock GrantStatus.DENIED
@@ -70,6 +172,13 @@ actual class PlatformGrantDelegate(
             GrantLogger.e("AndroidGrant", "Request failed", e)
             GrantStatus.DENIED
         }
+
+        // Cache the result (except GRANTED, which we handle separately)
+        if (status != GrantStatus.GRANTED) {
+            statusCache[grant] = status
+        }
+
+        return@withLock status
     }
 
     actual fun openSettings() {
@@ -93,10 +202,10 @@ actual class PlatformGrantDelegate(
             AppGrant.GALLERY, AppGrant.STORAGE -> {
                 // Smart handling: Android 13+ uses Media Grants, older versions use Read External
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    // For Gallery, only request Images and Video (Audio is not needed)
                     listOf(
                         Manifest.permission.READ_MEDIA_IMAGES,
-                        Manifest.permission.READ_MEDIA_VIDEO,
-                        Manifest.permission.READ_MEDIA_AUDIO
+                        Manifest.permission.READ_MEDIA_VIDEO
                     )
                 } else {
                     listOf(Manifest.permission.READ_EXTERNAL_STORAGE)
@@ -113,9 +222,28 @@ actual class PlatformGrantDelegate(
             }
 
             AppGrant.LOCATION_ALWAYS -> {
-                // ANDROID 11+ FIX: Separate Background grant to avoid system ignoring the request
+                // ANDROID 11+: Must request foreground FIRST, then background SEPARATELY
+                // Android 11+ BLOCKS background request if foreground not granted
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    listOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                    // Check if foreground already granted
+                    val hasForeground = listOf(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    ).all {
+                        ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+                    }
+
+                    if (hasForeground) {
+                        // Foreground OK - only request background
+                        listOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                    } else {
+                        // No foreground yet - request foreground ONLY
+                        // Will need another request for background after this
+                        listOf(
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                        )
+                    }
                 } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_BACKGROUND_LOCATION)
                 } else {
