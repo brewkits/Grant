@@ -52,13 +52,9 @@ kotlin {
             // Coroutines
             implementation(libs.kotlinx.coroutines.core)
 
-            // Grant library (using CUSTOM implementation by default)
+            // Grant library
             implementation(project(":grant-core"))
-
-            // Moko Grants Compose (OPTIONAL - only needed for Moko implementation)
-            // Custom implementation doesn't require this dependency
-            // Uncomment if using Moko implementation:
-            // implementation(libs.moko.grants.compose)
+            implementation(project(":grant-compose"))
         }
 
         androidMain.dependencies {

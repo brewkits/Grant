@@ -1,6 +1,6 @@
 # Grant Library - Best Practices
 
-This document outlines best practices for the Grant library, learned from analyzing moko-permissions and real-world Android/iOS permission handling.
+This document outlines best practices for the Grant library, learned from real-world Android/iOS permission handling.
 
 ---
 
@@ -479,8 +479,6 @@ if (serviceStatus == ServiceStatus.DISABLED) {
 }
 ```
 
-**moko-permissions does NOT have this feature!**
-
 ---
 
 ## Testing Permissions
@@ -603,7 +601,6 @@ fun testLocationAlways_iOSBehavior() {
 - [Android Permission Best Practices](https://developer.android.com/training/permissions/requesting)
 - [iOS Permission Best Practices](https://developer.apple.com/design/human-interface-guidelines/privacy)
 - [Grant Library Documentation](../README.md)
-- [Grant vs moko-permissions Comparison](./COMPARISON_WITH_MOKO.md)
 
 ---
 

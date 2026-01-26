@@ -4,12 +4,12 @@ package dev.brewkits.grant
  * Core interface for grant management.
  *
  * This is the ONLY interface that ViewModels and feature modules should depend on.
- * Implementation details (Moko, native, etc.) are hidden behind this abstraction.
+ * Implementation details are hidden behind this abstraction.
  *
  * **Design Pattern**: Wrapper/Adapter Pattern
  * **Benefits**:
- * - Easy to swap underlying library (from Moko to custom implementation)
- * - No coupling between business logic and third-party libraries
+ * - Easy to swap underlying implementation
+ * - No coupling between business logic and platform-specific code
  * - Simplified testing (mock this interface)
  *
  * @see MyGrantManager for the default implementation

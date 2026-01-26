@@ -11,7 +11,7 @@ The core library for KMP Grant - a production-ready, UI-agnostic grant managemen
 - ✅ **UI Framework Agnostic** - Works with Compose, SwiftUI, XML, or any UI framework
 - ✅ **Reactive** - Built on Kotlin Coroutines and StateFlow
 - ✅ **Composition Pattern** - Eliminates ViewModel boilerplate (3 lines instead of 30+)
-- ✅ **Zero Dependencies** - Custom implementation, no moko or third-party libs required
+- ✅ **Zero Dependencies** - Custom implementation with no third-party requirements
 - ✅ **Type-Safe** - Compile-time safety with Kotlin enums and sealed classes
 
 ## Installation

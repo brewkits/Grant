@@ -11,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import dev.brewkits.grant.compose.GrantDialog
 
 /**
  * Demo screen showcasing various grant request scenarios.
@@ -34,14 +35,14 @@ fun GrantDemoScreen(
     val parallelResult by viewModel.parallelResult.collectAsState()
     val grantTypeResult by viewModel.grantTypeResult.collectAsState()
 
-    // Handle grant dialogs
-    GrantDialogHandler(handler = viewModel.cameraGrant)
-    GrantDialogHandler(handler = viewModel.microphoneGrant)
-    GrantDialogHandler(handler = viewModel.locationGrant)
-    GrantDialogHandler(handler = viewModel.storageGrant)
-    GrantDialogHandler(handler = viewModel.notificationGrant)
-    GrantDialogHandler(handler = viewModel.contactsGrant)
-    GrantDialogHandler(handler = viewModel.locationAlwaysGrant)
+    // Handle grant dialogs using grant-compose
+    GrantDialog(handler = viewModel.cameraGrant)
+    GrantDialog(handler = viewModel.microphoneGrant)
+    GrantDialog(handler = viewModel.locationGrant)
+    GrantDialog(handler = viewModel.storageGrant)
+    GrantDialog(handler = viewModel.notificationGrant)
+    GrantDialog(handler = viewModel.contactsGrant)
+    GrantDialog(handler = viewModel.locationAlwaysGrant)
 
     Column(
         modifier = modifier
@@ -393,66 +394,5 @@ private fun ModeButton(
     }
 }
 
-/**
- * Helper composable to handle grant dialogs.
- *
- * This observes the GrantHandler state and shows appropriate dialogs:
- * - Rationale dialog when grant was denied
- * - Settings guide when grant is permanently denied
- */
-@Composable
-internal fun GrantDialogHandler(
-    handler: dev.brewkits.grant.GrantHandler
-) {
-    val state by handler.state.collectAsState()
-
-    if (state.isVisible) {
-        when {
-            state.showRationale -> {
-                AlertDialog(
-                    onDismissRequest = { handler.onDismiss() },
-                    title = { Text("Grant Required") },
-                    text = {
-                        Text(
-                            state.rationaleMessage
-                                ?: "This grant is needed for this feature to work properly."
-                        )
-                    },
-                    confirmButton = {
-                        TextButton(onClick = { handler.onRationaleConfirmed() }) {
-                            Text("Grant Grant")
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { handler.onDismiss() }) {
-                            Text("Cancel")
-                        }
-                    }
-                )
-            }
-
-            state.showSettingsGuide -> {
-                AlertDialog(
-                    onDismissRequest = { handler.onDismiss() },
-                    title = { Text("Grant Denied") },
-                    text = {
-                        Text(
-                            state.settingsMessage
-                                ?: "This grant was permanently denied. Please enable it in Settings."
-                        )
-                    },
-                    confirmButton = {
-                        TextButton(onClick = { handler.onSettingsConfirmed() }) {
-                            Text("Open Settings")
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { handler.onDismiss() }) {
-                            Text("Cancel")
-                        }
-                    }
-                )
-            }
-        }
-    }
-}
+// GrantDialogHandler has been moved to grant-compose module as GrantDialog
+// Import it from: dev.brewkits.grant.compose.GrantDialog

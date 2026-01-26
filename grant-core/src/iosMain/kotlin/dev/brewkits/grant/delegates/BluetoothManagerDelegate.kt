@@ -19,8 +19,6 @@ import platform.Foundation.NSSelectorFromString
  * iOS Bluetooth grants are checked through CBCentralManager state.
  * Creating a CBCentralManager automatically triggers the grant dialog
  * if authorization hasn't been determined yet.
- *
- * Architecture learned from moko-grants.
  */
 @OptIn(ExperimentalForeignApi::class)
 internal class BluetoothManagerDelegate : NSObject(), CBCentralManagerDelegateProtocol {

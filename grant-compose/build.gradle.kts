@@ -3,6 +3,8 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
+    alias(libs.plugins.composeMultiplatform)
+    alias(libs.plugins.composeCompiler)
     id("maven-publish")
 }
 
@@ -30,35 +32,31 @@ kotlin {
         iosSimulatorArm64()
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
-            baseName = "GrantCore"
+            baseName = "GrantCompose"
             isStatic = true
         }
     }
 
     sourceSets {
-        androidMain.dependencies {
-            // Koin for Android
-            implementation(libs.koin.android)
-            // AndroidX Activity for grant requests
-            implementation(libs.androidx.activity.compose)
-        }
-
         commonMain.dependencies {
-            // Koin core
-            implementation(libs.koin.core)
-            // Coroutines
-            implementation(libs.kotlinx.coroutines.core)
+            // Dependency on grant-core for GrantHandler and GrantUiState
+            implementation(project(":grant-core"))
+
+            // Compose dependencies
+            implementation(compose.runtime)
+            implementation(compose.foundation)
+            implementation(compose.material3)
+            implementation(compose.ui)
         }
 
         commonTest.dependencies {
             implementation(libs.kotlin.test)
-            implementation(libs.kotlinx.coroutines.test)
         }
     }
 }
 
 android {
-    namespace = "dev.brewkits.grant"
+    namespace = "dev.brewkits.grant.compose"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
@@ -78,8 +76,8 @@ publishing {
             version = "1.0.0"
 
             pom {
-                name.set("KMP Grant")
-                description.set("A clean, wrapper-based grant management library for Kotlin Multiplatform")
+                name.set("KMP Grant Compose")
+                description.set("Jetpack Compose / Compose Multiplatform UI components for Grant library")
                 url.set("https://github.com/brewkits/grant")
 
                 licenses {

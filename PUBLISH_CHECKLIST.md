@@ -28,10 +28,9 @@
 
 ### 3. Documentation ✅
 - [x] **CHANGELOG.md** - Comprehensive changelog with all fixes
-- [x] **README.md** - Complete with examples and comparison
+- [x] **README.md** - Complete with examples
 - [x] **TESTING.md** - Test cases for all fixes
 - [x] **FIX_DEAD_CLICK_ANDROID.md** - Detailed fix analysis
-- [x] **COMPARISON_WITH_MOKO.md** - Feature comparison
 - [x] **BEST_PRACTICES.md** - Permission best practices
 
 ### 4. Bug Fixes ✅
@@ -58,7 +57,6 @@
 - All critical bugs fixed
 - Production-ready quality
 - Comprehensive documentation
-- Superior to moko-permissions
 - No breaking changes
 
 ---
@@ -122,7 +120,6 @@ version = "1.0.0"
 
 - [ ] **Write Blog Post**
   - "Introducing Grant: Better Permission Management for KMP"
-  - Highlight improvements over moko-permissions
   - Show code examples
   - Link to docs
 

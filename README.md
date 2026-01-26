@@ -22,6 +22,7 @@ KMP Grant provides:
 - ✅ **Clean ViewModels** - 3 lines instead of 30+ lines of grant logic
 - ✅ **No third-party dependencies** - fully custom implementation
 - ✅ **Full Flow Handling** - rationale, denial, settings redirection
+- ✨ **NEW: First-Class Compose Support** - Beautiful Material 3 dialogs out of the box with `grant-compose`
 
 ## 🎯 Features
 
@@ -84,25 +85,9 @@ if (!locationReady) {
 }
 ```
 
-### 📊 Comparison with moko-permissions
-
-Grant library was inspired by [moko-permissions](https://github.com/icerockdev/moko-permissions) but includes several improvements:
-
-| Feature | moko-permissions | Grant |
-|---------|-----------------|-------|
-| Multiple permissions support | ✅ | ✅ |
-| openSettings() | ✅ | ✅ Better error handling |
-| Automatic UI dialogs | ❌ Manual | ✅ GrantHandler pattern |
-| Android 11+ background location | ⚠️ Request all at once | ✅ Proper 2-step flow |
-| Service status checking | ❌ | ✅ Exclusive feature |
-| iOS Simulator support | ⚠️ Hardware fails | ✅ **Auto mock (Bluetooth, Motion)** |
-| Exception-based errors | ✅ try-catch | ✅ Status enum (cleaner) |
-| Demo quality | Basic sample | ✅ Production-ready demo |
-
-📖 **See detailed comparison**: [docs/COMPARISON_WITH_MOKO.md](docs/COMPARISON_WITH_MOKO.md)
-📖 **Best practices guide**: [docs/BEST_PRACTICES.md](docs/BEST_PRACTICES.md)
-
 ## 📦 Installation
+
+### Core Module (Required)
 
 Add to your `build.gradle.kts`:
 
@@ -115,6 +100,30 @@ kotlin {
     }
 }
 ```
+
+### Compose Module (Optional - For Jetpack Compose / Compose Multiplatform)
+
+**NEW!** If you're using Compose, add `grant-compose` for beautiful Material 3 dialogs out of the box:
+
+```kotlin
+kotlin {
+    sourceSets {
+        commonMain.dependencies {
+            implementation("dev.brewkits:grant-core:1.0.0")
+            implementation("dev.brewkits:grant-compose:1.0.0") // ✨ First-class Compose support
+        }
+    }
+}
+```
+
+**Benefits of grant-compose**:
+- ✅ One-line dialog handling with `GrantDialog(handler)`
+- ✅ Material 3 design system
+- ✅ Fully customizable (titles, messages, button labels)
+- ✅ Zero boilerplate
+- ✅ Works on both Android and iOS
+
+📖 **See [grant-compose/README.md](grant-compose/README.md) for detailed Compose documentation**
 
 ## 🚀 Quick Start
 
@@ -266,19 +275,21 @@ class CameraViewModel(
 }
 ```
 
-### 4. UI Integration (Compose Example)
+### 4. UI Integration
+
+#### Option A: With grant-compose (Recommended for Compose) ✨
+
+**Zero boilerplate - just one line!**
 
 ```kotlin
+import dev.brewkits.grant.compose.GrantDialog // Import from grant-compose
+
 @Composable
 fun CameraScreen(viewModel: CameraViewModel) {
-    val grantState by viewModel.cameraGrant.state.collectAsState()
+    // ✅ ONE LINE - handles ALL dialogs automatically
+    GrantDialog(handler = viewModel.cameraGrant)
 
-    // 1. Handle grant dialogs
-    GrantDialogHandler(
-        handler = viewModel.cameraGrant
-    )
-
-    // 2. Your UI
+    // Your UI
     Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -289,27 +300,53 @@ fun CameraScreen(viewModel: CameraViewModel) {
         }
     }
 }
+```
 
+**That's it!** `GrantDialog` automatically:
+- Shows rationale dialog when user denies permission
+- Shows settings guide when permission is permanently denied
+- Handles all user interactions (confirm/dismiss)
+- Uses Material 3 design system
+
+**Customize if needed:**
+
+```kotlin
+GrantDialog(
+    handler = viewModel.cameraGrant,
+    rationaleTitle = "Camera Required",
+    rationaleConfirm = "Allow Camera",
+    settingsTitle = "Enable Camera",
+    settingsConfirm = "Go to Settings"
+)
+```
+
+📖 **See [grant-compose/README.md](grant-compose/README.md) for full documentation**
+
+---
+
+#### Option B: Manual UI (For custom frameworks or advanced use cases)
+
+```kotlin
 @Composable
-fun GrantDialogHandler(handler: GrantHandler) {
-    val state by handler.state.collectAsState()
+fun CameraScreen(viewModel: CameraViewModel) {
+    val state by viewModel.cameraGrant.state.collectAsState()
 
     // Rationale Dialog (soft denial)
     if (state.showRationale) {
         AlertDialog(
-            title = { Text("Camera Grant") },
-            text = { Text("We need camera access to take photos") },
+            title = { Text("Camera Permission") },
+            text = { Text(state.rationaleMessage ?: "We need camera access") },
             confirmButton = {
-                Button(onClick = { handler.onRationaleConfirmed() }) {
+                Button(onClick = { viewModel.cameraGrant.onRationaleConfirmed() }) {
                     Text("Allow")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { handler.onDismiss() }) {
+                TextButton(onClick = { viewModel.cameraGrant.onDismiss() }) {
                     Text("Cancel")
                 }
             },
-            onDismissRequest = { handler.onDismiss() }
+            onDismissRequest = { viewModel.cameraGrant.onDismiss() }
         )
     }
 
@@ -317,21 +354,30 @@ fun GrantDialogHandler(handler: GrantHandler) {
     if (state.showSettingsGuide) {
         AlertDialog(
             title = { Text("Enable Camera") },
-            text = {
-                Text("Camera is disabled. Go to Settings > Grants to enable")
-            },
+            text = { Text(state.settingsMessage ?: "Enable in Settings") },
             confirmButton = {
-                Button(onClick = { handler.onSettingsConfirmed() }) {
+                Button(onClick = { viewModel.cameraGrant.onSettingsConfirmed() }) {
                     Text("Open Settings")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { handler.onDismiss() }) {
+                TextButton(onClick = { viewModel.cameraGrant.onDismiss() }) {
                     Text("Later")
                 }
             },
-            onDismissRequest = { handler.onDismiss() }
+            onDismissRequest = { viewModel.cameraGrant.onDismiss() }
         )
+    }
+
+    // Your UI
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Button(onClick = { viewModel.onCaptureClick() }) {
+            Text("📸 Take Photo")
+        }
     }
 }
 ```
@@ -506,8 +552,7 @@ This is useful for:
 ### 📖 [Complete Documentation Index](docs/README.md)
 
 ### Essential Guides
-- [✨ Best Practices](docs/BEST_PRACTICES.md) - **Start here!** Learned from moko-permissions and real-world usage
-- [📊 Comparison with moko-permissions](docs/COMPARISON_WITH_MOKO.md) - Feature comparison and architectural differences
+- [✨ Best Practices](docs/BEST_PRACTICES.md) - **Start here!** Best practices for permission handling
 - [📋 Changelog](CHANGELOG.md) - **What's new!** All bug fixes and enhancements
 
 ### Library Documentation (grant-core)

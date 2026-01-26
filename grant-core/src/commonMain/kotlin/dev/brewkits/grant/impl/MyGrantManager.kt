@@ -7,8 +7,8 @@ import dev.brewkits.grant.GrantStatus
 /**
  * Production-ready custom grant implementation with platform-specific code.
  *
- * This implementation is INDEPENDENT of third-party libraries like moko-grants,
- * providing full control over grant handling while maintaining clean architecture.
+ * This is a fully independent implementation providing complete control
+ * over grant handling while maintaining clean architecture.
  *
  * **Features**:
  * - Complete async grant requests on both Android and iOS
@@ -22,8 +22,6 @@ import dev.brewkits.grant.GrantStatus
  * - commonMain: Interface definition via expect/actual pattern
  * - androidMain: Full Android implementation with Activity Result API
  * - iosMain: Full iOS implementation with framework delegates (CoreLocation, etc.)
- *
- * **Implementation learned from moko-grants but kept independent.**
  */
 class MyGrantManager(
     private val platformDelegate: PlatformGrantDelegate

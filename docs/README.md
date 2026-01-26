@@ -15,7 +15,6 @@ Tất cả tài liệu của Grant KMP Library được tổ chức ở đây.
 ### ⭐ Essential Guides (Start Here!)
 
 - **[Best Practices](BEST_PRACTICES.md)** - ⭐ Permission patterns, Android/iOS guidelines
-- **[Comparison with moko-permissions](COMPARISON_WITH_MOKO.md)** - Feature comparison, what Grant does better
 - **[Changelog](../CHANGELOG.md)** - All notable changes and bug fixes
 
 ### 🏗️ Architecture & Design
@@ -52,7 +51,6 @@ Grant/
 └── docs/
     ├── README.md                      ← Bạn đang ở đây
     ├── BEST_PRACTICES.md              ← ⭐ Essential reading!
-    ├── COMPARISON_WITH_MOKO.md        ← ⭐ vs moko-permissions
     ├── FIX_DEAD_CLICK_ANDROID.md      ← ⭐ Critical Android fix
     ├── ios/                           ← iOS development guides
     │   ├── IOS_SETUP_ANDROID_STUDIO.md
@@ -81,9 +79,6 @@ Grant/
 - [Basic Usage](grant-core/QUICK_START.md#basic-usage)
 - [Supported Grants](grant-core/GRANTS.md#supported-grants)
 - **[Changelog](../CHANGELOG.md)** - What's new and fixed
-
-### For Comparing Libraries
-- **[Grant vs moko-permissions](COMPARISON_WITH_MOKO.md)** - Feature comparison table
 
 ### For Bug Fixes & Issues
 - **[Dead Click Fix (Android)](FIX_DEAD_CLICK_ANDROID.md)** - SharedPreferences solution

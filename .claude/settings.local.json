@@ -19,7 +19,18 @@
       "Bash(plutil:*)",
       "Bash(xargs:*)",
       "Bash(ls:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git tag:*)",
+      "Bash(git push:*)",
+      "Bash(gh release create:*)",
+      "Bash(gh release view:*)",
+      "Bash(while read f)",
+      "Bash(do perl -i -pe 's/\\\\bAppGrant\\\\b/AppPermission/g' \"$f\")",
+      "Bash(adb devices:*)",
+      "Bash(adb install:*)",
+      "Bash(adb logcat:*)",
+      "Bash(timeout 5 adb logcat:*)"
     ]
   }
 }

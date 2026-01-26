@@ -676,7 +676,7 @@ class GrantHandlerTest {
 
 ### Trade-off 1: Custom vs Third-Party Library
 
-**Decision**: Fully custom implementation (no moko-grants)
+**Decision**: Fully custom implementation with no external dependencies
 
 **Pros**:
 - ✅ Full control over implementation

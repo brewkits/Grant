@@ -12,7 +12,6 @@ kotlin = "2.1.21"
 
 koin = "4.1.1"
 kotlinx-coroutines = "1.10.2"
-moko-grants = "0.20.1"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -27,18 +26,6 @@ koin-android = { module = "io.insert-koin:koin-android", version.ref = "koin" }
 koin-compose = { module = "io.insert-koin:koin-compose", version.ref = "koin" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
-
-# Moko Grants
-moko-grants = { module = "dev.icerock.moko:grants", version.ref = "moko-grants" }
-moko-grants-compose = { module = "dev.icerock.moko:grants-compose", version.ref = "moko-grants" }
-moko-grants-camera = { module = "dev.icerock.moko:grants-camera", version.ref = "moko-grants" }
-moko-grants-gallery = { module = "dev.icerock.moko:grants-gallery", version.ref = "moko-grants" }
-moko-grants-storage = { module = "dev.icerock.moko:grants-storage", version.ref = "moko-grants" }
-moko-grants-location = { module = "dev.icerock.moko:grants-location", version.ref = "moko-grants" }
-moko-grants-contacts = { module = "dev.icerock.moko:grants-contacts", version.ref = "moko-grants" }
-moko-grants-microphone = { module = "dev.icerock.moko:grants-microphone", version.ref = "moko-grants" }
-moko-grants-bluetooth = { module = "dev.icerock.moko:grants-bluetooth", version.ref = "moko-grants" }
-moko-grants-notifications = { module = "dev.icerock.moko:grants-notifications", version.ref = "moko-grants" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

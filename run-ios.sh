@@ -14,10 +14,11 @@ cd demo/iosApp/GrantDemo
 
 xcodebuild \
   -project GrantDemo.xcodeproj \
-  -scheme PermissionDemo \
+  -scheme iosApp \
   -configuration Debug \
   -sdk iphonesimulator \
-  -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+  -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.5' \
+  -derivedDataPath build \
   build
 
 echo ""

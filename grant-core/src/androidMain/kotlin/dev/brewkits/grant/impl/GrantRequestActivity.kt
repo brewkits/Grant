@@ -36,7 +36,7 @@ import java.util.concurrent.ConcurrentHashMap
  * - Prevents race conditions when multiple grants requested simultaneously
  * - Automatic cleanup after result is consumed
  *
- * **Lifecycle Safety (learned from moko-grants):**
+ * **Lifecycle Safety:**
  * - Registers lifecycle observer to cleanup on destroy
  * - Prevents memory leaks from retained launcher references
  * - Clears pending results when activity is destroyed

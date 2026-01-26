@@ -16,8 +16,6 @@ import kotlinx.coroutines.withContext
 /**
  * Coroutine dispatcher that ensures code runs on iOS main thread.
  * iOS UI operations and many framework APIs must run on the main thread.
- *
- * Learned from moko-grants implementation.
  */
 internal object MainRunDispatcher : CoroutineDispatcher() {
     override fun dispatch(context: CoroutineContext, block: Runnable) {

@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.brewkits.grant.AppGrant
+import dev.brewkits.grant.compose.GrantDialog
 import kotlinx.coroutines.launch
 
 /**
@@ -40,17 +41,17 @@ fun SimpleGrantDemoScreen(
         }
     }
 
-    // Handle grant dialogs for all grants
-    GrantDialogHandler(handler = viewModel.cameraGrant)
-    GrantDialogHandler(handler = viewModel.microphoneGrant)
-    GrantDialogHandler(handler = viewModel.locationGrant)
-    GrantDialogHandler(handler = viewModel.storageGrant)
-    GrantDialogHandler(handler = viewModel.notificationGrant)
-    GrantDialogHandler(handler = viewModel.contactsGrant)
-    GrantDialogHandler(handler = viewModel.locationAlwaysGrant)
-    GrantDialogHandler(handler = viewModel.bluetoothGrant)
-    GrantDialogHandler(handler = viewModel.galleryGrant)
-    GrantDialogHandler(handler = viewModel.motionGrant)
+    // Handle grant dialogs for all grants using grant-compose
+    GrantDialog(handler = viewModel.cameraGrant)
+    GrantDialog(handler = viewModel.microphoneGrant)
+    GrantDialog(handler = viewModel.locationGrant)
+    GrantDialog(handler = viewModel.storageGrant)
+    GrantDialog(handler = viewModel.notificationGrant)
+    GrantDialog(handler = viewModel.contactsGrant)
+    GrantDialog(handler = viewModel.locationAlwaysGrant)
+    GrantDialog(handler = viewModel.bluetoothGrant)
+    GrantDialog(handler = viewModel.galleryGrant)
+    GrantDialog(handler = viewModel.motionGrant)
 
     Scaffold(
         snackbarHost = {

@@ -13,8 +13,6 @@ import kotlin.coroutines.resume
  * iOS location grants require a CLLocationManager and delegate to handle
  * asynchronous authorization changes. This class wraps that complexity into
  * a clean suspend function API.
- *
- * Architecture learned from moko-grants but simplified for our use case.
  */
 internal class LocationManagerDelegate : NSObject(), CLLocationManagerDelegateProtocol {
 

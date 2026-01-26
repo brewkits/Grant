@@ -28,4 +28,5 @@ dependencyResolutionManagement {
 }
 
 include(":grant-core")
+include(":grant-compose")
 include(":demo")

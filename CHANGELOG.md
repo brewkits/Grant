@@ -142,7 +142,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 #### Added
 - `docs/FIX_DEAD_CLICK_ANDROID.md` - Detailed analysis of Dead Click fix
-- `docs/COMPARISON_WITH_MOKO.md` - Feature comparison with moko-permissions
 - `docs/BEST_PRACTICES.md` - Permission best practices guide
 - `docs/ios/INFO_PLIST_LOCALIZATION.md` - Localization guide
 
@@ -190,20 +189,6 @@ See `docs/grant-core/TESTING.md` for detailed test cases.
 
 ---
 
-### 🎯 Comparison with moko-permissions
-
-Grant library is now **superior** to moko-permissions in:
-- ✅ Better Android 11+ location handling (proper 2-step flow)
-- ✅ Built-in UI dialogs with `GrantHandler` (moko requires manual)
-- ✅ Platform-aware UX (respects iOS/Android differences)
-- ✅ ServiceManager (exclusive feature for checking BT/Location services)
-- ✅ Better error handling and user guidance
-- ✅ Production-ready demo app
-
-See `docs/COMPARISON_WITH_MOKO.md` for full comparison.
-
----
-
 ### ⚠️ Breaking Changes
 
 **None!** All changes are backward compatible.
@@ -212,7 +197,7 @@ See `docs/COMPARISON_WITH_MOKO.md` for full comparison.
 
 ### 🙏 Acknowledgments
 
-Fixes inspired by real-world iOS Simulator testing and user feedback. Special thanks to the moko-permissions library for reference implementation patterns.
+Fixes inspired by real-world iOS Simulator testing and user feedback.
 
 ---
 
