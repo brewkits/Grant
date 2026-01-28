@@ -34,7 +34,9 @@
       "Bash(open:*)",
       "WebFetch(domain:github.com)",
       "WebSearch",
-      "WebFetch(domain:google.github.io)"
+      "WebFetch(domain:google.github.io)",
+      "Bash(pkill:*)",
+      "Bash(tee:*)"
     ]
   }
 }

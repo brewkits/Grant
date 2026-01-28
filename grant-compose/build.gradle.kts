@@ -45,9 +45,9 @@ kotlin {
             // Compose dependencies
             implementation(compose.runtime)
             implementation(compose.foundation)
-            // Material3 is compile-only - users must provide their own version
-            // This prevents version conflicts and allows users to control their Compose version
-            compileOnly(compose.material3)
+            // Material3 as implementation - standard for UI libraries
+            // Users can override version using Gradle dependency resolution
+            implementation(compose.material3)
             implementation(compose.ui)
         }
 

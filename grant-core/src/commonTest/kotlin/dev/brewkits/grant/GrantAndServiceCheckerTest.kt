@@ -260,11 +260,11 @@ class GrantAndServiceCheckerTest {
 private class FakeGrantManager(
     private val statusToReturn: GrantStatus
 ) : GrantManager {
-    override suspend fun checkStatus(grant: AppGrant): GrantStatus {
+    override suspend fun checkStatus(grant: GrantPermission): GrantStatus {
         return statusToReturn
     }
 
-    override suspend fun request(grant: AppGrant): GrantStatus {
+    override suspend fun request(grant: GrantPermission): GrantStatus {
         return statusToReturn
     }
 

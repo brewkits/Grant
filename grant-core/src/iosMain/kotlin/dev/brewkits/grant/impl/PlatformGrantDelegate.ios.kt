@@ -161,7 +161,7 @@ actual class PlatformGrantDelegate(
                 AppGrant.BLUETOOTH -> try {
                     // PRE-CHECK: Validate Info.plist key before requesting (iOS 13+)
                     if (!validateInfoPlistKey("NSBluetoothAlwaysUsageDescription", AppGrant.BLUETOOTH)) {
-                        return@withLock GrantStatus.DENIED_ALWAYS
+                        return@runOnMain GrantStatus.DENIED_ALWAYS
                     }
                     bluetoothDelegate.requestBluetoothAccess()
                 } catch (e: BluetoothTimeoutException) {

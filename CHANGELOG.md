@@ -545,43 +545,11 @@ val status = grantManager.request(customPermission)
 
 ---
 
-### 🐛 Dependency Fixes
-
-#### grant-compose: Material3 Dependency Scope Fixed
-**Issue**: Forced Material3 version on all consumers
-- Material3 declared as `implementation`
-- Causes Gradle version conflicts
-- Users cannot control their Compose version
-
-**Fix**: Changed to `compileOnly`
-- Users must provide Material3 dependency
-- No version conflicts
-- Users control Compose version
-
-**Files Modified:**
-- `grant-compose/build.gradle.kts`
-
-**Migration Guide:**
-```kotlin
-// Users must add Material3 explicitly
-commonMain.dependencies {
-    implementation(compose.material3)  // You control version
-    implementation("dev.brewkits.grant:grant-compose:1.1.0")
-}
-```
-
-**Benefits:**
-- ✅ No version conflicts
-- ✅ Users control dependency versions
-- ✅ Clearer dependency boundary
-
----
-
 ### 📊 Issues Fixed Summary
 
 **Expert Review Results**: 7 potential issues identified
-- ✅ **5 Valid Issues** fixed in this release
-- ❌ **2 False Positives** (no action needed)
+- ✅ **4 Valid Issues** fixed in this release
+- ❌ **3 False Positives / Not Applicable** (no action needed)
 
 | Issue | Status | Severity |
 |-------|--------|----------|
@@ -591,9 +559,11 @@ commonMain.dependencies {
 | Blocking I/O on UI Thread | ❌ False Positive | - |
 | Race Condition in Activity | ✅ Fixed | CRITICAL |
 | God Object AppGrant | ✅ Fixed | HIGH |
-| Material3 Version Conflict | ✅ Fixed | MEDIUM |
+| Material3 Version Conflict | ❌ Not Applicable* | - |
 
-**Validation Rate**: 5/7 = 71% valid issues
+*Material3 uses `implementation` (standard for UI libraries). Users can override version via Gradle dependency resolution if needed.
+
+**Validation Rate**: 4/7 = 57% actionable issues
 
 ---
 
@@ -605,12 +575,8 @@ commonMain.dependencies {
 
 ### 🔄 Migration Notes
 
-**For grant-compose users:**
-- Add explicit Material3 dependency to your project
-- See "grant-compose: Material3 Dependency Scope Fixed" above
-
-**For all other users:**
-- No changes required
+**No breaking changes!** All updates are backward compatible:
+- No code changes required
 - All existing code continues to work
 - New features are opt-in
 

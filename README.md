@@ -68,6 +68,30 @@ fun CameraScreen() {
 - ✅ **Granular Gallery Permissions** - Images-only, Videos-only, or both (prevents silent denials)
 - ✅ **Bluetooth Error Differentiation** - Retryable vs permanent errors (10s timeout)
 - ✅ **Notification Status Validation** - Correct status even on Android 12-
+- 🆕 **iOS Info.plist Runtime Validation** - Prevents crashes from missing keys (v1.1.0)
+- 🆕 **Process Death Recovery** - No 60s hangs, automatic cleanup (v1.1.0)
+
+### 🎁 NEW in v1.1.0 - Advanced Features
+- 🆕 **Process Death State Restoration** - Optional dialog state recovery on Android
+  ```kotlin
+  val handler = GrantHandler(
+      grantManager = grantManager,
+      grant = AppGrant.CAMERA,
+      scope = viewModelScope,
+      savedStateDelegate = AndroidSavedStateDelegate(savedStateHandle) // Optional
+  )
+  ```
+- 🆕 **Custom Permission Support** - Extend beyond built-in permissions
+  ```kotlin
+  val customPermission = RawPermission(
+      identifier = "CUSTOM_SENSOR",
+      androidPermissions = listOf("android.permission.CUSTOM_SENSOR"),
+      iosUsageKey = "NSCustomSensorUsageDescription"
+  )
+  grantManager.request(customPermission)
+  ```
+- 🆕 **Race Condition Fixes** - Eliminated 60-second hangs and memory leaks on process death
+- 🆕 **iOS Crash Prevention** - Runtime validation prevents SIGABRT from missing Info.plist keys
 
 ### 🏗️ Production-Ready Architecture - Enterprise Grade
 - ✅ **Enum-based Status** - Clean, predictable flow (not exception-based)

@@ -2,7 +2,9 @@ package dev.brewkits.grant.impl
 
 import dev.brewkits.grant.AppGrant
 import dev.brewkits.grant.GrantManager
+import dev.brewkits.grant.GrantPermission
 import dev.brewkits.grant.GrantStatus
+import dev.brewkits.grant.RawPermission
 import kotlinx.coroutines.delay
 
 /**
@@ -51,10 +53,19 @@ class SimpleGrantManager : GrantManager {
 
     var simulationMode = SimulationMode.REALISTIC
 
-    override suspend fun checkStatus(grant: AppGrant): GrantStatus {
+    override suspend fun checkStatus(grant: GrantPermission): GrantStatus {
+        // Handle RawPermission - not supported in mock implementation
+        if (grant is RawPermission) {
+            println("SimpleGrantManager: RawPermission not supported in mock - returning DENIED")
+            return GrantStatus.DENIED
+        }
+
+        // Cast to AppGrant
+        val appGrant = grant as AppGrant
+
         return when {
-            grant in grantedGrants -> GrantStatus.GRANTED
-            (requestCount[grant] ?: 0) >= 2 -> {
+            appGrant in grantedGrants -> GrantStatus.GRANTED
+            (requestCount[appGrant] ?: 0) >= 2 -> {
                 // After 2 denials, it becomes permanent
                 if (simulationMode == SimulationMode.ALWAYS_DENY_PERMANENTLY) {
                     GrantStatus.DENIED_ALWAYS
@@ -62,22 +73,31 @@ class SimpleGrantManager : GrantManager {
                     GrantStatus.DENIED
                 }
             }
-            (requestCount[grant] ?: 0) >= 1 -> GrantStatus.DENIED
+            (requestCount[appGrant] ?: 0) >= 1 -> GrantStatus.DENIED
             else -> GrantStatus.NOT_DETERMINED
         }
     }
 
-    override suspend fun request(grant: AppGrant): GrantStatus {
+    override suspend fun request(grant: GrantPermission): GrantStatus {
+        // Handle RawPermission - not supported in mock implementation
+        if (grant is RawPermission) {
+            println("SimpleGrantManager: RawPermission not supported in mock - returning DENIED")
+            delay(500)  // Simulate dialog
+            return GrantStatus.DENIED
+        }
+
+        // Cast to AppGrant
+        val appGrant = grant as AppGrant
         // Simulate system dialog delay
         delay(500)
 
-        val count = requestCount[grant] ?: 0
-        requestCount[grant] = count + 1
+        val count = requestCount[appGrant] ?: 0
+        requestCount[appGrant] = count + 1
 
         return when (simulationMode) {
             SimulationMode.AUTO_GRANT -> {
                 // Always grant immediately
-                grantedGrants.add(grant)
+                grantedGrants.add(appGrant)
                 GrantStatus.GRANTED
             }
 
@@ -107,7 +127,7 @@ class SimpleGrantManager : GrantManager {
                     }
                     else -> {
                         // Third time: User goes to settings and grants
-                        grantedGrants.add(grant)
+                        grantedGrants.add(appGrant)
                         GrantStatus.GRANTED
                     }
                 }
