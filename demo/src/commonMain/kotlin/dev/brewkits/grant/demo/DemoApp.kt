@@ -12,7 +12,7 @@ import androidx.compose.ui.unit.dp
  * Simplified demo app while we fix the grant implementation
  */
 @Composable
-fun DemoApp() {
+fun DemoApp(onStartDemo: () -> Unit = {}) {
     MaterialTheme {
         Surface(
             modifier = Modifier.fillMaxSize(),
@@ -66,7 +66,7 @@ fun DemoApp() {
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Button(
-                    onClick = { /* TODO: Wire up demo */ },
+                    onClick = onStartDemo,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Start Demo")

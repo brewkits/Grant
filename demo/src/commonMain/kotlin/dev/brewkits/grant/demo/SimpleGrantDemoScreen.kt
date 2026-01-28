@@ -52,6 +52,7 @@ fun SimpleGrantDemoScreen(
     GrantDialog(handler = viewModel.bluetoothGrant)
     GrantDialog(handler = viewModel.galleryGrant)
     GrantDialog(handler = viewModel.motionGrant)
+    GrantDialog(handler = viewModel.calendarGrant)
 
     Scaffold(
         snackbarHost = {
@@ -178,6 +179,7 @@ fun SimpleGrantDemoScreen(
             title = "Camera",
             description = "Photo/video capture, QR scanning",
             icon = "📷",
+            grant = AppGrant.CAMERA,
             handler = viewModel.cameraGrant,
             onSuccess = ::showSuccess
         )
@@ -187,6 +189,7 @@ fun SimpleGrantDemoScreen(
             title = "Microphone",
             description = "Audio recording, voice notes",
             icon = "🎤",
+            grant = AppGrant.MICROPHONE,
             handler = viewModel.microphoneGrant,
             onSuccess = ::showSuccess
         )
@@ -196,6 +199,7 @@ fun SimpleGrantDemoScreen(
             title = "Location",
             description = "Maps, location-based services",
             icon = "📍",
+            grant = AppGrant.LOCATION,
             handler = viewModel.locationGrant,
             onSuccess = ::showSuccess
         )
@@ -205,6 +209,7 @@ fun SimpleGrantDemoScreen(
             title = "Location Always",
             description = "Background location tracking",
             icon = "🌍",
+            grant = AppGrant.LOCATION_ALWAYS,
             handler = viewModel.locationAlwaysGrant,
             onSuccess = ::showSuccess
         )
@@ -214,6 +219,7 @@ fun SimpleGrantDemoScreen(
             title = "Storage",
             description = "Read/write files",
             icon = "💾",
+            grant = AppGrant.STORAGE,
             handler = viewModel.storageGrant,
             onSuccess = ::showSuccess
         )
@@ -223,6 +229,7 @@ fun SimpleGrantDemoScreen(
             title = "Gallery",
             description = "Access photo library",
             icon = "🖼️",
+            grant = AppGrant.GALLERY,
             handler = viewModel.galleryGrant,
             onSuccess = ::showSuccess
         )
@@ -232,6 +239,7 @@ fun SimpleGrantDemoScreen(
             title = "Contacts",
             description = "Read contact list",
             icon = "👥",
+            grant = AppGrant.CONTACTS,
             handler = viewModel.contactsGrant,
             onSuccess = ::showSuccess
         )
@@ -241,6 +249,7 @@ fun SimpleGrantDemoScreen(
             title = "Notifications",
             description = "Push notifications",
             icon = "🔔",
+            grant = AppGrant.NOTIFICATION,
             handler = viewModel.notificationGrant,
             onSuccess = ::showSuccess
         )
@@ -250,6 +259,7 @@ fun SimpleGrantDemoScreen(
             title = "Bluetooth",
             description = "Bluetooth connectivity",
             icon = "📡",
+            grant = AppGrant.BLUETOOTH,
             handler = viewModel.bluetoothGrant,
             onSuccess = ::showSuccess
         )
@@ -258,7 +268,18 @@ fun SimpleGrantDemoScreen(
             title = "Motion & Fitness",
             description = "Step counting, activity recognition",
             icon = "🏃",
+            grant = AppGrant.MOTION,
             handler = viewModel.motionGrant,
+            onSuccess = ::showSuccess
+        )
+
+        // Calendar
+        GrantCard(
+            title = "Calendar",
+            description = "Read/write calendar events",
+            icon = "📅",
+            grant = AppGrant.CALENDAR,
+            handler = viewModel.calendarGrant,
             onSuccess = ::showSuccess
         )
 
@@ -436,11 +457,15 @@ private fun GrantCard(
     title: String,
     description: String,
     icon: String,
+    grant: AppGrant,
     handler: dev.brewkits.grant.GrantHandler,
     onSuccess: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val GrantStatus by handler.status.collectAsState()
+    val missingPermissions = remember(grant) {
+        ManifestChecker.getMissingPermissions(grant)
+    }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -454,6 +479,40 @@ private fun GrantCard(
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
+        // Warning banner for missing manifest permissions
+        if (missingPermissions.isNotEmpty()) {
+            Surface(
+                color = MaterialTheme.colorScheme.errorContainer,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "⚠️",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = "Missing Manifest Permissions",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                    Text(
+                        text = "Add to AndroidManifest.xml:\n${missingPermissions.joinToString("\n") { "• $it" }}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f)
+                    )
+                }
+            }
+        }
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()

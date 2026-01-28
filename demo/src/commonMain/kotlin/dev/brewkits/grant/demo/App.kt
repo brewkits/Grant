@@ -2,8 +2,11 @@ package dev.brewkits.grant.demo
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import dev.brewkits.grant.GrantManager
 import org.koin.compose.koinInject
 
@@ -26,6 +29,12 @@ fun App() {
             )
         }
 
-        SimpleGrantDemoScreen(viewModel = viewModel)
+        var showDemo by remember { mutableStateOf(false) }
+
+        if (showDemo) {
+            SimpleGrantDemoScreen(viewModel = viewModel)
+        } else {
+            DemoApp(onStartDemo = { showDemo = true })
+        }
     }
 }

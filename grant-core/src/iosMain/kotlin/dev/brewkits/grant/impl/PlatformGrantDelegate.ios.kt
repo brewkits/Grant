@@ -24,6 +24,7 @@ import platform.CoreMotion.CMAuthorizationStatusDenied
 import platform.CoreMotion.CMAuthorizationStatusNotDetermined
 import platform.CoreMotion.CMAuthorizationStatusRestricted
 import platform.CoreMotion.CMMotionActivityManager
+import platform.EventKit.*
 import platform.Foundation.NSBundle
 import platform.Foundation.NSDate
 import platform.Foundation.NSOperationQueue
@@ -132,6 +133,7 @@ actual class PlatformGrantDelegate(
             AppGrant.NOTIFICATION -> checkNotificationStatus()
             AppGrant.BLUETOOTH -> bluetoothDelegate.checkStatus()
             AppGrant.MOTION -> checkMotionStatus()
+            AppGrant.CALENDAR -> checkCalendarStatus()
             AppGrant.SCHEDULE_EXACT_ALARM -> GrantStatus.GRANTED // iOS: Always allowed, no permission needed
         }
     }
@@ -183,6 +185,7 @@ actual class PlatformGrantDelegate(
                 }
 
                 AppGrant.MOTION -> requestMotionGrant()
+                AppGrant.CALENDAR -> requestCalendarGrant()
                 AppGrant.SCHEDULE_EXACT_ALARM -> {
                     // iOS: No permission needed for exact alarms, always granted
                     GrantLogger.i("iOSGrant", "SCHEDULE_EXACT_ALARM automatically granted on iOS")
@@ -358,6 +361,45 @@ actual class PlatformGrantDelegate(
             store.requestAccessForEntityType(
                 entityType = CNEntityType.CNEntityTypeContacts,
                 completionHandler = mainContinuation2 { granted, _ ->
+                    val status = if (granted) {
+                        GrantStatus.GRANTED
+                    } else {
+                        GrantStatus.DENIED_ALWAYS
+                    }
+                    continuation.resume(status)
+                }
+            )
+        }
+    }
+
+    // --- Calendar ---
+
+    private fun checkCalendarStatus(): GrantStatus {
+        return when (EKEventStore.authorizationStatusForEntityType(EKEntityType.EKEntityTypeEvent)) {
+            EKAuthorizationStatusAuthorized -> GrantStatus.GRANTED
+            EKAuthorizationStatusDenied,
+            EKAuthorizationStatusRestricted -> GrantStatus.DENIED_ALWAYS
+            EKAuthorizationStatusNotDetermined -> GrantStatus.NOT_DETERMINED
+            else -> GrantStatus.NOT_DETERMINED
+        }
+    }
+
+    private suspend fun requestCalendarGrant(): GrantStatus {
+        // PRE-CHECK: Validate Info.plist key before requesting
+        if (!validateInfoPlistKey("NSCalendarsUsageDescription", AppGrant.CALENDAR)) {
+            return GrantStatus.DENIED_ALWAYS
+        }
+
+        val currentStatus = checkCalendarStatus()
+        if (currentStatus != GrantStatus.NOT_DETERMINED) {
+            return currentStatus
+        }
+
+        return suspendCancellableCoroutine { continuation ->
+            val store = EKEventStore()
+            store.requestAccessToEntityType(
+                entityType = EKEntityType.EKEntityTypeEvent,
+                completion = mainContinuation2 { granted, _ ->
                     val status = if (granted) {
                         GrantStatus.GRANTED
                     } else {

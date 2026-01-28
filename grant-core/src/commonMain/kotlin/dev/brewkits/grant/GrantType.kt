@@ -139,14 +139,12 @@ enum class AppGrant : GrantPermission {
      */
     MOTION,
 
-    // TODO: Calendar grant - EventKit constants need to be verified for KMP
-    // Uncomment after fixing iOS EventKit bindings
-    // /**
-    //  * Calendar access
-    //  * - Android: READ_CALENDAR / WRITE_CALENDAR
-    //  * - iOS: NSCalendarsUsageDescription (EventKit)
-    //  */
-    // CALENDAR,
+    /**
+     * Calendar access
+     * - Android: READ_CALENDAR / WRITE_CALENDAR
+     * - iOS: NSCalendarsUsageDescription (EventKit)
+     */
+    CALENDAR,
     ;
 
     /**

@@ -103,4 +103,18 @@ interface GrantStore {
      * Useful when permission is granted (no need to track state anymore).
      */
     fun clear(grant: AppGrant)
+
+    /**
+     * Check if a RawPermission has been requested before.
+     *
+     * Used for tracking custom permissions identified by their string identifier.
+     */
+    fun isRawPermissionRequested(identifier: String): Boolean
+
+    /**
+     * Mark a RawPermission as "has been requested".
+     *
+     * Should be called immediately before showing the system permission dialog.
+     */
+    fun markRawPermissionRequested(identifier: String)
 }

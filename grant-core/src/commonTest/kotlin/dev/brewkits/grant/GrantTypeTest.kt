@@ -9,7 +9,7 @@ class GrantTypeTest {
     @Test
     fun testAllGrantTypesExist() {
         val grants = AppGrant.entries
-        assertEquals(13, grants.size, "Expected 13 grant types")
+        assertEquals(14, grants.size, "Expected 14 grant types")
     }
 
     @Test
@@ -29,6 +29,7 @@ class GrantTypeTest {
         assertTrue(grants.contains(AppGrant.MICROPHONE), "MICROPHONE grant should exist")
         assertTrue(grants.contains(AppGrant.CONTACTS), "CONTACTS grant should exist")
         assertTrue(grants.contains(AppGrant.MOTION), "MOTION grant should exist")
+        assertTrue(grants.contains(AppGrant.CALENDAR), "CALENDAR grant should exist")
     }
 
     @Test
@@ -46,6 +47,7 @@ class GrantTypeTest {
         assertEquals("MICROPHONE", AppGrant.MICROPHONE.name)
         assertEquals("CONTACTS", AppGrant.CONTACTS.name)
         assertEquals("MOTION", AppGrant.MOTION.name)
+        assertEquals("CALENDAR", AppGrant.CALENDAR.name)
     }
 
     @Test
@@ -63,6 +65,7 @@ class GrantTypeTest {
         assertEquals(10, AppGrant.MICROPHONE.ordinal)
         assertEquals(11, AppGrant.CONTACTS.ordinal)
         assertEquals(12, AppGrant.MOTION.ordinal)
+        assertEquals(13, AppGrant.CALENDAR.ordinal)
     }
 
     @Test
@@ -80,5 +83,6 @@ class GrantTypeTest {
         assertEquals(AppGrant.MICROPHONE, AppGrant.valueOf("MICROPHONE"))
         assertEquals(AppGrant.CONTACTS, AppGrant.valueOf("CONTACTS"))
         assertEquals(AppGrant.MOTION, AppGrant.valueOf("MOTION"))
+        assertEquals(AppGrant.CALENDAR, AppGrant.valueOf("CALENDAR"))
     }
 }

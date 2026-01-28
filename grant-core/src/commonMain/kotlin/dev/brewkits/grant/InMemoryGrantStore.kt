@@ -64,6 +64,10 @@ class InMemoryGrantStore : GrantStore {
     // Cleared on app restart
     private val requestedCache = mutableSetOf<AppGrant>()
 
+    // Session-scoped "requested" tracking for RawPermission
+    // Cleared on app restart
+    private val rawPermissionRequests = mutableSetOf<String>()
+
     override fun getStatus(grant: AppGrant): GrantStatus? {
         return statusCache[grant]
     }
@@ -83,10 +87,19 @@ class InMemoryGrantStore : GrantStore {
     override fun clear() {
         statusCache.clear()
         requestedCache.clear()
+        rawPermissionRequests.clear()
     }
 
     override fun clear(grant: AppGrant) {
         statusCache.remove(grant)
         requestedCache.remove(grant)
+    }
+
+    override fun isRawPermissionRequested(identifier: String): Boolean {
+        return identifier in rawPermissionRequests
+    }
+
+    override fun markRawPermissionRequested(identifier: String) {
+        rawPermissionRequests.add(identifier)
     }
 }

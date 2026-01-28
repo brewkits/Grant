@@ -57,6 +57,16 @@ class GrantDemoViewModel(
         scope = scope
     )
 
+    /**
+     * DANGEROUS grant - Calendar access
+     * Used for: Reading/writing calendar events
+     */
+    val calendarGrant = GrantHandler(
+        grantManager = grantManager,
+        grant = AppGrant.CALENDAR,
+        scope = scope
+    )
+
     private val _sequentialResult = MutableStateFlow("")
     val sequentialResult: StateFlow<String> = _sequentialResult.asStateFlow()
 
@@ -342,7 +352,8 @@ class GrantDemoViewModel(
             contactsGrant,
             notificationGrant,
             bluetoothGrant,
-            motionGrant
+            motionGrant,
+            calendarGrant
         ).forEach { handler ->
             handler.refreshStatus()
         }

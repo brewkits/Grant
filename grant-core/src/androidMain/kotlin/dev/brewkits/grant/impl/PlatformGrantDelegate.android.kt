@@ -51,11 +51,27 @@ actual class PlatformGrantDelegate(
     }
 
     actual suspend fun checkStatus(grant: GrantPermission): GrantStatus {
-        // Handle RawPermission (custom permissions) - Not yet fully implemented
-        // Future enhancement: Add platform-specific handling for RawPermission
+        // Handle RawPermission (custom permissions)
         if (grant is RawPermission) {
-            GrantLogger.w("AndroidGrant", "RawPermission support not yet implemented: ${grant.identifier}")
-            return GrantStatus.DENIED  // Conservative default
+            GrantLogger.d("AndroidGrant", "Checking RawPermission: ${grant.identifier}")
+            val androidPermissions = grant.androidPermissions
+
+            // Check all required permissions
+            val allGranted = androidPermissions.all { permission ->
+                ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+            }
+
+            if (allGranted) {
+                return GrantStatus.GRANTED
+            }
+
+            // Check if we've requested before (via identifier-based tracking)
+            val wasRequested = store.isRawPermissionRequested(grant.identifier)
+            return if (wasRequested) {
+                GrantStatus.DENIED
+            } else {
+                GrantStatus.NOT_DETERMINED
+            }
         }
 
         // Cast to AppGrant (we know it's AppGrant if not RawPermission)
@@ -161,10 +177,51 @@ actual class PlatformGrantDelegate(
     }
 
     actual suspend fun request(grant: GrantPermission): GrantStatus = requestMutex.withLock {
-        // Handle RawPermission (custom permissions) - Not yet fully implemented
+        // Handle RawPermission (custom permissions)
         if (grant is RawPermission) {
-            GrantLogger.w("AndroidGrant", "RawPermission support not yet implemented: ${grant.identifier}")
-            return@withLock GrantStatus.DENIED  // Conservative default
+            GrantLogger.d("AndroidGrant", "Requesting RawPermission: ${grant.identifier}")
+
+            // Check if already granted
+            val allGranted = grant.androidPermissions.all { permission ->
+                ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+            }
+            if (allGranted) {
+                return@withLock GrantStatus.GRANTED
+            }
+
+            // Mark as requested before launching dialog
+            store.markRawPermissionRequested(grant.identifier)
+
+            GrantLogger.i("AndroidGrant", "Requesting RawPermission: ${grant.identifier} (permissions: ${grant.androidPermissions.joinToString()})")
+
+            // Launch GrantRequestActivity with raw permissions
+            val status = try {
+                val requestId = GrantRequestActivity.requestGrants(context, grant.androidPermissions)
+                val resultFlow = GrantRequestActivity.getResultFlow(requestId)
+                    ?: return@withLock GrantStatus.DENIED
+
+                val result = try {
+                    withTimeout(60_000) { resultFlow.first { it != null } }
+                        ?: GrantRequestActivity.GrantResult.ERROR
+                } finally {
+                    GrantRequestActivity.cleanup(requestId)
+                }
+
+                val status = when (result) {
+                    GrantRequestActivity.GrantResult.GRANTED -> GrantStatus.GRANTED
+                    GrantRequestActivity.GrantResult.DENIED -> GrantStatus.DENIED
+                    GrantRequestActivity.GrantResult.DENIED_PERMANENTLY -> GrantStatus.DENIED_ALWAYS
+                    GrantRequestActivity.GrantResult.ERROR -> GrantStatus.DENIED
+                }
+
+                GrantLogger.i("AndroidGrant", "RawPermission ${grant.identifier} result: $status")
+                status
+            } catch (e: Exception) {
+                GrantLogger.e("AndroidGrant", "Request failed for RawPermission: ${grant.identifier}: ${e.message}", e)
+                GrantStatus.DENIED
+            }
+
+            return@withLock status
         }
 
         // Cast to AppGrant
@@ -260,7 +317,7 @@ actual class PlatformGrantDelegate(
 
     // --- SMART MAPPING LOGIC ---
 
-    private fun AppGrant.toAndroidGrants(): List<String> {
+    internal fun AppGrant.toAndroidGrants(): List<String> {
         return when (this) {
             AppGrant.CAMERA -> listOf(Manifest.permission.CAMERA)
 
@@ -399,6 +456,10 @@ actual class PlatformGrantDelegate(
 
             AppGrant.MICROPHONE -> listOf(Manifest.permission.RECORD_AUDIO)
             AppGrant.CONTACTS -> listOf(Manifest.permission.READ_CONTACTS)
+            AppGrant.CALENDAR -> listOf(
+                Manifest.permission.READ_CALENDAR,
+                Manifest.permission.WRITE_CALENDAR
+            )
 
             AppGrant.MOTION -> {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -511,5 +572,20 @@ actual class PlatformGrantDelegate(
             }
             else -> null
         }
+    }
+}
+
+/**
+ * Helper function to convert AppGrant to Android permission strings.
+ * Used by ManifestValidator and other utilities.
+ *
+ * @param grant The grant to convert
+ * @return List of Android permission strings required for this grant
+ */
+internal fun toAndroidGrants(grant: AppGrant, context: Context): List<String> {
+    // Create temporary delegate instance to access the extension function
+    val delegate = PlatformGrantDelegate(context, dev.brewkits.grant.InMemoryGrantStore())
+    return with(delegate) {
+        grant.toAndroidGrants()
     }
 }
