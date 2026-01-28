@@ -143,7 +143,7 @@ class GrantGroupHandler(
             // Check which grants need to be requested
             for (grant in grants) {
                 val status = grantManager.checkStatus(grant)
-                _statuses.value = _statuses.value + (grant to status)
+                _statuses.value += (grant to status)
 
                 if (status != GrantStatus.GRANTED) {
                     deniedGrants.add(grant)
@@ -210,14 +210,14 @@ class GrantGroupHandler(
 
     private suspend fun requestSingleGrant(grant: AppGrant): Boolean {
         val currentStatus = grantManager.checkStatus(grant)
-        _statuses.value = _statuses.value + (grant to currentStatus)
+        _statuses.value += (grant to currentStatus)
 
         return when (currentStatus) {
             GrantStatus.GRANTED -> true
             GrantStatus.NOT_DETERMINED -> {
                 // First time - request immediately
                 val result = grantManager.request(grant)
-                _statuses.value = _statuses.value + (grant to result)
+                _statuses.value += (grant to result)
                 handleStatus(grant, result)
                 result == GrantStatus.GRANTED
             }

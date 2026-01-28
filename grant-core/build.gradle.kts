@@ -37,14 +37,17 @@ kotlin {
 
     sourceSets {
         androidMain.dependencies {
-            // Koin for Android
+            // Koin for Android (Optional DI support - can be excluded)
+            // See docs/DEPENDENCY_MANAGEMENT.md for handling version conflicts
             implementation(libs.koin.android)
             // AndroidX Activity for grant requests
             implementation(libs.androidx.activity.compose)
         }
 
         commonMain.dependencies {
-            // Koin core
+            // Koin core (Optional DI support - can be excluded)
+            // Note: Koin is OPTIONAL. Use GrantFactory.create() for manual injection
+            // See docs/DEPENDENCY_MANAGEMENT.md for more information
             implementation(libs.koin.core)
             // Coroutines
             implementation(libs.kotlinx.coroutines.core)
@@ -53,6 +56,7 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
+            implementation(libs.turbine)
         }
     }
 }
@@ -72,8 +76,8 @@ android {
 }
 
 publishing {
-    publications {
-        withType<MavenPublication> {
+    publications.configureEach {
+        (this as? MavenPublication)?.let {
             groupId = "dev.brewkits"
             version = "1.0.0"
 

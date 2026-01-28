@@ -45,7 +45,9 @@ kotlin {
             // Compose dependencies
             implementation(compose.runtime)
             implementation(compose.foundation)
-            implementation(compose.material3)
+            // Material3 is compile-only - users must provide their own version
+            // This prevents version conflicts and allows users to control their Compose version
+            compileOnly(compose.material3)
             implementation(compose.ui)
         }
 
@@ -70,8 +72,8 @@ android {
 }
 
 publishing {
-    publications {
-        withType<MavenPublication> {
+    publications.configureEach {
+        (this as? MavenPublication)?.let {
             groupId = "dev.brewkits"
             version = "1.0.0"
 

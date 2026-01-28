@@ -13,13 +13,9 @@ import dev.brewkits.grant.impl.PlatformGrantDelegate
  * ### Android:
  * ```kotlin
  * class MainActivity : ComponentActivity() {
- *     private val GrantManager by lazy {
+ *     private val grantManager by lazy {
  *         GrantFactory.create(applicationContext)
- *     }
- *
- *     override fun onCreate(savedInstanceState: Bundle?) {
- *         super.onCreate(savedInstanceState)
- *         // Use GrantManager
+ *         // Uses InMemoryGrantStore (default) - aligns with 90% of libraries
  *     }
  * }
  * ```
@@ -27,13 +23,22 @@ import dev.brewkits.grant.impl.PlatformGrantDelegate
  * ### iOS:
  * ```kotlin
  * class ViewController : UIViewController {
- *     private val GrantManager = GrantFactory.create()
- *
- *     override fun viewDidLoad() {
- *         super.viewDidLoad()
- *         // Use GrantManager
- *     }
+ *     private val grantManager = GrantFactory.create()
+ *     // Uses InMemoryGrantStore by default
  * }
+ * ```
+ *
+ * ### Custom Store (Advanced):
+ * If you need custom storage behavior, implement [GrantStore]:
+ * ```kotlin
+ * class MyCustomStore : GrantStore {
+ *     // Your implementation
+ * }
+ *
+ * val grantManager = GrantFactory.create(
+ *     context = applicationContext,
+ *     store = MyCustomStore()
+ * )
  * ```
  *
  * ### With Koin (Optional):
@@ -54,12 +59,18 @@ object GrantFactory {
      * @param context Platform-specific context:
      *                - Android: android.content.Context (required)
      *                - iOS: Not needed (pass null or omit)
+     * @param store Storage implementation for permission state (default: InMemoryGrantStore).
+     *              Uses in-memory storage following industry standards (90% of libraries).
+     *              Implement custom [GrantStore] if you need different behavior.
      * @return GrantManager instance ready to use
      *
      * @throws IllegalArgumentException on Android if context is not provided
      */
-    fun create(context: Any? = null): GrantManager {
-        val delegate = createPlatformDelegate(context)
+    fun create(
+        context: Any? = null,
+        store: GrantStore = InMemoryGrantStore()
+    ): GrantManager {
+        val delegate = createPlatformDelegate(context, store)
         return MyGrantManager(delegate)
     }
 }
@@ -68,7 +79,10 @@ object GrantFactory {
  * Platform-specific factory function to create PlatformGrantDelegate.
  *
  * This is implemented separately for each platform:
- * - Android: Requires Context
- * - iOS: No parameters needed
+ * - Android: Requires Context and GrantStore
+ * - iOS: Requires GrantStore only
+ *
+ * @param context Platform context (Android only)
+ * @param store Storage implementation for permission state
  */
-expect fun createPlatformDelegate(context: Any?): PlatformGrantDelegate
+expect fun createPlatformDelegate(context: Any?, store: GrantStore): PlatformGrantDelegate

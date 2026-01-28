@@ -1,6 +1,8 @@
-# Grant Demo
+# Grant Demo 🎯
 
-This demo showcases comprehensive grant handling patterns for the KMP Grant library.
+**Comprehensive Examples Showcasing Grant's Power and Flexibility**
+
+This demo provides production-ready examples of permission handling patterns using the Grant library. Learn how to handle **sequential requests**, **parallel requests**, and **complex permission flows** with zero boilerplate.
 
 ## Overview
 
@@ -328,4 +330,23 @@ See main documentation:
 
 ---
 
+---
+
+## License 📄
+
+```
+Copyright 2026 BrewKits
+
+Licensed under the Apache License, Version 2.0
+See LICENSE file for full text.
+```
+
+---
+
 **Happy Grant Handling!** 🎉
+
+<div align="center">
+
+[⭐ Star on GitHub](https://github.com/brewkits/grant) • [📚 Documentation](../docs/README.md)
+
+</div>

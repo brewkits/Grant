@@ -1,114 +1,81 @@
-# 📚 Grant Library Documentation
+# Grant Documentation
 
-Tất cả tài liệu của Grant KMP Library được tổ chức ở đây.
+Welcome to Grant's comprehensive documentation!
 
----
-
-## 📖 Table of Contents
+## 📚 Documentation Structure
 
 ### 🚀 Getting Started
+**New to Grant? Start here!**
 
-1. **[Main README](../README.md)** - Overview và quick start
-2. **[Grant Core Quick Start](grant-core/QUICK_START.md)** - Hướng dẫn sử dụng nhanh
-3. **[iOS Quick Start](grant-core/QUICK_START_iOS.md)** - Setup cho iOS
+- [Quick Start Guide](getting-started/quick-start.md) - Get running in 5 minutes
+- [Installation](getting-started/installation.md) - Setup and dependencies
+- [Android Setup](getting-started/android-setup.md) - AndroidManifest configuration
+- [iOS Setup](getting-started/ios-setup.md) - Info.plist configuration
 
-### ⭐ Essential Guides (Start Here!)
+### 📖 Guides
+**Learn how to use Grant effectively**
 
-- **[Best Practices](BEST_PRACTICES.md)** - ⭐ Permission patterns, Android/iOS guidelines
-- **[Changelog](../CHANGELOG.md)** - All notable changes and bug fixes
+- [Permission Handling Guide](guides/permissions-guide.md) - Complete guide
+- [Service Checking](guides/service-checking.md) - GPS, Bluetooth services
+- [Compose Integration](guides/compose-integration.md) - Compose support
+- [Best Practices](guides/best-practices.md) - Production patterns
 
-### 🏗️ Architecture & Design
+### 🏗️ Architecture
+**Understanding Grant's design**
 
-- **[Architecture Guide](grant-core/ARCHITECTURE.md)** - Clean architecture và design patterns
-- **[Grant System](grant-core/GRANTS.md)** - Chi tiết về grant handling
-- **[Service System](grant-core/SERVICES.md)** - System service checking
-- **[Transparent Activity](grant-core/TRANSPARENT_ACTIVITY_GUIDE.md)** - Android grant activity pattern
+- [Architecture Overview](architecture/overview.md) - System design
+- [GrantStore System](architecture/grant-store.md) - State management, persistence, backup rules ⚠️
+- [Platform Delegates](architecture/platform-delegates.md) - Platform code
 
-### 🧪 Development
+### 📱 Platform-Specific
 
-- **[Testing Guide](grant-core/TESTING.md)** - Unit testing và mocking strategies
+#### Android
+- [Android 12+ Handling](platform-specific/android/android-12-handling.md)
+- [Transparent Activity](platform-specific/android/transparent-activity.md)
+- [Dead Click Fix](platform-specific/android/dead-click-fix.md)
 
-### 📱 iOS Development
+#### iOS
+- [Info.plist Setup](platform-specific/ios/info-plist.md) - ⚠️ **CRITICAL - App crashes if keys missing**
+- [Simulator Limitations](platform-specific/ios/simulator-limitations.md)
+- [Android Studio Setup](platform-specific/ios/android-studio-setup.md)
 
-- **[iOS Setup for Android Studio](ios/IOS_SETUP_ANDROID_STUDIO.md)** - Run iOS app từ Android Studio
-- **[Quick Start iOS Android Studio](ios/QUICK_START_IOS_ANDROID_STUDIO.md)** - Quick guide
-- **[Info.plist Localization](ios/INFO_PLIST_LOCALIZATION.md)** - ⭐ Localize permission descriptions
-- **[Simulator Limitations](ios/SIMULATOR_LIMITATIONS.md)** - ⭐ **NEW!** Which permissions work on simulator
+### 🔬 Advanced Topics
 
-### 🎨 Demo App
+- [Testing Guide](advanced/testing.md)
+- [Dependency Injection](advanced/dependency-injection.md)
+- [Custom GrantStore](advanced/custom-grant-store.md)
 
-- **[Demo Guide](demo/DEMO_GUIDE.md)** - Hướng dẫn chạy demo app
-- **[Demo Setup](demo/DEMO_SETUP.md)** - Setup complete documentation
+### 📊 Comparison & Migration
 
----
-
-## 📂 Documentation Structure
-
-```
-Grant/
-├── CHANGELOG.md                       ← ⭐ All changes and fixes
-├── README.md                          ← Main documentation
-└── docs/
-    ├── README.md                      ← Bạn đang ở đây
-    ├── BEST_PRACTICES.md              ← ⭐ Essential reading!
-    ├── FIX_DEAD_CLICK_ANDROID.md      ← ⭐ Critical Android fix
-    ├── ios/                           ← iOS development guides
-    │   ├── IOS_SETUP_ANDROID_STUDIO.md
-    │   ├── QUICK_START_IOS_ANDROID_STUDIO.md
-    │   └── INFO_PLIST_LOCALIZATION.md ← ⭐ Localize permissions
-    ├── grant-core/                    ← Library documentation
-    │   ├── ARCHITECTURE.md
-    │   ├── GRANTS.md
-    │   ├── QUICK_START.md
-    │   ├── QUICK_START_iOS.md
-    │   ├── SERVICES.md
-    │   ├── TESTING.md                 ← ⭐ Includes latest test cases
-    │   └── TRANSPARENT_ACTIVITY_GUIDE.md
-    └── demo/                          ← Demo app documentation
-        ├── DEMO_GUIDE.md
-        └── DEMO_SETUP.md
-```
+- [Grant vs moko-permissions](comparison/vs-moko-permissions.md)
+- [Detailed Issue Analysis](comparison/moko-issues-detailed.md)
+- [Migration Guide](comparison/migration-from-moko.md)
 
 ---
 
-## 🔗 Quick Links
+## 🎯 Quick Access
 
-### For New Users
-- ⭐ **[Best Practices](BEST_PRACTICES.md)** - Start here! Permission patterns, platform differences
-- [Installation](grant-core/QUICK_START.md#installation)
-- [Basic Usage](grant-core/QUICK_START.md#basic-usage)
-- [Supported Grants](grant-core/GRANTS.md#supported-grants)
-- **[Changelog](../CHANGELOG.md)** - What's new and fixed
+**"I want to request Camera permission"**
+→ [Quick Start](getting-started/quick-start.md)
 
-### For Bug Fixes & Issues
-- **[Dead Click Fix (Android)](FIX_DEAD_CLICK_ANDROID.md)** - SharedPreferences solution
-- **[Testing Guide](grant-core/TESTING.md)** - Includes test cases for all fixes
+**"Android 13+ dead clicks"**
+→ [Dead Click Fix](platform-specific/android/dead-click-fix.md)
 
-### For Contributors
-- [Architecture Overview](grant-core/ARCHITECTURE.md)
-- [Testing](grant-core/TESTING.md)
-- [Adding New Grants](grant-core/GRANTS.md#adding-new-grants)
+**"Check if GPS enabled"**
+→ [Service Checking](guides/service-checking.md)
 
-### For iOS Developers
-- [iOS Setup](grant-core/QUICK_START_iOS.md)
-- [Run from Android Studio](ios/IOS_SETUP_ANDROID_STUDIO.md)
-- [Info.plist Localization](ios/INFO_PLIST_LOCALIZATION.md)
+**"Coming from moko-permissions"**
+→ [Migration Guide](comparison/migration-from-moko.md)
 
----
+**"App crashes on iOS when requesting permission"** ⚠️
+→ [iOS Info.plist Setup](platform-specific/ios/info-plist.md)
 
-## 📝 Contributing to Docs
+**"Need persistence across app restarts"**
+→ [GrantStore Architecture](architecture/grant-store.md)
 
-Khi thêm documentation mới:
-
-1. Đặt file vào thư mục phù hợp:
-   - `docs/ios/` - iOS-specific guides
-   - `docs/grant-core/` - Library documentation
-   - `docs/demo/` - Demo app guides
-
-2. Update file này (docs/README.md) với link mới
-
-3. Update main [README.md](../README.md) nếu cần
+**"Disable logs for production"**
+→ `GrantLogger.isEnabled = false`
 
 ---
 
-**Last updated:** 2026-01-23
+[← Back to Main README](../README.md)

@@ -1,6 +1,7 @@
 package dev.brewkits.grant.di
 
 import android.content.Context
+import dev.brewkits.grant.InMemoryGrantStore
 import dev.brewkits.grant.impl.PlatformGrantDelegate
 import org.koin.dsl.module
 
@@ -15,6 +16,9 @@ import org.koin.dsl.module
  */
 actual val grantPlatformModule = module {
     single {
-        PlatformGrantDelegate(context = get<Context>())
+        PlatformGrantDelegate(
+            context = get<Context>(),
+            store = InMemoryGrantStore()
+        )
     }
 }

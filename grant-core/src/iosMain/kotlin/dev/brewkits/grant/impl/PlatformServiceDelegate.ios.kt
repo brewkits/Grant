@@ -26,7 +26,18 @@ internal actual class PlatformServiceDelegate {
             // iOS can only open main Settings app, not specific service settings
             val settingsUrl = NSURL.URLWithString(UIApplicationOpenSettingsURLString)
             if (settingsUrl != null && UIApplication.sharedApplication.canOpenURL(settingsUrl)) {
-                UIApplication.sharedApplication.openURL(settingsUrl)
+                // Use modern API: openURL:options:completionHandler:
+                // This replaces the deprecated openURL: method (deprecated since iOS 10)
+                var result = false
+                UIApplication.sharedApplication.openURL(
+                    settingsUrl,
+                    options = emptyMap<Any?, Any?>(),
+                    completionHandler = { success ->
+                        result = success
+                    }
+                )
+                // Note: The completion handler is called asynchronously, but we return immediately
+                // This matches the behavior of the old deprecated API
                 true
             } else {
                 false

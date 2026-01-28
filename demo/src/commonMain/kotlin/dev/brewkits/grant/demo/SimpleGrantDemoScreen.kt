@@ -91,7 +91,7 @@ fun SimpleGrantDemoScreen(
                 )
 
                 Text(
-                    text = "Test all permission types with real platform implementations.",
+                    text = "Test all grant types with real platform implementations.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                 )

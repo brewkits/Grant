@@ -1,7 +1,7 @@
 package dev.brewkits.grant.impl
 
-import dev.brewkits.grant.AppGrant
 import dev.brewkits.grant.GrantManager
+import dev.brewkits.grant.GrantPermission
 import dev.brewkits.grant.GrantStatus
 
 /**
@@ -27,11 +27,11 @@ class MyGrantManager(
     private val platformDelegate: PlatformGrantDelegate
 ) : GrantManager {
 
-    override suspend fun checkStatus(grant: AppGrant): GrantStatus {
+    override suspend fun checkStatus(grant: GrantPermission): GrantStatus {
         return platformDelegate.checkStatus(grant)
     }
 
-    override suspend fun request(grant: AppGrant): GrantStatus {
+    override suspend fun request(grant: GrantPermission): GrantStatus {
         return platformDelegate.request(grant)
     }
 
@@ -43,12 +43,16 @@ class MyGrantManager(
 /**
  * Platform-specific delegate for grant operations.
  *
- * Implementations:
+ * **Permission Types:**
+ * - AppGrant: Built-in permissions (CAMERA, LOCATION, etc.)
+ * - RawPermission: Custom platform-specific permissions
+ *
+ * **Implementations:**
  * - Android: Use ActivityCompat, ContextCompat
  * - iOS: Use AVFoundation, CoreLocation, etc.
  */
 expect class PlatformGrantDelegate {
-    suspend fun checkStatus(grant: AppGrant): GrantStatus
-    suspend fun request(grant: AppGrant): GrantStatus
+    suspend fun checkStatus(grant: GrantPermission): GrantStatus
+    suspend fun request(grant: GrantPermission): GrantStatus
     fun openSettings()
 }

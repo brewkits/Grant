@@ -1,5 +1,6 @@
 package dev.brewkits.grant.di
 
+import dev.brewkits.grant.InMemoryGrantStore
 import dev.brewkits.grant.impl.PlatformGrantDelegate
 import org.koin.dsl.module
 
@@ -11,6 +12,6 @@ import org.koin.dsl.module
  */
 actual val grantPlatformModule = module {
     single {
-        PlatformGrantDelegate()
+        PlatformGrantDelegate(store = InMemoryGrantStore())
     }
 }

@@ -6,12 +6,27 @@ package dev.brewkits.grant
  * This enum provides a clean, platform-agnostic abstraction over
  * Android and iOS grant systems.
  *
- * **Extensibility**: To add new grants:
+ * **Extensibility:**
+ * - For common permissions, use AppGrant enum values
+ * - For custom permissions, use RawPermission (see GrantPermission interface)
+ * - AppGrant implements GrantPermission for unified API
+ *
+ * **To add new grants to the library:**
  * 1. Add new enum entry here
  * 2. Update platform-specific implementations in PlatformGrantDelegate
  * 3. Add required Info.plist keys (iOS) or AndroidManifest grants (Android)
+ *
+ * **For users who need custom permissions:**
+ * ```kotlin
+ * val customPermission = RawPermission(
+ *     identifier = "MY_CUSTOM_PERMISSION",
+ *     androidPermissions = listOf("android.permission.CUSTOM"),
+ *     iosUsageKey = "NSCustomUsageDescription"
+ * )
+ * val status = grantManager.request(customPermission)
+ * ```
  */
-enum class AppGrant {
+enum class AppGrant : GrantPermission {
     /**
      * Camera grant for photo/video capture
      * - Android: CAMERA
@@ -20,11 +35,35 @@ enum class AppGrant {
     CAMERA,
 
     /**
-     * Photo library/gallery access
-     * - Android: READ_MEDIA_IMAGES (API 33+) or READ_EXTERNAL_STORAGE
+     * Photo library/gallery access (both images and videos)
+     * - Android: READ_MEDIA_IMAGES + READ_MEDIA_VIDEO (API 33+) or READ_EXTERNAL_STORAGE
      * - iOS: NSPhotoLibraryUsageDescription
+     *
+     * ⚠️ Important: If you only need images OR videos (not both), use GALLERY_IMAGES_ONLY
+     * or GALLERY_VIDEO_ONLY instead. Requesting both permissions when only one is declared
+     * in AndroidManifest.xml will result in silent denial on Android 13+.
      */
     GALLERY,
+
+    /**
+     * Photo library access (images only)
+     * - Android: READ_MEDIA_IMAGES (API 33+) or READ_EXTERNAL_STORAGE
+     * - iOS: NSPhotoLibraryUsageDescription (same as GALLERY - iOS doesn't distinguish)
+     *
+     * Use this if your app only needs image access (not videos).
+     * This prevents silent denial when READ_MEDIA_VIDEO is not declared in AndroidManifest.xml.
+     */
+    GALLERY_IMAGES_ONLY,
+
+    /**
+     * Photo library access (videos only)
+     * - Android: READ_MEDIA_VIDEO (API 33+) or READ_EXTERNAL_STORAGE
+     * - iOS: NSPhotoLibraryUsageDescription (same as GALLERY - iOS doesn't distinguish)
+     *
+     * Use this if your app only needs video access (not images).
+     * This prevents silent denial when READ_MEDIA_IMAGES is not declared in AndroidManifest.xml.
+     */
+    GALLERY_VIDEO_ONLY,
 
     /**
      * Storage access
@@ -53,6 +92,19 @@ enum class AppGrant {
      * - iOS: User Notification authorization
      */
     NOTIFICATION,
+
+    /**
+     * Schedule exact alarms (Android 12+)
+     * - Android API 31-32: SCHEDULE_EXACT_ALARM (user-granted permission)
+     * - Android API 33+: USE_EXACT_ALARM (install-time permission, no dialog)
+     * - iOS: Not applicable (always allowed)
+     *
+     * Use case: Alarm clock apps, calendar reminders, medication reminders.
+     * Note: Android 13+ apps that legitimately need exact alarms can use USE_EXACT_ALARM
+     * which doesn't require user approval. SCHEDULE_EXACT_ALARM requires user to manually
+     * grant in Settings.
+     */
+    SCHEDULE_EXACT_ALARM,
 
     /**
      * Bluetooth grant
@@ -95,4 +147,11 @@ enum class AppGrant {
     //  * - iOS: NSCalendarsUsageDescription (EventKit)
     //  */
     // CALENDAR,
+    ;
+
+    /**
+     * Unique identifier for this permission.
+     * Uses the enum constant name (e.g., "CAMERA", "LOCATION").
+     */
+    override val identifier: String get() = name
 }

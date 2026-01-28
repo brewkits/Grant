@@ -5,8 +5,9 @@ import dev.brewkits.grant.impl.PlatformGrantDelegate
 /**
  * iOS implementation of platform delegate factory.
  *
- * No parameters needed for iOS.
+ * Accepts GrantStore for state management (in-memory only on iOS).
  */
-actual fun createPlatformDelegate(context: Any?): PlatformGrantDelegate {
-    return PlatformGrantDelegate()
+actual fun createPlatformDelegate(context: Any?, store: GrantStore): PlatformGrantDelegate {
+    // iOS doesn't use context, only store
+    return PlatformGrantDelegate(store)
 }

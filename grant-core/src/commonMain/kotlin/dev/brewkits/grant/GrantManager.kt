@@ -17,35 +17,53 @@ package dev.brewkits.grant
  */
 interface GrantManager {
     /**
-     * Checks the current status of a grant WITHOUT showing any UI.
+     * Checks the current status of a permission WITHOUT showing any UI.
      *
      * Use this to check before triggering features or to update UI state.
      *
-     * @param grant The grant to check
+     * **Supports both built-in and custom permissions:**
+     * - AppGrant enum values (recommended for common permissions)
+     * - RawPermission for custom/platform-specific permissions
+     *
+     * @param grant The permission to check (AppGrant or RawPermission)
      * @return Current status (GRANTED, DENIED, DENIED_ALWAYS, NOT_DETERMINED)
      *
-     * **Example**:
+     * **Example (built-in permission)**:
      * ```kotlin
      * val status = grantManager.checkStatus(AppGrant.CAMERA)
      * if (status == GrantStatus.GRANTED) {
      *     openCamera()
      * }
      * ```
+     *
+     * **Example (custom permission)**:
+     * ```kotlin
+     * val customPermission = RawPermission(
+     *     identifier = "CUSTOM_FEATURE",
+     *     androidPermissions = listOf("com.company.permission.CUSTOM"),
+     *     iosUsageKey = "NSCustomUsageDescription"
+     * )
+     * val status = grantManager.checkStatus(customPermission)
+     * ```
      */
-    suspend fun checkStatus(grant: AppGrant): GrantStatus
+    suspend fun checkStatus(grant: GrantPermission): GrantStatus
 
     /**
-     * Requests a grant from the user.
+     * Requests a permission from the user.
      *
      * This function will:
-     * - Show system grant dialog (if first time or previously denied softly)
+     * - Show system permission dialog (if first time or previously denied softly)
      * - Return immediately if already granted
      * - Suspend until user makes a choice
      *
-     * @param grant The grant to request
+     * **Supports both built-in and custom permissions:**
+     * - AppGrant enum values (recommended for common permissions)
+     * - RawPermission for custom/platform-specific permissions
+     *
+     * @param grant The permission to request (AppGrant or RawPermission)
      * @return Status after the request (GRANTED if approved, DENIED/DENIED_ALWAYS if rejected)
      *
-     * **Example**:
+     * **Example (built-in permission)**:
      * ```kotlin
      * val result = grantManager.request(AppGrant.CAMERA)
      * when (result) {
@@ -55,8 +73,18 @@ interface GrantManager {
      *     else -> {}
      * }
      * ```
+     *
+     * **Example (custom permission)**:
+     * ```kotlin
+     * val customPermission = RawPermission(
+     *     identifier = "CUSTOM_FEATURE",
+     *     androidPermissions = listOf("com.company.permission.CUSTOM"),
+     *     iosUsageKey = "NSCustomUsageDescription"
+     * )
+     * val result = grantManager.request(customPermission)
+     * ```
      */
-    suspend fun request(grant: AppGrant): GrantStatus
+    suspend fun request(grant: GrantPermission): GrantStatus
 
     /**
      * Opens the app's settings page where user can manually enable grants.

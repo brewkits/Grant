@@ -52,6 +52,7 @@ data class GrantUiState(
  * 2. **Clean ViewModels**: Reduce from 30+ lines to 3 lines
  * 3. **Consistent UX**: All features follow same grant flow
  * 4. **Testable**: Easy to mock and test
+ * 5. **Process Death Recovery**: Optional state restoration on Android
  *
  * **Usage in ViewModel**:
  * ```kotlin
@@ -74,6 +75,21 @@ data class GrantUiState(
  * **Usage in UI (Compose)**:
  * ```kotlin
  * GrantDialogHandler(handler = viewModel.cameraGrant)
+ * ```
+ *
+ * **Process Death Recovery (Android)**:
+ * ```kotlin
+ * class CameraViewModel(
+ *     grantManager: GrantManager,
+ *     savedStateHandle: SavedStateHandle
+ * ) : ViewModel() {
+ *     val cameraGrant = GrantHandler(
+ *         grantManager = grantManager,
+ *         grant = AppGrant.CAMERA,
+ *         scope = viewModelScope,
+ *         savedStateDelegate = AndroidSavedStateDelegate(savedStateHandle) // Optional
+ *     )
+ * }
  * ```
  *
  * @param grantManager The underlying grant manager
@@ -106,12 +122,22 @@ data class GrantUiState(
  *                  // This breaks on screen rotation!
  *              }
  *              ```
+ * @param savedStateDelegate Optional delegate for saving/restoring state across process death.
+ *                           Use AndroidSavedStateDelegate on Android for automatic restoration.
+ *                           Defaults to NoOpSavedStateDelegate (no persistence).
  */
 class GrantHandler(
     private val grantManager: GrantManager,
     private val grant: AppGrant,
-    scope: CoroutineScope
+    scope: CoroutineScope,
+    private val savedStateDelegate: SavedStateDelegate = NoOpSavedStateDelegate()
 ) {
+    private companion object {
+        // Keys for SavedStateDelegate
+        const val KEY_IS_VISIBLE = "grant_handler_is_visible"
+        const val KEY_SHOW_RATIONALE = "grant_handler_show_rationale"
+        const val KEY_SHOW_SETTINGS = "grant_handler_show_settings"
+    }
     private val scope: CoroutineScope
 
     init {
@@ -147,6 +173,22 @@ class GrantHandler(
     private var hasShownRationaleDialog = false
 
     init {
+        // Restore state from savedStateDelegate (process death recovery)
+        val wasVisible = savedStateDelegate.restoreState(KEY_IS_VISIBLE)?.toBoolean() ?: false
+        val wasRationale = savedStateDelegate.restoreState(KEY_SHOW_RATIONALE)?.toBoolean() ?: false
+        val wasSettings = savedStateDelegate.restoreState(KEY_SHOW_SETTINGS)?.toBoolean() ?: false
+
+        if (wasVisible) {
+            // Directly update _state without saving back to delegate (we're restoring from it)
+            _state.update {
+                it.copy(
+                    isVisible = true,
+                    showRationale = wasRationale,
+                    showSettingsGuide = wasSettings
+                )
+            }
+        }
+
         // Initialize status on creation
         refreshStatus()
     }
@@ -392,7 +434,7 @@ class GrantHandler(
                 // clicks the feature button again.
                 if (!isFirstRequest) {
                     hasShownRationaleDialog = true  // Mark that we showed rationale
-                    _state.update {
+                    updateState {
                         it.copy(
                             isVisible = true,
                             showRationale = true,
@@ -423,7 +465,7 @@ class GrantHandler(
                 val shouldShowSettingsGuide = hasShownRationaleDialog || !isFirstRequest
 
                 if (shouldShowSettingsGuide) {
-                    _state.update {
+                    updateState {
                         it.copy(
                             isVisible = true,
                             showRationale = false,
@@ -443,7 +485,21 @@ class GrantHandler(
     }
 
     private fun resetState() {
-        _state.update { GrantUiState() }
+        updateState { GrantUiState() }
+    }
+
+    /**
+     * Updates the state and persists it to savedStateDelegate.
+     * This ensures state is restored after process death.
+     */
+    private fun updateState(block: (GrantUiState) -> GrantUiState) {
+        _state.update(block)
+
+        // Save to delegate for process death recovery
+        val current = _state.value
+        savedStateDelegate.saveState(KEY_IS_VISIBLE, current.isVisible.toString())
+        savedStateDelegate.saveState(KEY_SHOW_RATIONALE, current.showRationale.toString())
+        savedStateDelegate.saveState(KEY_SHOW_SETTINGS, current.showSettingsGuide.toString())
     }
 
     /**

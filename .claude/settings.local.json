@@ -30,7 +30,11 @@
       "Bash(adb devices:*)",
       "Bash(adb install:*)",
       "Bash(adb logcat:*)",
-      "Bash(timeout 5 adb logcat:*)"
+      "Bash(timeout 5 adb logcat:*)",
+      "Bash(open:*)",
+      "WebFetch(domain:github.com)",
+      "WebSearch",
+      "WebFetch(domain:google.github.io)"
     ]
   }
 }

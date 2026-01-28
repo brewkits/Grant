@@ -1,17 +1,20 @@
 package dev.brewkits.grant.impl
 
 import dev.brewkits.grant.AppGrant
+import dev.brewkits.grant.GrantPermission
 import dev.brewkits.grant.GrantStatus
+import dev.brewkits.grant.GrantStore
+import dev.brewkits.grant.RawPermission
 import dev.brewkits.grant.delegates.BluetoothManagerDelegate
+import dev.brewkits.grant.delegates.BluetoothPoweredOffException
+import dev.brewkits.grant.delegates.BluetoothTimeoutException
+import dev.brewkits.grant.delegates.BluetoothInitializationException
 import dev.brewkits.grant.delegates.LocationManagerDelegate
 import dev.brewkits.grant.utils.GrantLogger
 import dev.brewkits.grant.utils.SimulatorDetector
 import dev.brewkits.grant.utils.mainContinuation
 import dev.brewkits.grant.utils.mainContinuation2
 import dev.brewkits.grant.utils.runOnMain
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import platform.AVFoundation.*
 import platform.Contacts.*
@@ -21,6 +24,7 @@ import platform.CoreMotion.CMAuthorizationStatusDenied
 import platform.CoreMotion.CMAuthorizationStatusNotDetermined
 import platform.CoreMotion.CMAuthorizationStatusRestricted
 import platform.CoreMotion.CMMotionActivityManager
+import platform.Foundation.NSBundle
 import platform.Foundation.NSDate
 import platform.Foundation.NSOperationQueue
 import platform.Foundation.NSURL
@@ -43,8 +47,13 @@ import kotlinx.coroutines.sync.withLock
  * - Full support for all AppGrant types including MOTION and BLUETOOTH.
  * - Async/Await pattern using Kotlin Coroutines.
  * - Thread-safe callbacks ensuring execution on the Main Thread.
+ *
+ * Note: iOS has perfect 4-state differentiation from OS APIs, so GrantStore is accepted
+ * for consistency but not currently used (iOS doesn't need "requested before" tracking).
  */
-actual class PlatformGrantDelegate {
+actual class PlatformGrantDelegate(
+    @Suppress("UNUSED_PARAMETER") private val store: GrantStore
+) {
 
     // Lazy initialization of delegates to avoid unnecessary resource allocation
     private val locationDelegate by lazy { LocationManagerDelegate() }
@@ -53,11 +62,69 @@ actual class PlatformGrantDelegate {
 
     private val requestMutex = Mutex()
 
-    actual suspend fun checkStatus(grant: AppGrant): GrantStatus {
-        return when (grant) {
+    /**
+     * Validates that the required Info.plist key exists before requesting permission.
+     *
+     * **Why This is Critical:**
+     * - iOS requires specific Info.plist keys for each permission type
+     * - Missing keys cause immediate SIGABRT crash (app terminates)
+     * - Crash happens BEFORE user sees permission dialog
+     * - No way to catch or recover from the crash
+     *
+     * **This validation provides:**
+     * - Runtime safety check before calling native APIs
+     * - Clear error message with the missing key and fix instructions
+     * - Graceful degradation (returns DENIED_ALWAYS instead of crashing)
+     * - Development-time feedback to fix Info.plist
+     *
+     * @param key The Info.plist key to check (e.g., "NSCameraUsageDescription")
+     * @param grant The grant type for error messaging
+     * @return true if key exists, false if missing
+     */
+    private fun validateInfoPlistKey(key: String, grant: AppGrant): Boolean {
+        val bundle = NSBundle.mainBundle
+        val value = bundle.objectForInfoDictionaryKey(key)
+
+        if (value == null) {
+            GrantLogger.e(
+                "iOSGrant",
+                """
+                ⚠️ CRITICAL: Missing required Info.plist key for ${grant.name}
+
+                Required key: $key
+
+                Add this to your Info.plist file:
+                <key>$key</key>
+                <string>Describe why your app needs this permission</string>
+
+                Without this key, your app will CRASH immediately with SIGABRT.
+
+                For more information, see:
+                https://developer.apple.com/documentation/bundleresources/information_property_list
+                """.trimIndent()
+            )
+            return false
+        }
+
+        return true
+    }
+
+    actual suspend fun checkStatus(grant: GrantPermission): GrantStatus {
+        // Handle RawPermission (custom permissions) - Not yet fully implemented
+        if (grant is RawPermission) {
+            GrantLogger.w("iOSGrant", "RawPermission support not yet implemented: ${grant.identifier}")
+            return GrantStatus.DENIED  // Conservative default
+        }
+
+        // Cast to AppGrant
+        val appGrant = grant as AppGrant
+
+        return when (appGrant) {
             AppGrant.CAMERA -> checkAVStatus(AVMediaTypeVideo)
             AppGrant.MICROPHONE -> checkAVStatus(AVMediaTypeAudio)
             AppGrant.GALLERY -> checkPhotoStatus()
+            AppGrant.GALLERY_IMAGES_ONLY -> checkPhotoStatus() // iOS doesn't distinguish images vs videos
+            AppGrant.GALLERY_VIDEO_ONLY -> checkPhotoStatus() // iOS doesn't distinguish images vs videos
             AppGrant.STORAGE -> checkPhotoStatus() // iOS treats Storage as Photos access
             AppGrant.LOCATION -> checkLocationStatus(always = false)
             AppGrant.LOCATION_ALWAYS -> checkLocationStatus(always = true)
@@ -65,30 +132,62 @@ actual class PlatformGrantDelegate {
             AppGrant.NOTIFICATION -> checkNotificationStatus()
             AppGrant.BLUETOOTH -> bluetoothDelegate.checkStatus()
             AppGrant.MOTION -> checkMotionStatus()
+            AppGrant.SCHEDULE_EXACT_ALARM -> GrantStatus.GRANTED // iOS: Always allowed, no permission needed
         }
     }
 
-    actual suspend fun request(grant: AppGrant): GrantStatus = requestMutex.withLock {
+    actual suspend fun request(grant: GrantPermission): GrantStatus = requestMutex.withLock {
         return@withLock runOnMain {
-            when (grant) {
+            // Handle RawPermission (custom permissions) - Not yet fully implemented
+            if (grant is RawPermission) {
+                GrantLogger.w("iOSGrant", "RawPermission support not yet implemented: ${grant.identifier}")
+                return@runOnMain GrantStatus.DENIED  // Conservative default
+            }
+
+            // Cast to AppGrant
+            val appGrant = grant as AppGrant
+
+            when (appGrant) {
                 AppGrant.CAMERA -> requestAVGrant(AVMediaTypeVideo)
                 AppGrant.MICROPHONE -> requestAVGrant(AVMediaTypeAudio)
                 AppGrant.GALLERY -> requestPhotoGrant()
+                AppGrant.GALLERY_IMAGES_ONLY -> requestPhotoGrant() // iOS doesn't distinguish images vs videos
+                AppGrant.GALLERY_VIDEO_ONLY -> requestPhotoGrant() // iOS doesn't distinguish images vs videos
                 AppGrant.STORAGE -> requestPhotoGrant()
                 AppGrant.LOCATION -> requestLocationGrant(always = false)
                 AppGrant.LOCATION_ALWAYS -> requestLocationGrant(always = true)
                 AppGrant.CONTACTS -> requestContactsGrant()
                 AppGrant.NOTIFICATION -> requestNotificationGrant()
                 AppGrant.BLUETOOTH -> try {
+                    // PRE-CHECK: Validate Info.plist key before requesting (iOS 13+)
+                    if (!validateInfoPlistKey("NSBluetoothAlwaysUsageDescription", AppGrant.BLUETOOTH)) {
+                        return@withLock GrantStatus.DENIED_ALWAYS
+                    }
                     bluetoothDelegate.requestBluetoothAccess()
+                } catch (e: BluetoothTimeoutException) {
+                    // Timeout - temporary error, user can retry
+                    GrantLogger.w("iOSGrant", "Bluetooth request timed out: ${e.message}")
+                    GrantStatus.DENIED // Soft denial - can retry
+                } catch (e: BluetoothInitializationException) {
+                    // Initialization failed - temporary error
+                    GrantLogger.w("iOSGrant", "Bluetooth initialization failed: ${e.message}")
+                    GrantStatus.DENIED // Soft denial - can retry
+                } catch (e: BluetoothPoweredOffException) {
+                    // Bluetooth is powered off - user needs to enable it
+                    GrantLogger.w("iOSGrant", "Bluetooth is powered off: ${e.message}")
+                    GrantStatus.DENIED // Soft denial - user can enable BT
                 } catch (e: Exception) {
-                    // Log warning
-                    GrantLogger.w("iOSGrant", "Bluetooth request failed: ${e.message}")
-                    // return DENIED instead of Crash
-                    GrantStatus.DENIED_ALWAYS
+                    // Unknown error - be conservative, allow retry
+                    GrantLogger.e("iOSGrant", "Bluetooth request failed with unknown error", e)
+                    GrantStatus.DENIED // Soft denial - not permanent
                 }
 
                 AppGrant.MOTION -> requestMotionGrant()
+                AppGrant.SCHEDULE_EXACT_ALARM -> {
+                    // iOS: No permission needed for exact alarms, always granted
+                    GrantLogger.i("iOSGrant", "SCHEDULE_EXACT_ALARM automatically granted on iOS")
+                    GrantStatus.GRANTED
+                }
             }
         }
     }
@@ -97,23 +196,28 @@ actual class PlatformGrantDelegate {
         try {
             val settingsUrl = NSURL(string = UIApplicationOpenSettingsURLString)
             if (settingsUrl != null && UIApplication.sharedApplication.canOpenURL(settingsUrl)) {
-                // Use non-deprecated API: open(_:options:completionHandler:)
+                // Use modern API: openURL:options:completionHandler:
+                // This replaces the deprecated openURL: method (deprecated since iOS 10)
                 UIApplication.sharedApplication.openURL(
                     settingsUrl,
-                    options = emptyMap<Any?, Any>(),
+                    options = emptyMap<Any?, Any?>(),
                     completionHandler = { success ->
                         if (success) {
-                            GrantLogger.i("iOSGrant", "Opened app settings")
+                            GrantLogger.i("iOSGrant", "Successfully opened app settings")
                         } else {
-                            GrantLogger.e("iOSGrant", "Failed to open settings URL")
+                            GrantLogger.e("iOSGrant", "Failed to open settings URL - system denied the request")
                         }
                     }
                 )
             } else {
-                GrantLogger.e("iOSGrant", "Cannot open settings URL")
+                if (settingsUrl == null) {
+                    GrantLogger.e("iOSGrant", "Cannot create settings URL from UIApplicationOpenSettingsURLString")
+                } else {
+                    GrantLogger.e("iOSGrant", "Cannot open settings URL - canOpenURL returned false")
+                }
             }
         } catch (e: Exception) {
-            GrantLogger.e("iOSGrant", "Failed to open settings", e)
+            GrantLogger.e("iOSGrant", "Exception while opening settings: ${e.message}", e)
         }
     }
 
@@ -124,34 +228,67 @@ actual class PlatformGrantDelegate {
     // --- AVFoundation (Camera & Microphone) ---
 
     private fun checkAVStatus(mediaType: AVMediaType): GrantStatus {
-        return when (AVCaptureDevice.authorizationStatusForMediaType(mediaType)) {
-            AVAuthorizationStatusAuthorized -> GrantStatus.GRANTED
-            AVAuthorizationStatusDenied -> GrantStatus.DENIED_ALWAYS
-            AVAuthorizationStatusRestricted -> GrantStatus.DENIED_ALWAYS
-            AVAuthorizationStatusNotDetermined -> GrantStatus.NOT_DETERMINED
-            else -> GrantStatus.NOT_DETERMINED
+        try {
+            return when (AVCaptureDevice.authorizationStatusForMediaType(mediaType)) {
+                AVAuthorizationStatusAuthorized -> GrantStatus.GRANTED
+                AVAuthorizationStatusDenied -> GrantStatus.DENIED_ALWAYS
+                AVAuthorizationStatusRestricted -> {
+                    GrantLogger.w("iOSGrant", "AV permission restricted (may be parental controls)")
+                    GrantStatus.DENIED_ALWAYS
+                }
+                AVAuthorizationStatusNotDetermined -> GrantStatus.NOT_DETERMINED
+                else -> {
+                    GrantLogger.w("iOSGrant", "Unknown AV authorization status, returning NOT_DETERMINED")
+                    GrantStatus.NOT_DETERMINED
+                }
+            }
+        } catch (e: Exception) {
+            GrantLogger.e("iOSGrant", "Error checking AV authorization status: ${e.message}", e)
+            return GrantStatus.NOT_DETERMINED
         }
     }
 
     private suspend fun requestAVGrant(mediaType: AVMediaType): GrantStatus {
+        val (mediaTypeName, infoKey, grant) = when (mediaType) {
+            AVMediaTypeVideo -> Triple("Camera", "NSCameraUsageDescription", AppGrant.CAMERA)
+            AVMediaTypeAudio -> Triple("Microphone", "NSMicrophoneUsageDescription", AppGrant.MICROPHONE)
+            else -> Triple("AV", "NSCameraUsageDescription", AppGrant.CAMERA)
+        }
+
+        // PRE-CHECK: Validate Info.plist key before requesting
+        // This prevents SIGABRT crash if the key is missing
+        if (!validateInfoPlistKey(infoKey, grant)) {
+            return GrantStatus.DENIED_ALWAYS  // Safer than crashing
+        }
+
         val currentStatus = checkAVStatus(mediaType)
         if (currentStatus != GrantStatus.NOT_DETERMINED) {
+            GrantLogger.i("iOSGrant", "$mediaTypeName already determined: $currentStatus")
             return currentStatus
         }
 
         return suspendCancellableCoroutine { continuation ->
-            CoroutineScope(Dispatchers.Main).launch {
+            try {
+                GrantLogger.i("iOSGrant", "Requesting $mediaTypeName access...")
+                // Direct call - no CoroutineScope.launch wrapper needed
+                // We're already guaranteed to be on main thread by runOnMain() in request()
+                // Wrapping in launch causes deadlock (moko-permissions issue #129)
                 AVCaptureDevice.requestAccessForMediaType(
                     mediaType = mediaType,
                     completionHandler = mainContinuation { granted ->
                         val status = if (granted) {
+                            GrantLogger.i("iOSGrant", "$mediaTypeName access granted")
                             GrantStatus.GRANTED
                         } else {
+                            GrantLogger.i("iOSGrant", "$mediaTypeName access denied")
                             GrantStatus.DENIED_ALWAYS
                         }
                         continuation.resume(status)
                     }
                 )
+            } catch (e: Exception) {
+                GrantLogger.e("iOSGrant", "Error requesting $mediaTypeName access: ${e.message}", e)
+                continuation.resume(GrantStatus.DENIED)
             }
         }
     }
@@ -170,6 +307,11 @@ actual class PlatformGrantDelegate {
     }
 
     private suspend fun requestPhotoGrant(): GrantStatus {
+        // PRE-CHECK: Validate Info.plist key before requesting
+        if (!validateInfoPlistKey("NSPhotoLibraryUsageDescription", AppGrant.GALLERY)) {
+            return GrantStatus.DENIED_ALWAYS
+        }
+
         val currentStatus = checkPhotoStatus()
         if (currentStatus != GrantStatus.NOT_DETERMINED) {
             return currentStatus
@@ -201,6 +343,11 @@ actual class PlatformGrantDelegate {
     }
 
     private suspend fun requestContactsGrant(): GrantStatus {
+        // PRE-CHECK: Validate Info.plist key before requesting
+        if (!validateInfoPlistKey("NSContactsUsageDescription", AppGrant.CONTACTS)) {
+            return GrantStatus.DENIED_ALWAYS
+        }
+
         val currentStatus = checkContactsStatus()
         if (currentStatus != GrantStatus.NOT_DETERMINED) {
             return currentStatus
@@ -231,6 +378,22 @@ actual class PlatformGrantDelegate {
     }
 
     private suspend fun requestLocationGrant(always: Boolean): GrantStatus {
+        // PRE-CHECK: Validate Info.plist keys before requesting
+        // iOS 11+ requires both keys for "always" authorization
+        if (always) {
+            // "Always" needs both keys
+            val hasWhenInUse = validateInfoPlistKey("NSLocationWhenInUseUsageDescription", AppGrant.LOCATION_ALWAYS)
+            val hasAlways = validateInfoPlistKey("NSLocationAlwaysAndWhenInUseUsageDescription", AppGrant.LOCATION_ALWAYS)
+            if (!hasWhenInUse || !hasAlways) {
+                return GrantStatus.DENIED_ALWAYS
+            }
+        } else {
+            // "When in use" needs only WhenInUse key
+            if (!validateInfoPlistKey("NSLocationWhenInUseUsageDescription", AppGrant.LOCATION)) {
+                return GrantStatus.DENIED_ALWAYS
+            }
+        }
+
         // Delegate handles the complex delegate callbacks and thread switching
         val authStatus = if (always) {
             locationDelegate.requestAlwaysAuthorization()
@@ -336,6 +499,11 @@ actual class PlatformGrantDelegate {
                 "Running on ${SimulatorDetector.simulatorType} - Returning GRANTED for Motion (data collection may not work)"
             )
             return GrantStatus.GRANTED
+        }
+
+        // PRE-CHECK: Validate Info.plist key before requesting
+        if (!validateInfoPlistKey("NSMotionUsageDescription", AppGrant.MOTION)) {
+            return GrantStatus.DENIED_ALWAYS
         }
 
         val currentStatus = checkMotionStatus()

@@ -5,6 +5,7 @@ import dev.brewkits.grant.utils.GrantLogger
 import dev.brewkits.grant.utils.SimulatorDetector
 import dev.brewkits.grant.utils.mainContinuation
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeout
 import platform.CoreBluetooth.*
 import platform.darwin.NSObject
 import kotlin.coroutines.Continuation
@@ -67,7 +68,14 @@ internal class BluetoothManagerDelegate : NSObject(), CBCentralManagerDelegatePr
      * Requests Bluetooth grant by creating a CBCentralManager.
      * The OS will automatically show grant dialog on first access.
      *
+     * Timeout: 10 seconds
+     * - iOS typically responds within 1-2 seconds
+     * - 10 seconds allows for slow systems while preventing indefinite hangs
+     *
      * @return The resulting grant status
+     * @throws BluetoothTimeoutException if request times out
+     * @throws BluetoothInitializationException if CBCentralManager creation fails
+     * @throws BluetoothPoweredOffException if Bluetooth is powered off
      */
     suspend fun requestBluetoothAccess(): GrantStatus {
         // iOS Simulator doesn't support Bluetooth hardware
@@ -80,20 +88,39 @@ internal class BluetoothManagerDelegate : NSObject(), CBCentralManagerDelegatePr
             return GrantStatus.GRANTED
         }
 
-        return suspendCancellableCoroutine { cont ->
-            continuation = cont
+        return try {
+            withTimeout(10_000L) { // 10 second timeout
+                suspendCancellableCoroutine { cont ->
+                    continuation = cont
 
-            // Create CBCentralManager - this triggers grant request
-            // Queue = null means use main queue
-            centralManager = CBCentralManager(
-                delegate = this,
-                queue = null
-            )
+                    try {
+                        // Create CBCentralManager - this triggers grant request
+                        // Queue = null means use main queue
+                        centralManager = CBCentralManager(
+                            delegate = this@BluetoothManagerDelegate,
+                            queue = null
+                        )
 
-            cont.invokeOnCancellation {
-                continuation = null
-                centralManager = null
+                        GrantLogger.i("BluetoothDelegate", "CBCentralManager created, waiting for state update")
+                    } catch (e: Exception) {
+                        GrantLogger.e("BluetoothDelegate", "Failed to create CBCentralManager", e)
+                        cont.resumeWithException(
+                            BluetoothInitializationException("Failed to initialize Bluetooth manager: ${e.message}")
+                        )
+                    }
+
+                    cont.invokeOnCancellation {
+                        GrantLogger.i("BluetoothDelegate", "Bluetooth request cancelled")
+                        continuation = null
+                        centralManager = null
+                    }
+                }
             }
+        } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+            GrantLogger.w("BluetoothDelegate", "Bluetooth request timed out after 10 seconds")
+            continuation = null
+            centralManager = null
+            throw BluetoothTimeoutException("Bluetooth permission request timed out after 10 seconds")
         }
     }
 
@@ -166,5 +193,18 @@ internal class BluetoothManagerDelegate : NSObject(), CBCentralManagerDelegatePr
 
 /**
  * Exception thrown when Bluetooth grant is granted but Bluetooth is powered off.
+ * This is a recoverable error - user needs to enable Bluetooth in Settings.
  */
 internal class BluetoothPoweredOffException(message: String) : Exception(message)
+
+/**
+ * Exception thrown when Bluetooth permission request times out.
+ * This is a temporary error - user can retry.
+ */
+internal class BluetoothTimeoutException(message: String) : Exception(message)
+
+/**
+ * Exception thrown when CBCentralManager initialization fails.
+ * This is a temporary error - may be due to system state.
+ */
+internal class BluetoothInitializationException(message: String) : Exception(message)

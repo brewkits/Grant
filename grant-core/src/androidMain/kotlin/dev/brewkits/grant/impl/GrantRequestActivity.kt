@@ -58,8 +58,19 @@ class GrantRequestActivity : ComponentActivity() {
         // Don't set any content view - keep activity completely empty
         // This prevents any UI rendering and ensures zero visual impact
 
-        // Get request ID from intent
-        requestId = intent.getStringExtra(EXTRA_REQUEST_ID) ?: run {
+        // Get request ID from savedInstanceState (process death recovery) or intent (new request)
+        requestId = savedInstanceState?.getString(KEY_REQUEST_ID)
+            ?: intent.getStringExtra(EXTRA_REQUEST_ID)
+            ?: run {
+                println("$TAG: No requestId found - finishing activity")
+                finish()
+                return
+            }
+
+        // Check if this requestId still has a waiting coroutine
+        // If process died, the old requestId has no waiting coroutine and should be abandoned
+        if (!pendingResults.containsKey(requestId)) {
+            println("$TAG: RequestId $requestId has no pending coroutine - orphaned request after process death")
             finish()
             return
         }
@@ -135,13 +146,22 @@ class GrantRequestActivity : ComponentActivity() {
         requestMultipleGrantsLauncher?.launch(currentGrants)
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        // Save requestId to survive process death
+        // This allows the activity to check if it's an orphaned request on recreation
+        outState.putString(KEY_REQUEST_ID, requestId)
+    }
+
     private fun setResult(requestId: String, result: GrantResult) {
         pendingResults[requestId]?.value = result
     }
 
     companion object {
+        private const val TAG = "GrantRequestActivity"
         private const val EXTRA_GRANTS = "grants"
         private const val EXTRA_REQUEST_ID = "request_id"
+        private const val KEY_REQUEST_ID = "saved_request_id"
 
         /**
          * Map of request ID to result StateFlow.
@@ -151,12 +171,29 @@ class GrantRequestActivity : ComponentActivity() {
         private val pendingResults = ConcurrentHashMap<String, MutableStateFlow<GrantResult?>>()
 
         /**
+         * Map of request ID to creation timestamp for orphan cleanup.
+         * Tracks when each request was created to identify stale entries.
+         */
+        private val pendingTimestamps = ConcurrentHashMap<String, Long>()
+
+        /**
+         * Threshold for cleaning up orphaned entries (2 minutes).
+         * Entries older than this are considered orphaned and cleaned up.
+         */
+        private const val ORPHAN_CLEANUP_THRESHOLD_MS = 120_000L
+
+        /**
          * Launch this Activity to request one or more grants.
          *
          * **Android Best Practice:**
          * - Requesting multiple related grants at once (e.g., FINE + COARSE Location)
          *   provides better UX as the system can group them into a single dialog flow
          * - This prevents showing multiple sequential dialogs for related grants
+         *
+         * **Process Death Recovery:**
+         * - Tracks request timestamps to cleanup orphaned entries
+         * - If process dies during request, old entries are cleaned up on next request
+         * - Prevents memory leaks from abandoned StateFlows
          *
          * @param context Android context
          * @param androidGrants List of Android grant strings (e.g., [Manifest.permission.CAMERA])
@@ -167,6 +204,10 @@ class GrantRequestActivity : ComponentActivity() {
 
             // Create StateFlow for this request
             pendingResults[requestId] = MutableStateFlow(null)
+            pendingTimestamps[requestId] = System.currentTimeMillis()
+
+            // Cleanup orphaned entries before starting new request
+            cleanupOrphanedEntries()
 
             val intent = Intent(context, GrantRequestActivity::class.java).apply {
                 putExtra(EXTRA_GRANTS, androidGrants.toTypedArray())
@@ -178,6 +219,37 @@ class GrantRequestActivity : ComponentActivity() {
             context.startActivity(intent)
 
             return requestId
+        }
+
+        /**
+         * Cleanup orphaned entries that have exceeded the timeout threshold.
+         * Called automatically on each new request to prevent memory leaks.
+         *
+         * **Why This is Needed:**
+         * - Process death leaves orphaned entries in pendingResults
+         * - Old requestId has no waiting coroutine after process death
+         * - Orphaned StateFlows consume memory (~200 bytes each)
+         * - This cleanup prevents unbounded memory growth
+         */
+        private fun cleanupOrphanedEntries() {
+            val now = System.currentTimeMillis()
+            val orphanedIds = mutableListOf<String>()
+
+            pendingTimestamps.entries.forEach { (requestId, timestamp) ->
+                if (now - timestamp > ORPHAN_CLEANUP_THRESHOLD_MS) {
+                    orphanedIds.add(requestId)
+                }
+            }
+
+            orphanedIds.forEach { requestId ->
+                pendingResults.remove(requestId)
+                pendingTimestamps.remove(requestId)
+            }
+
+            if (orphanedIds.isNotEmpty()) {
+                // Log cleanup for debugging (GrantLogger will be used if available)
+                println("$TAG: Cleaned up ${orphanedIds.size} orphaned request(s)")
+            }
         }
 
         /**
@@ -198,6 +270,7 @@ class GrantRequestActivity : ComponentActivity() {
          */
         internal fun cleanup(requestId: String) {
             pendingResults.remove(requestId)
+            pendingTimestamps.remove(requestId)
         }
     }
 

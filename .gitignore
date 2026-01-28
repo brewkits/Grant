@@ -56,6 +56,11 @@ compose-desktop.properties
 .tmp/
 *.log
 *.bak
-
+.claude
+.idea
+run-ios-from-studio.sh
+MANUAL_UPLOAD_INSTRUCTIONS.md
+MAVEN_ARTIFACTS_v1.0.0.md
+PUBLISH_CHECKLIST.md
 # Reference files (keep in repo for now)
 # 2026-01-22-*.txt

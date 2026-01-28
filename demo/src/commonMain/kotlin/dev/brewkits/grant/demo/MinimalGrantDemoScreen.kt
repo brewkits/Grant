@@ -22,7 +22,7 @@ fun MinimalGrantDemoScreen(
     viewModel: GrantDemoViewModel,
     modifier: Modifier = Modifier
 ) {
-    // ✅ One line per permission - handles ALL dialog states automatically
+    // ✅ One line per grant - handles ALL dialog states automatically
     GrantDialog(handler = viewModel.cameraGrant)
     GrantDialog(handler = viewModel.locationGrant)
 
@@ -43,14 +43,14 @@ fun MinimalGrantDemoScreen(
             )
 
             Text(
-                text = "See how simple permission handling can be with grant-compose",
+                text = "See how simple grant handling can be with grant-compose",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Camera Permission
+            // Camera Grant
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -62,13 +62,13 @@ fun MinimalGrantDemoScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "📷 Camera Permission",
+                        text = "📷 Camera Grant",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
 
                     Text(
-                        text = "Click the button to request camera permission. " +
+                        text = "Click the button to request camera grant. " +
                                 "The library handles rationale and settings dialogs automatically.",
                         style = MaterialTheme.typography.bodyMedium
                     )
@@ -79,7 +79,7 @@ fun MinimalGrantDemoScreen(
                                 rationaleMessage = "We need camera access to take photos.",
                                 settingsMessage = "Camera is disabled. Please enable it in Settings."
                             ) {
-                                // ✅ This only runs when permission is GRANTED
+                                // ✅ This only runs when grant is GRANTED
                                 println("✅ Camera granted! Opening camera...")
                             }
                         },
@@ -90,7 +90,7 @@ fun MinimalGrantDemoScreen(
                 }
             }
 
-            // Location Permission
+            // Location Grant
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -102,13 +102,13 @@ fun MinimalGrantDemoScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "📍 Location Permission",
+                        text = "📍 Location Grant",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
 
                     Text(
-                        text = "Try denying this permission to see the rationale flow. " +
+                        text = "Try denying this grant to see the rationale flow. " +
                                 "Deny it twice to see the settings guide.",
                         style = MaterialTheme.typography.bodyMedium
                     )
@@ -119,7 +119,7 @@ fun MinimalGrantDemoScreen(
                                 rationaleMessage = "We need your location to show nearby places.",
                                 settingsMessage = "Location is disabled. Please enable it in Settings to use this feature."
                             ) {
-                                // ✅ This only runs when permission is GRANTED
+                                // ✅ This only runs when grant is GRANTED
                                 println("✅ Location granted! Loading map...")
                             }
                         },
@@ -154,7 +154,7 @@ fun MinimalGrantDemoScreen(
                             // 1. Add GrantDialog (one line)
                             GrantDialog(handler = viewModel.cameraGrant)
 
-                            // 2. Request permission
+                            // 2. Request grant
                             Button(onClick = {
                                 viewModel.cameraGrant.request {
                                     // Runs only when granted
