@@ -396,9 +396,8 @@ See [GrantStore Architecture](../docs/architecture/grant-store.md) for persisten
 - [Quick Start Guide](../docs/getting-started/quick-start.md)
 - [iOS Info.plist Setup](../docs/platform-specific/ios/info-plist.md) - ⚠️ **Critical - prevents crashes**
 - [GrantStore Architecture](../docs/architecture/grant-store.md) - State management and persistence
-- [Architecture Overview](../docs/architecture/overview.md)
-- [Platform Setup](../docs/getting-started/installation.md)
-- [Best Practices](../docs/guides/best-practices.md)
+- [Architecture Overview](../docs/grant-core/ARCHITECTURE.md) - System design and patterns
+- [Best Practices](../docs/BEST_PRACTICES.md) - Production-ready patterns
 - [Comparison vs moko-permissions](../docs/comparison/vs-moko-permissions.md)
 
 ---
@@ -426,6 +425,6 @@ See [LICENSE](../LICENSE) for full text.
 
 **Grant Core - The foundation of modern KMP permission handling** 🎯
 
-[⭐ Star on GitHub](https://github.com/brewkits/grant) • [📦 Maven Central](https://central.sonatype.com/artifact/dev.brewkits.grant/grant-core)
+[⭐ Star on GitHub](https://github.com/brewkits/Grant) • [📦 Maven Central](https://central.sonatype.com/artifact/dev.brewkits.grant/grant-core)
 
 </div>

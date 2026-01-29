@@ -299,7 +299,7 @@ Must test these on real device:
 
 - [iOS Quick Start](QUICK_START_IOS_ANDROID_STUDIO.md)
 - [iOS Setup](IOS_SETUP_ANDROID_STUDIO.md)
-- [Testing Guide](../grant-core/TESTING.md)
+- [Testing Guide](../TESTING.md)
 - [Best Practices](../BEST_PRACTICES.md)
 
 ---

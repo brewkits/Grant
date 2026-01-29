@@ -544,7 +544,7 @@ fun `test camera permission flow`() = runTest {
 }
 ```
 
-See [Testing Guide](../docs/advanced/testing.md) for comprehensive examples.
+See [Testing Guide](../docs/TESTING.md) for comprehensive examples.
 
 ---
 
@@ -561,8 +561,8 @@ See the [demo app](../demo/) for complete examples:
 - [Main README](../README.md)
 - [grant-core Documentation](../grant-core/README.md)
 - [Quick Start Guide](../docs/getting-started/quick-start.md)
-- [Compose Integration Guide](../docs/guides/compose-integration.md)
-- [Best Practices](../docs/guides/best-practices.md)
+- [Compose Support Release Notes](../docs/grant-compose/COMPOSE_SUPPORT_RELEASE_NOTES.md)
+- [Best Practices](../docs/BEST_PRACTICES.md)
 
 ---
 
@@ -597,6 +597,6 @@ limitations under the License.
 
 **Grant Compose - Beautiful, Powerful Permission Dialogs for Compose Multiplatform** 🎨
 
-[⭐ Star on GitHub](https://github.com/brewkits/grant) • [📦 Maven Central](https://central.sonatype.com/artifact/dev.brewkits.grant/grant-compose)
+[⭐ Star on GitHub](https://github.com/brewkits/Grant) • [📦 Maven Central](https://central.sonatype.com/artifact/dev.brewkits.grant/grant-compose)
 
 </div>

@@ -319,6 +319,6 @@ suspend fun startLocationTracking(): Boolean {
 
 ### "Dead click on Android 13+"
 
-This should not happen with Grant! If it does, please [file an issue](https://github.com/brewkits/grant/issues).
+This should not happen with Grant! If it does, please [file an issue](https://github.com/brewkits/Grant/issues).
 
 See [Dead Click Fix](../platform-specific/android/dead-click-fix.md) for technical details.

@@ -185,7 +185,7 @@ locationAlwaysGrant.request(
 
 ### Android Dangerous Grants
 
-According to [Android documentation](https://developer.android.com/guide/topics/grants/overview#dangerous_grants), dangerous grants include:
+According to [Android documentation](https://developer.android.com/guide/topics/permissions/overview#dangerous_permissions), dangerous grants include:
 
 - **Calendar**: READ_CALENDAR, WRITE_CALENDAR
 - **Camera**: CAMERA
@@ -325,8 +325,8 @@ demo/
 
 See main documentation:
 - [README.md](../README.md) - Quick start and overview
-- [GRANTS.md](../docs/GRANTS.md) - Complete grant guide
-- [ARCHITECTURE.md](../docs/ARCHITECTURE.md) - Technical design decisions
+- [Permission Types](../docs/grant-core/GRANTS.md) - Complete grant guide
+- [Architecture](../docs/grant-core/ARCHITECTURE.md) - Technical design decisions
 
 ---
 
@@ -347,6 +347,6 @@ See LICENSE file for full text.
 
 <div align="center">
 
-[⭐ Star on GitHub](https://github.com/brewkits/grant) • [📚 Documentation](../docs/README.md)
+[⭐ Star on GitHub](https://github.com/brewkits/Grant) • [📚 Documentation](../docs/README.md)
 
 </div>

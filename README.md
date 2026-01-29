@@ -55,7 +55,7 @@ fun CameraScreen(viewModel: CameraViewModel) {
 | 🍎 **iOS** | 13.0+ | Crash-guard & Main thread safety built-in |
 | 🎨 **Compose** | 1.7.1+ | Separate `grant-compose` module with GrantDialog |
 
-> 💡 **Note:** See [Platform-Specific Guides](docs/) for detailed iOS Info.plist setup and Android manifest configuration.
+> 💡 **Note:** See [iOS Info.plist Setup](docs/platform-specific/ios/info-plist.md) and [iOS Setup Guide](docs/ios/IOS_SETUP_ANDROID_STUDIO.md) for detailed configuration.
 
 ---
 
@@ -209,8 +209,6 @@ kotlin {
 }
 ```
 
-See [Installation Guide](docs/getting-started/installation.md) for details.
-
 ---
 
 ## 🎯 Quick Start
@@ -292,25 +290,24 @@ See [Quick Start Guide](docs/getting-started/quick-start.md) for complete setup.
 
 ### Getting Started
 - [Quick Start Guide](docs/getting-started/quick-start.md) - Get running in 5 minutes
-- [Installation](docs/getting-started/installation.md) - Gradle setup and dependencies
-- [Android Setup](docs/getting-started/android-setup.md) - AndroidManifest configuration
-- [iOS Setup](docs/getting-started/ios-setup.md) - Info.plist setup (⚠️ **critical - app crashes if missing**)
+- [Quick Start (iOS)](docs/grant-core/QUICK_START_iOS.md) - iOS-specific setup
+- [iOS Setup in Android Studio](docs/ios/IOS_SETUP_ANDROID_STUDIO.md) - Complete iOS setup guide
 
-### Guides
-- [Permission Handling Guide](docs/guides/permissions-guide.md)
-- [Service Checking](docs/guides/service-checking.md)
-- [Compose Integration](docs/guides/compose-integration.md)
-- [Best Practices](docs/guides/best-practices.md)
+### Core Concepts
+- [Permission Types](docs/grant-core/GRANTS.md) - All supported permissions
+- [Service Checking](docs/grant-core/SERVICES.md) - Check GPS, Bluetooth, etc.
+- [Architecture](docs/grant-core/ARCHITECTURE.md) - System design and patterns
+- [GrantStore](docs/architecture/grant-store.md) - State management, persistence, backup rules
 
-### Platform-Specific
-- **Android**: [Android 12+ Handling](docs/platform-specific/android/android-12-handling.md) • [Dead Click Fix](docs/platform-specific/android/dead-click-fix.md)
-- **iOS**: [Info.plist Setup](docs/platform-specific/ios/info-plist.md) • [Simulator Limitations](docs/platform-specific/ios/simulator-limitations.md)
+### Platform Guides
+- **Android**: [Dead Click Fix](docs/FIX_DEAD_CLICK_ANDROID.md) - Fixing Android 12+ dead clicks
+- **iOS**: [Info.plist Setup](docs/platform-specific/ios/info-plist.md) ⚠️ **Critical** • [Simulator Limitations](docs/ios/SIMULATOR_LIMITATIONS.md) • [Info.plist Localization](docs/ios/INFO_PLIST_LOCALIZATION.md)
 
-### Advanced
-- [Testing Guide](docs/advanced/testing.md) - Unit testing with FakeGrantManager
-- [Custom GrantStore](docs/advanced/custom-grant-store.md) - Implement custom storage
-- [Architecture Overview](docs/architecture/overview.md) - System design and patterns
-- [GrantStore Architecture](docs/architecture/grant-store.md) - State management, persistence, backup rules
+### Advanced Topics
+- [Testing Guide](docs/TESTING.md) - Unit testing with FakeGrantManager
+- [Best Practices](docs/BEST_PRACTICES.md) - Production-ready patterns
+- [Compose Integration](docs/grant-compose/COMPOSE_SUPPORT_RELEASE_NOTES.md) - Using grant-compose module
+- [Dependency Management](docs/DEPENDENCY_MANAGEMENT.md) - Handling version conflicts
 
 ### Production Checklist
 - 🔒 **iOS Info.plist**: [Add required keys](docs/platform-specific/ios/info-plist.md) (app crashes if missing)
@@ -398,6 +395,6 @@ It helps other developers discover this project.
 
 **Support:** datacenter111@gmail.com • **Community:** [GitHub Issues](https://github.com/brewkits/Grant/issues)
 
-[⭐ Star on GitHub](https://github.com/brewkits/grant) • [📦 Maven Central](https://central.sonatype.com/artifact/dev.brewkits/grant-core)
+[⭐ Star on GitHub](https://github.com/brewkits/Grant) • [📦 Maven Central](https://central.sonatype.com/artifact/dev.brewkits/grant-core)
 
 </div>
