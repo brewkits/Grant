@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [Unreleased]
+## [[1.0.0] - 2026-01-29]
 
 ### 🎯 Major Enhancements
 
@@ -351,9 +351,7 @@ return suspendCancellableCoroutine { continuation ->
 
 ---
 
-## [1.1.0] - 2026-01-28
-
-### 🛡️ Critical Fixes
+### 🛡️ Features Previously Planned for v1.1.0 (Now Unreleased)
 
 #### Android: Race Condition in GrantRequestActivity Fixed (P0 - CRITICAL)
 **Issue**: Process death during permission request causes 60-second timeout and memory leak
@@ -573,22 +571,7 @@ val status = grantManager.request(customPermission)
 
 ---
 
-### 🔄 Migration Notes
-
-**No breaking changes!** All updates are backward compatible:
-- No code changes required
-- All existing code continues to work
-- New features are opt-in
-
----
-
-### 🙏 Acknowledgments
-
-Thanks to mobile development expert review that identified these critical production issues.
-
----
-
-## [1.0.0] - 2026-01-23
+## [0.1.0] - 2026-01-23
 
 ### ✨ Enhancements
 

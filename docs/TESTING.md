@@ -447,4 +447,188 @@ All 9 initially failing tests have been fixed:
 
 ---
 
-*Last Updated: 2026-01-27 - Achieved 100% test pass rate*
+## Testing Strategy & Philosophy
+
+### Compile-Time Safety First
+
+The KMP Grant library emphasizes **compile-time safety** and **type safety** to prevent runtime errors, reducing the need for extensive unit testing while maintaining high code quality.
+
+#### Type Safety
+- **Kotlin Enums**: `GrantType` and `GrantStatus` provide compile-time guarantees
+- **Sealed Classes**: Pattern matching with `when` expressions is exhaustive
+- **Strong Typing**: No stringly-typed APIs or magic strings
+
+#### Null Safety
+- **Non-nullable by default**: Kotlin's type system eliminates NPEs
+- **Explicit nullable types**: `?` operator makes nullability clear
+- **Safe calls**: `?.` and `?:` operators prevent null-related crashes
+
+#### Coroutine Safety
+- **Structured Concurrency**: All operations scoped to ViewModelScope
+- **No Global Scope**: Prevents memory leaks
+- **Cancellation Support**: Proper cleanup on scope cancellation
+
+---
+
+## Manual Testing Checklist
+
+### Android Testing
+- [x] Camera grant request and approval
+- [x] Multiple grants (Camera + Microphone)
+- [x] Grant denial with rationale dialog
+- [x] Permanent denial with settings navigation
+- [x] Configuration changes (rotation) during request
+- [x] Background grants (Location Always)
+- [x] GrantHandler in ViewModels
+- [x] Transparent activity launch
+- [x] Multiple simultaneous grant requests
+- [x] GrantGroupHandler for bulk requests
+- [x] **Dead Click Fix**: App restart after denial shows rationale (not dead click)
+- [x] **Success Feedback**: Snackbar appears when permission granted
+- [x] **Rationale Flow**: First denial → No dialog, Second click → Rationale shown
+
+### iOS Testing
+- [x] Camera grant via GrantHandler
+- [x] Location grant (when in use)
+- [x] Multiple grants handling
+- [x] Grant denial and re-request
+- [x] Settings navigation
+- [x] Platform delegate callbacks
+- [x] MainThread dispatch for UI operations
+- [x] **openSettings() Fix**: Modern API, no deprecated warnings
+- [x] **Double Dialog Fix**: First denial → No settings dialog immediately
+- [x] **Success Feedback**: Snackbar appears when permission granted
+
+---
+
+## Critical Bug Fix Test Cases (2026-01-23)
+
+### Test Case 1: Android Dead Click After Restart
+**Issue**: Clicking permission button after app restart does nothing (dead click)
+
+**Steps:**
+1. Fresh install → Request Camera → Deny
+2. Kill app (swipe from recents)
+3. Reopen app → Click "Request Camera"
+4. **EXPECTED**: Rationale dialog appears
+5. **BUG (before fix)**: Nothing happens (dead click)
+6. **FIXED**: Rationale dialog shows correctly ✅
+
+**Technical**: SharedPreferences tracks "requested before" flag, survives restart
+
+---
+
+### Test Case 2: iOS Double Dialog Issue
+**Issue**: iOS shows Settings dialog immediately after first denial (annoying)
+
+**Steps:**
+1. Fresh install → Request Camera → Deny in system dialog
+2. **EXPECTED**: Dialog closes, nothing else
+3. **BUG (before fix)**: Settings guide dialog appears immediately (2 dialogs!)
+4. **FIXED**: Dialog closes respectfully ✅
+5. Click "Request Camera" again
+6. **EXPECTED**: Now Settings guide appears (makes sense!)
+
+**Technical**: `hasShownRationaleDialog` flag + `isFirstRequest` logic
+
+---
+
+### Test Case 3: iOS openSettings() Not Working
+**Issue**: iOS shows deprecated API warning, Settings doesn't open
+
+**Steps:**
+1. Deny permission permanently
+2. Click "Open Settings" button
+3. **EXPECTED**: Settings app opens
+4. **BUG (before fix)**: Warning in console, Settings doesn't open
+5. **FIXED**: Settings opens correctly, no warnings ✅
+
+**Technical**: Migrated from deprecated `openURL(_:)` to `openURL(_:options:completionHandler:)`
+
+---
+
+### Test Case 4: No Success Feedback
+**Issue**: User doesn't know if permission was granted (confusing UX)
+
+**Steps:**
+1. Request Camera → Grant
+2. **EXPECTED**: Visual confirmation (snackbar)
+3. **BUG (before fix)**: No feedback, just status badge changes
+4. **FIXED**: Snackbar shows "✓ Camera granted successfully!" ✅
+
+**Technical**: Added Snackbar to demo with `onSuccess` callback
+
+---
+
+## Testing Best Practices for Library Users
+
+### 1. Mock GrantManager in ViewModels
+```kotlin
+class MyViewModelTest {
+    @Test
+    fun testCameraGrant() = runTest {
+        val mockManager = MockGrantManager(
+            checkStatusResult = GrantStatus.NOT_DETERMINED,
+            requestResult = GrantStatus.GRANTED
+        )
+
+        val viewModel = MyViewModel(mockManager)
+        viewModel.onCameraClick()
+
+        assertEquals(GrantStatus.GRANTED, viewModel.cameraGrant.status.value)
+    }
+}
+```
+
+### 2. Test UI State
+```kotlin
+@Test
+fun testRationaleDialogShown() = runTest {
+    val handler = GrantHandler(mockManager, GrantType.CAMERA, testScope)
+    handler.request { }
+
+    assertTrue(handler.state.value.showRationale)
+}
+```
+
+### 3. Test Callbacks
+```kotlin
+@Test
+fun testCallbackExecuted() = runTest {
+    var executed = false
+    handler.request { executed = true }
+    testScheduler.advanceUntilIdle()
+
+    assertTrue(executed)
+}
+```
+
+---
+
+## Quality Metrics & Goals
+
+### Code Coverage Goals
+- Core logic: 80%+
+- Platform delegates: 70%+
+- UI handlers: 60%+
+
+### Static Analysis
+- Kotlin Lint: 0 errors
+- Detekt: All rules passing
+- SwiftLint: iOS code standards
+
+---
+
+## Conclusion
+
+The library's architecture prioritizes **type safety** and **compile-time guarantees** over extensive runtime testing, resulting in:
+- Fewer potential runtime errors
+- Better IDE support and autocomplete
+- Clearer API contracts
+- Faster development cycles
+
+With **103 automated tests** achieving 100% pass rate and comprehensive manual testing coverage through the demo app, Grant provides production-ready quality assurance.
+
+---
+
+*Last Updated: 2026-01-27 - Achieved 100% test pass rate with 103 automated tests*

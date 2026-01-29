@@ -9,6 +9,7 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import dev.brewkits.grant.utils.GrantLogger
 import kotlinx.coroutines.flow.MutableStateFlow
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -62,7 +63,7 @@ class GrantRequestActivity : ComponentActivity() {
         requestId = savedInstanceState?.getString(KEY_REQUEST_ID)
             ?: intent.getStringExtra(EXTRA_REQUEST_ID)
             ?: run {
-                println("$TAG: No requestId found - finishing activity")
+                GrantLogger.w(TAG, "No requestId found - finishing activity")
                 finish()
                 return
             }
@@ -70,7 +71,7 @@ class GrantRequestActivity : ComponentActivity() {
         // Check if this requestId still has a waiting coroutine
         // If process died, the old requestId has no waiting coroutine and should be abandoned
         if (!pendingResults.containsKey(requestId)) {
-            println("$TAG: RequestId $requestId has no pending coroutine - orphaned request after process death")
+            GrantLogger.w(TAG, "RequestId $requestId has no pending coroutine - orphaned request after process death")
             finish()
             return
         }
@@ -247,8 +248,7 @@ class GrantRequestActivity : ComponentActivity() {
             }
 
             if (orphanedIds.isNotEmpty()) {
-                // Log cleanup for debugging (GrantLogger will be used if available)
-                println("$TAG: Cleaned up ${orphanedIds.size} orphaned request(s)")
+                GrantLogger.d(TAG, "Cleaned up ${orphanedIds.size} orphaned request(s)")
             }
         }
 

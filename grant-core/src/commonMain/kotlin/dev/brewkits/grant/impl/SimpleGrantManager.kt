@@ -5,6 +5,7 @@ import dev.brewkits.grant.GrantManager
 import dev.brewkits.grant.GrantPermission
 import dev.brewkits.grant.GrantStatus
 import dev.brewkits.grant.RawPermission
+import dev.brewkits.grant.utils.GrantLogger
 import kotlinx.coroutines.delay
 
 /**
@@ -56,7 +57,7 @@ class SimpleGrantManager : GrantManager {
     override suspend fun checkStatus(grant: GrantPermission): GrantStatus {
         // Handle RawPermission - not supported in mock implementation
         if (grant is RawPermission) {
-            println("SimpleGrantManager: RawPermission not supported in mock - returning DENIED")
+            GrantLogger.w("SimpleGrantManager", "RawPermission not supported in mock - returning DENIED")
             return GrantStatus.DENIED
         }
 
@@ -81,7 +82,7 @@ class SimpleGrantManager : GrantManager {
     override suspend fun request(grant: GrantPermission): GrantStatus {
         // Handle RawPermission - not supported in mock implementation
         if (grant is RawPermission) {
-            println("SimpleGrantManager: RawPermission not supported in mock - returning DENIED")
+            GrantLogger.w("SimpleGrantManager", "RawPermission not supported in mock - returning DENIED")
             delay(500)  // Simulate dialog
             return GrantStatus.DENIED
         }

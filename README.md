@@ -9,23 +9,23 @@
 
 > 🚀 **No Fragment/Activity required. No BindEffect boilerplate. Smart Android 12+ handling. Built-in Service Checking.**
 
-Grant is the **production-ready, battle-tested permission library** that eliminates boilerplate, fixes platform bugs, and handles every edge case. With **88% bug coverage** over moko-permissions and **zero** dead clicks or memory leaks, Grant sets the new standard for KMP permission management.
+Grant is the **production-ready, battle-tested permission library** that eliminates boilerplate, fixes platform bugs, and handles every edge case. With **zero** dead clicks, memory leaks, or configuration headaches, Grant provides the cleanest API for KMP permission management.
 
 ## Why Grant? 🎯
 
-### The Problem with Other Libraries
+### The Traditional Approach
 
-Traditional KMP permission libraries force you into painful patterns:
+Traditional permission handling requires extensive boilerplate and lifecycle management:
 
 ```kotlin
-// ❌ OLD WAY: Fragment/Activity required + Boilerplate
+// ❌ TRADITIONAL: Fragment/Activity required + Boilerplate
 class MyFragment : Fragment() {
     private val permissionHelper = PermissionHelper(this) // Needs Fragment!
 
     fun requestCamera() {
         permissionHelper.bindToLifecycle() // BindEffect boilerplate
         permissionHelper.request(Permission.CAMERA) {
-            // Dead clicks on Android 13+
+            // Complex state management
         }
     }
 }
@@ -68,30 +68,6 @@ fun CameraScreen() {
 - ✅ **Granular Gallery Permissions** - Images-only, Videos-only, or both (prevents silent denials)
 - ✅ **Bluetooth Error Differentiation** - Retryable vs permanent errors (10s timeout)
 - ✅ **Notification Status Validation** - Correct status even on Android 12-
-- 🆕 **iOS Info.plist Runtime Validation** - Prevents crashes from missing keys (v1.1.0)
-- 🆕 **Process Death Recovery** - No 60s hangs, automatic cleanup (v1.1.0)
-
-### 🎁 NEW in v1.1.0 - Advanced Features
-- 🆕 **Process Death State Restoration** - Optional dialog state recovery on Android
-  ```kotlin
-  val handler = GrantHandler(
-      grantManager = grantManager,
-      grant = AppGrant.CAMERA,
-      scope = viewModelScope,
-      savedStateDelegate = AndroidSavedStateDelegate(savedStateHandle) // Optional
-  )
-  ```
-- 🆕 **Custom Permission Support** - Extend beyond built-in permissions
-  ```kotlin
-  val customPermission = RawPermission(
-      identifier = "CUSTOM_SENSOR",
-      androidPermissions = listOf("android.permission.CUSTOM_SENSOR"),
-      iosUsageKey = "NSCustomSensorUsageDescription"
-  )
-  grantManager.request(customPermission)
-  ```
-- 🆕 **Race Condition Fixes** - Eliminated 60-second hangs and memory leaks on process death
-- 🆕 **iOS Crash Prevention** - Runtime validation prevents SIGABRT from missing Info.plist keys
 
 ### 🏗️ Production-Ready Architecture - Enterprise Grade
 - ✅ **Enum-based Status** - Clean, predictable flow (not exception-based)
@@ -101,20 +77,45 @@ fun CameraScreen() {
 - ✅ **103+ Unit Tests** - Comprehensive test coverage, all passing
 - ✅ **Zero Compiler Warnings** - Clean, maintainable codebase
 
-### 🛠️ Built-in Service Checking
+### 🛠️ Built-in Service Checking - The Missing Piece
+
+**Permissions ≠ Services!** Having permission doesn't mean the service is enabled. Grant is the only KMP library that handles both.
+
 ```kotlin
 val serviceManager = ServiceFactory.create(context)
 
-// Check if GPS/Bluetooth/Location services are enabled
-if (!serviceManager.isLocationEnabled()) {
-    serviceManager.openLocationSettings()
+// ✅ Check if Location service is enabled (not just permission!)
+when {
+    !serviceManager.isLocationEnabled() -> {
+        // GPS is OFF - guide user to enable it
+        serviceManager.openLocationSettings()
+    }
+    grantManager.checkStatus(AppGrant.LOCATION) == GrantStatus.GRANTED -> {
+        // Both permission AND service are ready!
+        startLocationTracking()
+    }
+}
+
+// ✅ Check Bluetooth service status
+if (!serviceManager.isBluetoothEnabled()) {
+    serviceManager.openBluetoothSettings()
 }
 ```
+
+**Why This Matters:**
+- 🎯 Users often grant permission but forget to enable GPS/Bluetooth
+- 🎯 Silent failures are confusing - Grant helps you guide users properly
+- 🎯 One library for both permissions AND services - no extra dependencies
+
+**Supported Services:**
+- **Location** - GPS/Network location services
+- **Bluetooth** - Bluetooth adapter status
+- **Background Location** - Platform-specific background location checks
 
 ### 📱 Cross-Platform Coverage
 - **Android**: API 24+ (100% coverage)
 - **iOS**: iOS 13.0+ (100% coverage)
-- **13 Permission Types**: Camera, Microphone, Gallery, Location, Notifications, Bluetooth, and more
+- **14 Permission Types**: Camera, Microphone, Gallery (Images/Videos/Both), Storage, Location, Location Always, Notifications, Schedule Exact Alarm, Bluetooth, Contacts, Motion, Calendar
 
 ---
 
@@ -175,6 +176,24 @@ suspend fun requestCamera() {
         GrantStatus.NOT_DETERMINED -> { /* shouldn't happen after request */ }
     }
 }
+
+// 4. Check Service Status (bonus feature!)
+val serviceManager = ServiceFactory.create(context)
+
+suspend fun requestLocationWithServiceCheck() {
+    // First check if Location service is enabled
+    if (!serviceManager.isLocationEnabled()) {
+        // Guide user to enable GPS
+        serviceManager.openLocationSettings()
+        return
+    }
+
+    // Then request permission
+    when (grantManager.request(AppGrant.LOCATION)) {
+        GrantStatus.GRANTED -> startLocationTracking() // Both permission AND service ready!
+        else -> showError()
+    }
+}
 ```
 
 See [Quick Start Guide](docs/getting-started/quick-start.md) for complete setup.
@@ -198,29 +217,7 @@ See [Quick Start Guide](docs/getting-started/quick-start.md) for complete setup.
 | `BLUETOOTH` | ✅ API 31+ | ✅ iOS 13+ | BLE scanning/connecting |
 | `CONTACTS` | ✅ API 23+ | ✅ iOS 13+ | Read contacts |
 | `MOTION` | ✅ API 29+ | ✅ iOS 13+ | Activity recognition |
-
----
-
-## 📊 Comparison: Grant vs Others
-
-### Grant vs moko-permissions
-
-| Feature | Grant | moko-permissions |
-|---------|-------|------------------|
-| Fragment/Activity Required | ❌ No | ✅ Yes |
-| BindEffect Boilerplate | ❌ No | ✅ Yes |
-| Android 13+ Dead Clicks | ✅ Fixed | ❌ Has issue |
-| iOS Permission Deadlock | ✅ Fixed | ❌ Has issue (#129) |
-| Granular Gallery Permissions | ✅ Yes | ❌ No |
-| Built-in Service Checking | ✅ Yes | ❌ No |
-| Memory Leaks | ✅ None | ⚠️ Activity retention |
-| Exception-based Flow | ❌ No (enum) | ✅ Yes |
-| Compose-First | ✅ Yes | ⚠️ Limited |
-| **Bug Coverage** | **88% fixed** | **Baseline** |
-
-**Bottom Line**: Grant fixes **15 out of 17** bugs found in moko-permissions, including critical issues like iOS deadlocks and Android dead clicks.
-
-See [Detailed Comparison](docs/comparison/vs-moko-permissions.md).
+| `CALENDAR` | ✅ API 23+ | ✅ iOS 13+ | Calendar events access |
 
 ---
 

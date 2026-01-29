@@ -360,7 +360,6 @@ class GrantModule {
 ## 🔗 Related Documentation
 
 - [Quick Start Guide](grant-core/QUICK_START.md)
-- [API Reference](API_REFERENCE.md)
 - [Testing Guide](TESTING.md)
 
 ---
