@@ -11,6 +11,73 @@
 
 Grant is the **production-ready, battle-tested permission library** that eliminates boilerplate, fixes platform bugs, and handles every edge case. With **zero** dead clicks, memory leaks, or configuration headaches, Grant provides the cleanest API for KMP permission management.
 
+---
+
+## ⚡ Quick Start (30 seconds)
+
+```kotlin
+// 1️⃣ In your ViewModel
+class CameraViewModel(grantManager: GrantManager) : ViewModel() {
+    val cameraGrant = GrantHandler(
+        grantManager = grantManager,
+        grant = AppGrant.CAMERA,
+        scope = viewModelScope
+    )
+
+    fun openCamera() {
+        cameraGrant.request {
+            // ✅ This runs ONLY when permission is granted
+            startCameraCapture()
+        }
+    }
+}
+
+// 2️⃣ In your Compose UI
+@Composable
+fun CameraScreen(viewModel: CameraViewModel) {
+    GrantDialog(handler = viewModel.cameraGrant) // Handles all dialogs automatically
+
+    Button(onClick = { viewModel.openCamera() }) {
+        Text("Take Photo")
+    }
+}
+```
+
+**That's it!** No Fragment. No BindEffect. No configuration. Just works. ✨
+
+---
+
+## 📱 Platform Support
+
+| Platform | Version | Notes |
+|----------|---------|-------|
+| 🤖 **Android** | API 24+ | Full support for Android 12, 13, 14 (Partial Gallery Access) |
+| 🍎 **iOS** | 13.0+ | Crash-guard & Main thread safety built-in |
+| 🎨 **Compose** | 1.7.1+ | Separate `grant-compose` module with GrantDialog |
+
+> 💡 **Note:** See [Platform-Specific Guides](docs/) for detailed iOS Info.plist setup and Android manifest configuration.
+
+---
+
+## 🎬 See It In Action
+
+<!-- TODO: Add screenshots/GIF showing:
+     - Permission dialog flow (rationale → settings guide)
+     - Android 14 partial gallery access
+     - Demo app with manifest validation warnings
+     Instructions: See docs/images/README.md for screenshot guidelines
+-->
+
+> 📸 **Coming Soon:** Live demo GIF showing the complete permission flow with GrantDialog automatically handling rationale and settings dialogs.
+>
+> 🎮 **Try it now:** Run the demo app to see all 14 permissions in action:
+> ```bash
+> ./gradlew :demo:installDebug  # Android
+> # Or open iosApp in Xcode for iOS
+> ```
+
+---
+
 ## Why Grant? 🎯
 
 ### The Traditional Approach
