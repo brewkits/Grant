@@ -76,6 +76,13 @@ android {
 }
 
 publishing {
+    repositories {
+        maven {
+            name = "MavenCentralLocal"
+            url = uri("${project.buildDir}/maven-central-staging")
+        }
+    }
+
     publications.configureEach {
         (this as? MavenPublication)?.let {
             groupId = "dev.brewkits"

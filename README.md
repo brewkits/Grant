@@ -382,10 +382,22 @@ limitations under the License.
 
 ---
 
+## ⭐ Star Us on GitHub!
+
+If Grant saves you time, please give us a star!
+
+It helps other developers discover this project.
+
+[⬆️ Back to Top](#grant-)
+
+---
+
 <div align="center">
 
-**Made with ❤️ for the Kotlin Multiplatform community**
+**Made with ❤️ by Nguyễn Tuấn Việt at Brewkits**
 
-[⭐ Star us on GitHub](https://github.com/brewkits/grant) • [📦 Maven Central](https://central.sonatype.com/artifact/dev.brewkits.grant/grant-core)
+**Support:** datacenter111@gmail.com • **Community:** [GitHub Issues](https://github.com/brewkits/Grant/issues)
+
+[⭐ Star on GitHub](https://github.com/brewkits/grant) • [📦 Maven Central](https://central.sonatype.com/artifact/dev.brewkits.grant/grant-core)
 
 </div>
