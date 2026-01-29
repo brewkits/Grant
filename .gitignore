@@ -62,5 +62,11 @@ run-ios-from-studio.sh
 MANUAL_UPLOAD_INSTRUCTIONS.md
 MAVEN_ARTIFACTS_v1.0.0.md
 PUBLISH_CHECKLIST.md
+# Maven bundle creation (internal instructions)
+HUONG_DAN_TAO_MAVEN_BUNDLE_V2.md
+MAVEN_BUNDLE_CHECKLIST.md
+SUMMARY_UPDATES.md
+create-maven-bundle.sh
+maven-central-artifacts/
 # Reference files (keep in repo for now)
 # 2026-01-22-*.txt

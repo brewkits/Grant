@@ -2,7 +2,7 @@
 
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.1.0-blue.svg?logo=kotlin)](http://kotlinlang.org)
 [![Compose](https://img.shields.io/badge/Compose-1.7.1-green)](https://www.jetbrains.com/lp/compose-multiplatform/)
-[![Maven Central](https://img.shields.io/maven-central/v/dev.brewkits.grant/grant-core)](https://central.sonatype.com/artifact/dev.brewkits.grant/grant-core)
+[![Maven Central](https://img.shields.io/maven-central/v/dev.brewkits/grant-core)](https://central.sonatype.com/artifact/dev.brewkits/grant-core)
 [![License](https://img.shields.io/badge/License-Apache%202.0-orange.svg)](https://opensource.org/licenses/Apache-2.0)
 
 **The Most Comprehensive & Powerful Permission Library for Kotlin Multiplatform**
@@ -202,8 +202,8 @@ dependencyResolutionManagement {
 kotlin {
     sourceSets {
         commonMain.dependencies {
-            implementation("dev.brewkits.grant:grant-core:1.0.0")
-            implementation("dev.brewkits.grant:grant-compose:1.0.0") // Optional
+            implementation("dev.brewkits:grant-core:1.0.0")
+            implementation("dev.brewkits:grant-compose:1.0.0") // Optional
         }
     }
 }
@@ -398,6 +398,6 @@ It helps other developers discover this project.
 
 **Support:** datacenter111@gmail.com • **Community:** [GitHub Issues](https://github.com/brewkits/Grant/issues)
 
-[⭐ Star on GitHub](https://github.com/brewkits/grant) • [📦 Maven Central](https://central.sonatype.com/artifact/dev.brewkits.grant/grant-core)
+[⭐ Star on GitHub](https://github.com/brewkits/grant) • [📦 Maven Central](https://central.sonatype.com/artifact/dev.brewkits/grant-core)
 
 </div>
