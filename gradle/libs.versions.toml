@@ -8,7 +8,7 @@ androidx-appcompat = "1.7.1"
 androidx-core = "1.17.0"
 androidx-lifecycle = "2.9.6"
 composeMultiplatform = "1.9.3"
-kotlin = "2.1.21"
+kotlin = "2.3.0"
 
 koin = "4.1.1"
 kotlinx-coroutines = "1.10.2"
