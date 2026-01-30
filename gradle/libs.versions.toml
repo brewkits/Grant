@@ -12,7 +12,7 @@ kotlin = "2.1.21"
 
 koin = "4.1.1"
 kotlinx-coroutines = "1.10.2"
-mockk = "1.13.9"
+mockk = "1.14.9"
 turbine = "1.0.0"
 kover = "0.7.5"
 
