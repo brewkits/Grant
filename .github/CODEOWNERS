@@ -1,0 +1,17 @@
+# Default owners for everything in the repo
+* @brewkits
+
+# Core library code
+/grant-core/ @brewkits
+/grant-compose/ @brewkits
+
+# Documentation
+/docs/ @brewkits
+*.md @brewkits
+
+# GitHub workflows
+/.github/ @brewkits
+
+# Build configuration
+*.gradle.kts @brewkits
+gradle.properties @brewkits

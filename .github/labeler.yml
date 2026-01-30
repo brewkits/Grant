@@ -1,0 +1,85 @@
+# Labeler configuration for auto-labeling PRs based on changed files
+
+# Core library
+'core':
+  - changed-files:
+    - any-glob-to-any-file: 'grant-core/src/**/*'
+
+# Compose module
+'compose':
+  - changed-files:
+    - any-glob-to-any-file: 'grant-compose/src/**/*'
+
+# Demo app
+'demo':
+  - changed-files:
+    - any-glob-to-any-file: 'demo/**/*'
+
+# Documentation
+'documentation':
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'docs/**/*'
+      - '**/*.md'
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - 'CONTRIBUTING.md'
+
+# Tests
+'tests':
+  - changed-files:
+    - any-glob-to-any-file:
+      - '**/test/**/*'
+      - '**/androidTest/**/*'
+      - '**/*Test.kt'
+      - '**/*Tests.kt'
+
+# Build configuration
+'build':
+  - changed-files:
+    - any-glob-to-any-file:
+      - '*.gradle.kts'
+      - 'gradle/**/*'
+      - 'gradle.properties'
+      - 'settings.gradle.kts'
+      - 'libs.versions.toml'
+
+# CI/CD
+'ci-cd':
+  - changed-files:
+    - any-glob-to-any-file:
+      - '.github/workflows/**/*'
+      - '.github/actions/**/*'
+
+# Android specific
+'android':
+  - changed-files:
+    - any-glob-to-any-file:
+      - '**/src/androidMain/**/*'
+      - '**/src/androidTest/**/*'
+      - 'grant-core/src/androidMain/**/*'
+      - 'grant-compose/src/androidMain/**/*'
+
+# iOS specific
+'ios':
+  - changed-files:
+    - any-glob-to-any-file:
+      - '**/src/iosMain/**/*'
+      - '**/src/iosTest/**/*'
+      - 'iosApp/**/*'
+      - '*.xcodeproj/**/*'
+      - '*.xcworkspace/**/*'
+
+# Dependencies
+'dependencies':
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'gradle/libs.versions.toml'
+      - '**/build.gradle.kts'
+
+# Security
+'security':
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'SECURITY.md'
+      - '.github/workflows/codeql*.yml'

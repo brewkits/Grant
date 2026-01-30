@@ -1,0 +1,42 @@
+name: Greetings
+
+on:
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  greeting:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Greet first-time contributors
+        uses: actions/first-interaction@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-message: >
+            👋 Thanks for opening your first issue in Grant! We appreciate your contribution
+            and will review it as soon as possible.
+
+            Please make sure you've:
+            - Searched for existing issues
+            - Provided all requested information in the issue template
+            - Enabled GrantLogger if reporting a bug
+
+            For questions, check out our [documentation](https://github.com/brewkits/Grant/tree/main/docs)
+            or start a [discussion](https://github.com/brewkits/Grant/discussions).
+          pr-message: >
+            🎉 Thanks for opening your first pull request in Grant! We're excited to review your contribution.
+
+            Please ensure:
+            - All tests pass
+            - Code follows the project style
+            - Documentation is updated if needed
+            - CHANGELOG.md is updated (if applicable)
+
+            A maintainer will review your PR soon. Feel free to ask questions if you need help!

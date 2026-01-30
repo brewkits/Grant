@@ -1,0 +1,82 @@
+name: PR Comment
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  comment:
+    runs-on: ubuntu-latest
+    if: >
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion != 'cancelled'
+
+    steps:
+      - name: Download artifacts
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: ${{ github.event.workflow_run.id }},
+            });
+
+            console.log('Available artifacts:', artifacts.data.artifacts.map(a => a.name));
+
+      - name: Find PR number
+        uses: actions/github-script@v7
+        id: pr
+        with:
+          script: |
+            const response = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: '${{ github.event.workflow_run.head_sha }}',
+            });
+
+            const pr = response.data[0];
+            if (pr) {
+              return pr.number;
+            }
+            return null;
+
+      - name: Comment on PR
+        if: steps.pr.outputs.result != 'null'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = ${{ steps.pr.outputs.result }};
+            const conclusion = '${{ github.event.workflow_run.conclusion }}';
+            const runUrl = '${{ github.event.workflow_run.html_url }}';
+
+            let emoji = conclusion === 'success' ? '✅' : '❌';
+            let status = conclusion === 'success' ? 'passed' : 'failed';
+
+            const body = `## ${emoji} CI Build ${status}
+
+            **Build Status**: ${conclusion}
+            **Commit**: ${{ github.event.workflow_run.head_sha }}
+
+            [View full build log](${runUrl})
+
+            ### Artifacts
+            - Build reports
+            - Coverage reports
+            - Demo APK (if successful)
+
+            ---
+            *Automated comment by GitHub Actions*`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: body
+            });

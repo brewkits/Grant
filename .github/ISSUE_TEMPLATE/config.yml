@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://github.com/brewkits/Grant/tree/main/docs
+    about: Check the documentation for usage guides and examples
+  - name: Discussions
+    url: https://github.com/brewkits/Grant/discussions
+    about: Ask questions and discuss ideas with the community
+  - name: Support Email
+    url: mailto:datacenter111@gmail.com
+    about: Contact the maintainer directly for support
