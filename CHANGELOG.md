@@ -8,87 +8,80 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [[1.0.0] - 2026-01-29]
 
-### 🏆 Competitive Advantages - Features Other Libraries Don't Have
+### 🏆 Production-Grade Features
 
-Grant delivers production-grade reliability that **no other KMP permission library** provides. After analyzing 20+ libraries (including moko-permissions, Accompanist, and others), we've built solutions for critical problems that others ignore.
+Grant addresses critical production challenges identified through comprehensive research of the KMP permission library ecosystem.
 
 ---
 
 #### 🛡️ Smart Configuration Validation (iOS)
 
-**The Problem:** Missing iOS Info.plist keys cause **immediate SIGABRT crashes** in production. No warning. No error message. Just instant app termination.
+**The Problem:** Missing iOS Info.plist keys cause immediate SIGABRT crashes in production. No warning. No error message. Just instant app termination.
 
-**Industry Status:**
-- ❌ **moko-permissions**: Crashes immediately - no validation
-- ❌ **Accompanist**: Android-only, N/A
-- ❌ **Every other KMP library**: No pre-validation, crashes on request
-- ✅ **Grant**: Pre-validates Info.plist keys **before** native API calls
+**Common Approach:**
+Most libraries call native APIs directly without validation, resulting in production crashes when configuration is incomplete.
 
 **Grant's Solution:**
 
-Grant is the **only KMP permission library** with built-in Info.plist validation:
+Grant validates Info.plist keys before calling native APIs, preventing crashes:
 
 ```kotlin
-// Other libraries - CRASH! 💥
-AVCaptureDevice.requestAccessForMediaType(...) // SIGABRT if key missing
+// Standard approach - crashes if key missing
+AVCaptureDevice.requestAccessForMediaType(...) // SIGABRT
 
-// Grant - Safe fallback ✅
-validateInfoPlistKey("NSCameraUsageDescription") // Returns DENIED_ALWAYS with clear error
+// Grant's approach - safe fallback
+validateInfoPlistKey("NSCameraUsageDescription") // Returns DENIED_ALWAYS with error log
 ```
 
-**What Grant Validates:**
-- ✅ Camera → `NSCameraUsageDescription`
-- ✅ Microphone → `NSMicrophoneUsageDescription`
-- ✅ Photo Library → `NSPhotoLibraryUsageDescription`
-- ✅ Location (When in Use) → `NSLocationWhenInUseUsageDescription`
-- ✅ Location (Always) → `NSLocationAlwaysAndWhenInUseUsageDescription` + `NSLocationWhenInUseUsageDescription`
-- ✅ Contacts → `NSContactsUsageDescription`
-- ✅ Motion → `NSMotionUsageDescription`
-- ✅ Bluetooth → `NSBluetoothAlwaysUsageDescription`
-- ✅ Calendar → `NSCalendarsUsageDescription`
+**Validated Permissions:**
+- Camera → `NSCameraUsageDescription`
+- Microphone → `NSMicrophoneUsageDescription`
+- Photo Library → `NSPhotoLibraryUsageDescription`
+- Location (When in Use) → `NSLocationWhenInUseUsageDescription`
+- Location (Always) → `NSLocationAlwaysAndWhenInUseUsageDescription` + `NSLocationWhenInUseUsageDescription`
+- Contacts → `NSContactsUsageDescription`
+- Motion → `NSMotionUsageDescription`
+- Bluetooth → `NSBluetoothAlwaysUsageDescription`
+- Calendar → `NSCalendarsUsageDescription`
 
 **Developer Experience:**
 
 ```kotlin
 // Missing Info.plist key scenario:
 
-// ❌ Other libraries:
+// Without validation:
 grantManager.request(AppGrant.CAMERA)
 // → App crashes immediately (SIGABRT)
 // → No logs, no error message
-// → Production disaster
 
-// ✅ Grant:
+// With Grant:
 val status = grantManager.request(AppGrant.CAMERA)
 // → Returns DENIED_ALWAYS (safe)
-// → Logs clear error: "Missing NSCameraUsageDescription in Info.plist"
+// → Logs: "Missing NSCameraUsageDescription in Info.plist"
 // → Provides fix instructions
 // → App continues running
 ```
 
-**Why This Matters:**
-1. **Catches config errors early** - During development, not production
-2. **Prevents production crashes** - Graceful degradation instead of SIGABRT
-3. **Clear error messages** - Tells you exactly which key is missing
-4. **Zero additional setup** - Automatic validation, no config needed
+**Benefits:**
+- Catches config errors during development
+- Prevents production crashes with graceful degradation
+- Clear error messages showing which key is missing
+- Zero additional setup required
 
-**Impact**: 🛡️ **Production-safe iOS permission handling** - the only library that won't crash your app
+**Impact**: Production-safe iOS permission handling
 
 ---
 
 #### 🔄 Robust Process Death Handling (Android)
 
-**The Problem:** Android kills background apps to free memory. When users return, permission requests **hang for 60 seconds, leak memory, and frustrate users**.
+**The Problem:** Android kills background apps to free memory. When users return, permission requests hang for 60 seconds, leak memory, and frustrate users.
 
-**Industry Status:**
-- ❌ **moko-permissions**: 60-second timeout, orphaned entries, memory leaks
-- ❌ **Accompanist**: Similar issues with process death recovery
-- ❌ **Standard libraries**: No savedInstanceState support for permissions
-- ✅ **Grant**: Full process death recovery with zero timeout
+**Common Approach:**
+Most libraries lack savedInstanceState support for permission flows, leading to timeout issues and orphaned request entries after process death.
 
 **Grant's Solution:**
 
-Grant is the **only KMP permission library** with comprehensive process death handling:
+Grant implements comprehensive process death recovery:
 
 **1. Race Condition Fix - Zero Timeout Recovery**
 
@@ -157,19 +150,19 @@ class MyViewModel(
 }
 
 // After process death:
-// ✅ Dialog visibility restored
-// ✅ Rationale/Settings state restored
-// ✅ User sees exactly where they left off
+// - Dialog visibility restored
+// - Rationale/Settings state restored
+// - User sees exactly where they left off
 ```
 
-**Before vs After:**
+**Comparison:**
 
-| Scenario | Other Libraries | Grant |
-|----------|----------------|-------|
-| Process death during request | ❌ 60s timeout | ✅ Instant finish |
-| Orphaned requestId | ❌ Memory leak | ✅ Auto cleanup |
-| Dialog state loss | ❌ User confused | ✅ State restored |
-| Recovery time | ⏱️ 60 seconds | ⚡ 0 seconds |
+| Scenario | Without Recovery | With Grant |
+|----------|------------------|-----------|
+| Process death during request | 60s timeout | Instant finish |
+| Orphaned requestId | Memory leak | Auto cleanup |
+| Dialog state loss | User confused | State restored |
+| Recovery time | 60 seconds | 0 seconds |
 
 **Real-World Impact:**
 
@@ -180,20 +173,18 @@ class MyViewModel(
 3. User switches to another app (process death)
 4. User returns to your app
 
-// ❌ Other libraries:
+// Without proper handling:
 // → Loading spinner for 60 seconds
 // → User thinks app is frozen
 // → User force-closes app
-// → 1-star review: "App doesn't work"
 
-// ✅ Grant:
+// With Grant:
 // → Instant recovery (0ms)
 // → Dialog re-appears if needed
 // → Smooth user experience
-// → Happy users ⭐⭐⭐⭐⭐
 ```
 
-**Technical Superiority:**
+**Technical Implementation:**
 
 1. **savedInstanceState Integration** - Android best practice
 2. **Proactive Orphan Cleanup** - 2-minute TTL for stale entries
@@ -202,13 +193,13 @@ class MyViewModel(
 5. **Optional State Restoration** - Dialog state survives process death
 6. **Backward Compatible** - Works without SavedStateHandle
 
-**Why This Matters:**
-- 🚀 **Zero wait time** - No more 60-second hangs
-- 🧹 **Memory leak free** - Automatic orphan cleanup
-- 😊 **Better UX** - Users never see frozen state
-- 📱 **Production-ready** - Handles Android's aggressive memory management
+**Key Benefits:**
+- Zero wait time - No more 60-second hangs
+- Memory leak free - Automatic orphan cleanup
+- Better UX - Users never see frozen state
+- Production-ready - Handles Android's aggressive memory management
 
-**Impact**: 🔄 **Enterprise-grade Android reliability** - the only library that handles process death correctly
+**Impact**: Enterprise-grade Android reliability
 
 ---
 
@@ -526,40 +517,40 @@ return suspendCancellableCoroutine { continuation ->
 **Tested & Verified: 13/17 (76%)**
 **Awaiting Platform Release: 2/17 (iOS 26, Android 15)**
 
-**Key Advantages of Grant over moko-permissions**:
-1. ✅ **Smart Configuration Validation (iOS)** - **Exclusive to Grant!**
+**Key Advantages of Grant**:
+1. **Smart Configuration Validation (iOS)** - Production feature
    - Grant validates Info.plist keys before native API calls (no crashes)
-   - moko-permissions: Crashes immediately with SIGABRT if key missing
-   - **Production-safe** - Only library that won't crash your app
+   - Common approach: Direct native calls result in SIGABRT if key missing
+   - Production-safe handling
 
-2. ✅ **Robust Process Death Handling (Android)** - **Exclusive to Grant!**
+2. **Robust Process Death Handling (Android)** - Enterprise feature
    - Grant: Zero timeout, instant recovery, automatic orphan cleanup
-   - moko-permissions: 60-second hang, memory leaks, poor UX
-   - **Enterprise-grade** - Only library that handles Android process death correctly
+   - Common issue: 60-second hang, memory leaks, poor UX
+   - Enterprise-grade reliability
 
-3. ✅ No UI binding requirement (#186 - RESOLVED)
-4. ✅ Better architecture - no memory leaks (#181 - RESOLVED)
-5. ✅ Enum-based status instead of exceptions (#154 - RESOLVED)
-6. ✅ Modern iOS APIs (#148, #185 - RESOLVED)
-7. ✅ Single module - no dependency conflicts (#156 - RESOLVED)
-8. ✅ Proper iOS error handling (#153, #149, #177 - RESOLVED)
-9. ✅ No iOS deadlock on first permission request (#129 - RESOLVED)
-10. ✅ Granular gallery permissions prevent silent denial (#178 - RESOLVED)
-11. ✅ In-memory storage aligns with 90% of libraries
-12. ✅ ServiceManager for checking device services (#131 - RESOLVED)
-13. ✅ Proper two-step LOCATION_ALWAYS flow on Android 11+ (#139 - RESOLVED)
-14. ✅ Safe notification handling on iOS - no crashes (#134, #141 - RESOLVED)
-15. ✅ Bluetooth retry-able errors (#164 - RESOLVED)
-16. ✅ RECORD_AUDIO hardened with safety checks (#165 - RESOLVED)
-17. ✅ SCHEDULE_EXACT_ALARM support (#184 - ADDED)
-18. ✅ **Permission Extensibility** - RawPermission for custom permissions (moko-permissions: enum only)
+3. No UI binding requirement (#186 - RESOLVED)
+4. Better architecture - no memory leaks (#181 - RESOLVED)
+5. Enum-based status instead of exceptions (#154 - RESOLVED)
+6. Modern iOS APIs (#148, #185 - RESOLVED)
+7. Single module - no dependency conflicts (#156 - RESOLVED)
+8. Proper iOS error handling (#153, #149, #177 - RESOLVED)
+9. No iOS deadlock on first permission request (#129 - RESOLVED)
+10. Granular gallery permissions prevent silent denial (#178 - RESOLVED)
+11. In-memory storage aligns with industry standard
+12. ServiceManager for checking device services (#131 - RESOLVED)
+13. Proper two-step LOCATION_ALWAYS flow on Android 11+ (#139 - RESOLVED)
+14. Safe notification handling on iOS - no crashes (#134, #141 - RESOLVED)
+15. Bluetooth retry-able errors (#164 - RESOLVED)
+16. RECORD_AUDIO hardened with safety checks (#165 - RESOLVED)
+17. SCHEDULE_EXACT_ALARM support (#184 - ADDED)
+18. **Permission Extensibility** - RawPermission for custom permissions
 
 **Remaining Work** (Not blocking release):
 - Test on iOS 26 when available (#185)
 - Verify RECORD_AUDIO on real devices (#165)
 - Consider Health Connect permissions (#151)
 
-**Impact**: ✅ Grant is demonstrably more robust than moko-permissions
+**Impact**: Grant provides robust, production-ready permission handling
 
 ---
 

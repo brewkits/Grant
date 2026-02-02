@@ -13,11 +13,11 @@
 
 Grant is the **production-ready, battle-tested permission library** that eliminates boilerplate, fixes platform bugs, and handles every edge case. With **zero** dead clicks, memory leaks, or configuration headaches, Grant provides the cleanest API for KMP permission management.
 
-**What makes Grant unique:** After analyzing 20+ permission libraries, Grant is the **only one** that:
-- ✅ Validates iOS Info.plist keys **before** crash (no SIGABRT in production)
-- ✅ Handles Android process death with **zero timeout** (no 60-second hangs)
-- ✅ Fixes iOS Camera/Microphone deadlock (works on first request)
-- ✅ Supports custom permissions via RawPermission (extensible beyond enum)
+**What makes Grant unique:** Through comprehensive research of the KMP permission ecosystem, Grant provides:
+- Validates iOS Info.plist keys before crash (no SIGABRT in production)
+- Handles Android process death with zero timeout (no 60-second hangs)
+- Fixes iOS Camera/Microphone deadlock (works on first request)
+- Supports custom permissions via RawPermission (extensible beyond enum)
 
 ---
 
@@ -144,18 +144,18 @@ fun CameraScreen() {
 - ✅ **Bluetooth Error Differentiation** - Retryable vs permanent errors (10s timeout)
 - ✅ **Notification Status Validation** - Correct status even on Android 12-
 
-### 🏆 Exclusive Features - What Other Libraries Don't Have
-- ✅ **Smart Configuration Validation (iOS)** - **Only library** that validates Info.plist keys before crash
-  - Other libraries (moko-permissions, etc.): Instant SIGABRT crash if key missing
+### 🏆 Production-Grade Features
+- **Smart Configuration Validation (iOS)** - Validates Info.plist keys before crash
+  - Most libraries: Instant SIGABRT crash if key missing
   - Grant: Returns DENIED_ALWAYS with clear error message, app continues running
   - Validates all 9 permission types before native API calls
-  - **Production-safe** - No crashes in production from missing config
+  - Production-safe handling of missing configuration
 
-- ✅ **Robust Process Death Handling (Android)** - **Only library** with zero-timeout recovery
-  - Other libraries: 60-second hang, memory leaks, frustrated users
+- **Robust Process Death Handling (Android)** - Zero-timeout recovery system
+  - Common issue: 60-second hang, memory leaks, frustrated users
   - Grant: Instant recovery (0ms), automatic orphan cleanup, dialog state restoration
   - savedInstanceState integration for seamless UX
-  - **Enterprise-grade** - Handles Android's aggressive memory management perfectly
+  - Enterprise-grade handling of Android's memory management
 
 ### 🏗️ Production-Ready Architecture - Enterprise Grade
 - ✅ **Enum-based Status** - Clean, predictable flow (not exception-based)
@@ -311,13 +311,13 @@ See [Quick Start Guide](docs/getting-started/quick-start.md) for complete setup.
 
 **Need Android 15 permission? New OS feature not yet in the library? No problem!**
 
-Unlike other libraries (looking at you, [moko-permissions](https://github.com/icerockdev/moko-permissions)), Grant doesn't lock you into a fixed permission set. Use `RawPermission` to add any custom permission without waiting for library updates.
+Grant provides extensibility through `RawPermission`, allowing you to add any custom permission without waiting for library updates.
 
 ### Why This Matters
 
-When Android 15 or iOS 18 introduces new permissions, you're **not blocked**:
-- ❌ **moko-permissions**: Enum-based, must wait for maintainer to add permission
-- ✅ **Grant**: Sealed interface + `RawPermission` = instant extensibility
+When Android 15 or iOS 18 introduces new permissions:
+- Enum-based libraries: Must wait for maintainer to add permission
+- Grant: Sealed interface + `RawPermission` = instant extensibility
 
 ### Custom Permission Examples
 
@@ -365,7 +365,7 @@ val biometric = RawPermission(
 // Works exactly like AppGrant.CAMERA
 val handler = GrantHandler(
     grantManager = grantManager,
-    grant = biometric,  // ✅ RawPermission works here too!
+    grant = biometric,  // RawPermission works seamlessly
     scope = viewModelScope
 )
 ```
@@ -394,12 +394,12 @@ sealed interface GrantPermission {
     val identifier: String
 }
 
-// ✅ Built-in permissions (type-safe, documented)
+// Built-in permissions (type-safe, documented)
 enum class AppGrant : GrantPermission {
     CAMERA, LOCATION, MICROPHONE, ...
 }
 
-// ✅ Custom permissions (extensible, user-defined)
+// Custom permissions (extensible, user-defined)
 data class RawPermission(
     override val identifier: String,
     val androidPermissions: List<String>,
@@ -408,10 +408,10 @@ data class RawPermission(
 ```
 
 **Benefits:**
-- ✅ `AppGrant` for common permissions (compile-time safety)
-- ✅ `RawPermission` for new/custom permissions (runtime flexibility)
-- ✅ Both work with `GrantManager.request()`, `GrantHandler`, and `GrantDialog`
-- ✅ No library update needed for OS updates
+- `AppGrant` for common permissions (compile-time safety)
+- `RawPermission` for new/custom permissions (runtime flexibility)
+- Both work with `GrantManager.request()`, `GrantHandler`, and `GrantDialog`
+- No library update needed for OS updates
 
 ### Important Notes
 
@@ -444,36 +444,36 @@ data class RawPermission(
 
 ## 📊 Library Comparison
 
-Why choose Grant over alternatives? Here's what makes Grant unique:
+Why choose Grant? Here's what makes it unique:
 
-| Feature | Grant | moko-permissions | Accompanist | Native APIs |
-|---------|-------|------------------|-------------|-------------|
-| **Zero Boilerplate** | ✅ No Fragment/Activity | ❌ Requires binding | ❌ Activity required | ❌ Complex setup |
-| **Smart Config Validation** | ✅ **Validates Info.plist** | ❌ Crashes if missing | N/A (Android-only) | ❌ No validation |
-| **Process Death Handling** | ✅ **Zero timeout** | ❌ 60s hang + leaks | ❌ State loss | ❌ Manual handling |
-| **iOS Deadlock Fix** | ✅ Works on first request | ❌ Hangs on first request | N/A | ❌ Known issue |
-| **Custom Permissions** | ✅ RawPermission API | ❌ Enum only | ❌ Limited | ✅ Full control |
-| **Service Checking** | ✅ Built-in GPS/BT check | ❌ Not available | ❌ Not available | ❌ Separate APIs |
-| **Android 14 Partial Gallery** | ✅ Full support | ❌ Silent denial | ✅ Supported | ✅ Supported |
-| **Granular Gallery Permissions** | ✅ Images/Videos separate | ❌ All or nothing | ❌ All or nothing | ✅ Manual handling |
-| **Production-Safe** | ✅ No crashes, no hangs | ⚠️ Config crashes | ⚠️ State loss | ⚠️ Complex |
-| **Enum-Based Status** | ✅ Clean flow control | ❌ Exception-based | ✅ Result type | ❌ Multiple APIs |
-| **Cross-Platform** | ✅ Android + iOS | ✅ Android + iOS | ❌ Android only | ❌ Platform-specific |
+| Feature | Grant | Other KMP Libraries | Native APIs |
+|---------|-------|---------------------|-------------|
+| **Zero Boilerplate** | No Fragment/Activity | Requires binding | Complex setup |
+| **Smart Config Validation** | Validates Info.plist | No validation | No validation |
+| **Process Death Handling** | Zero timeout | Common timeout issues | Manual handling |
+| **iOS Deadlock Fix** | Works on first request | Known issue | Known issue |
+| **Custom Permissions** | RawPermission API | Limited to enum | Full control |
+| **Service Checking** | Built-in GPS/BT check | Separate implementation | Separate APIs |
+| **Android 14 Partial Gallery** | Full support | Varies by library | Full support |
+| **Granular Gallery Permissions** | Images/Videos separate | All or nothing | Manual handling |
+| **Production-Safe** | Comprehensive handling | Varies | Manual handling |
+| **Enum-Based Status** | Clean flow control | Varies | Multiple APIs |
+| **Cross-Platform** | Android + iOS | Android + iOS | Platform-specific |
 
-### 🏆 Unique to Grant
+### Grant's Unique Features
 
-**Only Grant provides:**
+**Key Differentiators:**
 1. **Info.plist validation** - No production crashes from missing config
 2. **Process death recovery** - Zero timeout, no memory leaks
 3. **Service checking** - GPS/Bluetooth status built-in
 4. **RawPermission extensibility** - Custom permissions without library updates
-5. **Complete bug fixes** - 88% of moko-permissions issues resolved
+5. **Comprehensive bug fixes** - Addresses common production issues
 
 **Production Impact:**
-- 🛡️ **No crashes** from missing iOS config
-- ⚡ **No hangs** from Android process death
-- 🎯 **No dead clicks** from Android 12+ issues
-- 😊 **Better UX** with automatic dialog handling
+- No crashes from missing iOS config
+- No hangs from Android process death
+- No dead clicks from Android 12+ issues
+- Better UX with automatic dialog handling
 
 ---
 
