@@ -4,9 +4,9 @@ updates:
   - package-ecosystem: "gradle"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"  # Changed from weekly to reduce noise
       day: "monday"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 3  # Reduced from 10 to avoid PR spam
     reviewers:
       - "brewkits"
     labels:
@@ -15,14 +15,34 @@ updates:
     commit-message:
       prefix: "deps"
       include: "scope"
+    # Ignore major version bumps - handle manually
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    # Group related dependencies to reduce PR count
+    groups:
+      testing-dependencies:
+        patterns:
+          - "mockk"
+          - "turbine"
+          - "junit*"
+          - "kotlin-test*"
+      compose-dependencies:
+        patterns:
+          - "org.jetbrains.compose*"
+          - "androidx.compose*"
+      kotlin-tooling:
+        patterns:
+          - "org.jetbrains.kotlin*"
+          - "org.jetbrains.kotlinx*"
 
   # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"  # Changed from weekly
       day: "monday"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 2  # Reduced from 5
     reviewers:
       - "brewkits"
     labels:
@@ -31,3 +51,13 @@ updates:
     commit-message:
       prefix: "ci"
       include: "scope"
+    # Ignore major version bumps for Actions too
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    # Group GitHub Actions updates
+    groups:
+      github-actions:
+        patterns:
+          - "actions/*"
+          - "gradle/*"
