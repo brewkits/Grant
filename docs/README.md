@@ -19,6 +19,11 @@ Welcome to Grant's comprehensive documentation!
 - [Compose Integration](grant-compose/COMPOSE_SUPPORT_RELEASE_NOTES.md) - Compose support
 - [Best Practices](BEST_PRACTICES.md) - Production patterns
 
+### 🧪 Recipes
+**Copy-paste solutions for common patterns**
+
+- [Location Permission + GPS Check](recipes/location-permission-with-gps-check.md) - Complete location flow with service checking
+
 ### 🏗️ Architecture
 **Understanding Grant's design**
 
@@ -62,6 +67,9 @@ Welcome to Grant's comprehensive documentation!
 
 **"Check if GPS enabled"**
 → [Service Checking](grant-core/SERVICES.md)
+
+**"Location permission + GPS check flow"**
+→ [Location Recipe](recipes/location-permission-with-gps-check.md)
 
 **"Coming from moko-permissions"**
 → [Comparison and Learnings](COMPARISON_AND_LEARNINGS.md)
