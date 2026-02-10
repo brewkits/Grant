@@ -101,7 +101,7 @@ dependencyResolutionManagement {
 kotlin {
     sourceSets {
         commonMain.dependencies {
-            implementation("dev.brewkits.grant:grant-core:1.0.0")
+            implementation("dev.brewkits.grant:grant-core:1.0.1")
         }
     }
 }

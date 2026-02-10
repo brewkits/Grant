@@ -5,19 +5,16 @@
 [![Maven Central](https://img.shields.io/maven-central/v/dev.brewkits/grant-core)](https://central.sonatype.com/artifact/dev.brewkits/grant-core)
 [![License](https://img.shields.io/badge/License-Apache%202.0-orange.svg)](https://opensource.org/licenses/Apache-2.0)
 
-**The Most Comprehensive & Powerful Permission Library for Kotlin Multiplatform**
+**A Modern Permission Library for Kotlin Multiplatform**
 
-> 🚀 **No Fragment/Activity required. No BindEffect boilerplate. Smart Android 12+ handling. Built-in Service Checking.**
+Grant simplifies permission handling across Android and iOS with a clean, type-safe API. No Fragment/Activity required, no binding boilerplate, and built-in support for service checking (GPS, Bluetooth, etc.).
 
-> 🏆 **EXCLUSIVE: Smart Config Validation + Process Death Handling** - The only KMP library that won't crash from missing Info.plist keys and handles Android process death with zero timeout.
-
-Grant is the **production-ready, battle-tested permission library** that eliminates boilerplate, fixes platform bugs, and handles every edge case. With **zero** dead clicks, memory leaks, or configuration headaches, Grant provides the cleanest API for KMP permission management.
-
-**What makes Grant unique:** Through comprehensive research of the KMP permission ecosystem, Grant provides:
-- Validates iOS Info.plist keys before crash (no SIGABRT in production)
-- Handles Android process death with zero timeout (no 60-second hangs)
-- Fixes iOS Camera/Microphone deadlock (works on first request)
-- Supports custom permissions via RawPermission (extensible beyond enum)
+**Key Features:**
+- Clean, enum-based API that works anywhere (ViewModels, repositories, Composables)
+- iOS Info.plist validation to prevent crashes
+- Android process death recovery without timeout
+- Extensible design supporting custom permissions via RawPermission
+- Built-in service status checking (Location, Bluetooth)
 
 ---
 
@@ -51,7 +48,7 @@ fun CameraScreen(viewModel: CameraViewModel) {
 }
 ```
 
-**That's it!** No Fragment. No BindEffect. No configuration. Just works. ✨
+Simple and straightforward - no Fragment, no BindEffect, no manual configuration.
 
 ---
 
@@ -124,50 +121,43 @@ fun CameraScreen() {
 }
 ```
 
-**That's it.** No Fragment. No binding. No dead clicks.
+Simple, clean, and works anywhere.
 
 ---
 
 ## 🚀 Key Features
 
-### ✨ Zero Boilerplate - Revolutionary Simplicity
-- ✅ **No Fragment/Activity required** - Works in ViewModels, repositories, anywhere
-- ✅ **No BindEffect** - No lifecycle binding ceremony
-- ✅ **No configuration** - Works out of the box
-- 🎯 **Just works** - One line to request, one enum to handle all states
+### Clean API Design
+- **No Fragment/Activity required** - Works in ViewModels, repositories, or Composables
+- **No lifecycle binding** - No BindEffect or manual lifecycle management
+- **Enum-based status** - Type-safe, predictable flow control
+- **Coroutine-first** - Async by default with suspend functions
 
-### 🛡️ Smart Platform Handling - Fixes Industry-Wide Bugs
-- ✅ **Android 12+ Dead Click Fix** - **100% elimination** of dead clicks (built-in, not a workaround)
-- ✅ **Android 14 Partial Gallery Access** - Full support for "Select Photos" mode
-- ✅ **iOS Permission Deadlock Fix** - Camera/Microphone work on **first request** (fixes critical bug #129)
-- ✅ **Granular Gallery Permissions** - Images-only, Videos-only, or both (prevents silent denials)
-- ✅ **Bluetooth Error Differentiation** - Retryable vs permanent errors (10s timeout)
-- ✅ **Notification Status Validation** - Correct status even on Android 12-
+### Platform-Specific Handling
+- **Android 12+ Dead Click Fix** - Handles Android 12+ dead clicks automatically
+- **Android 14 Partial Gallery Access** - Supports "Select Photos" mode
+- **iOS Deadlock Prevention** - Fixes Camera/Microphone deadlock on first request
+- **Granular Gallery Permissions** - Separate handling for images vs videos
 
-### 🏆 Production-Grade Features
-- **Smart Configuration Validation (iOS)** - Validates Info.plist keys before crash
-  - Most libraries: Instant SIGABRT crash if key missing
-  - Grant: Returns DENIED_ALWAYS with clear error message, app continues running
-  - Validates all 9 permission types before native API calls
-  - Production-safe handling of missing configuration
+### Production Safety
+- **iOS Info.plist Validation** - Validates keys before calling native APIs
+  - Prevents SIGABRT crashes from missing configuration
+  - Returns DENIED_ALWAYS with error message instead of crashing
 
-- **Robust Process Death Handling (Android)** - Zero-timeout recovery system
-  - Common issue: 60-second hang, memory leaks, frustrated users
-  - Grant: Instant recovery (0ms), automatic orphan cleanup, dialog state restoration
-  - savedInstanceState integration for seamless UX
-  - Enterprise-grade handling of Android's memory management
+- **Android Process Death Recovery** - Handles process death gracefully
+  - Instant recovery without timeout
+  - Automatic orphan cleanup
+  - Dialog state restoration via savedInstanceState
 
-### 🏗️ Production-Ready Architecture - Enterprise Grade
-- ✅ **Enum-based Status** - Clean, predictable flow (not exception-based)
-- ✅ **In-Memory State** - Industry standard approach (90% of libraries including Google Accompanist)
-- ✅ **Thread-Safe** - Coroutine-first design with proper mutex handling
-- ✅ **Memory Leak Free** - Application context only, zero Activity retention
-- ✅ **103+ Unit Tests** - Comprehensive test coverage, all passing
-- ✅ **Zero Compiler Warnings** - Clean, maintainable codebase
+### Architecture
+- **Thread-safe** - Proper mutex handling for concurrent requests
+- **Memory efficient** - Application context only, no Activity retention
+- **Well-tested** - 125+ unit tests with comprehensive coverage
+- **Extensible** - Sealed interface design supports custom permissions
 
-### 🛠️ Built-in Service Checking - The Missing Piece
+### Built-in Service Checking
 
-**Permissions ≠ Services!** Having permission doesn't mean the service is enabled. Grant is the only KMP library that handles both.
+Permissions don't guarantee services are enabled. Grant includes service status checking:
 
 ```kotlin
 val serviceManager = ServiceFactory.create(context)
@@ -190,15 +180,12 @@ if (!serviceManager.isBluetoothEnabled()) {
 }
 ```
 
-**Why This Matters:**
-- 🎯 Users often grant permission but forget to enable GPS/Bluetooth
-- 🎯 Silent failures are confusing - Grant helps you guide users properly
-- 🎯 One library for both permissions AND services - no extra dependencies
-
 **Supported Services:**
-- **Location** - GPS/Network location services
-- **Bluetooth** - Bluetooth adapter status
-- **Background Location** - Platform-specific background location checks
+- Location - GPS/Network location services
+- Bluetooth - Bluetooth adapter status
+- Background Location - Platform-specific checks
+
+This helps you detect when users grant permission but forget to enable the required service.
 
 ### 📱 Cross-Platform Coverage
 - **Android**: API 24+ (100% coverage)
@@ -223,8 +210,8 @@ dependencyResolutionManagement {
 kotlin {
     sourceSets {
         commonMain.dependencies {
-            implementation("dev.brewkits:grant-core:1.0.0")
-            implementation("dev.brewkits:grant-compose:1.0.0") // Optional
+            implementation("dev.brewkits:grant-core:1.0.1")
+            implementation("dev.brewkits:grant-compose:1.0.1") // Optional
         }
     }
 }
@@ -307,24 +294,22 @@ See [Quick Start Guide](docs/getting-started/quick-start.md) for complete setup.
 
 ---
 
-## 🔧 Extensibility: Custom Permissions
+## 🔧 Custom Permissions
 
-**Need Android 15 permission? New OS feature not yet in the library? No problem!**
+Grant supports custom permissions through the `RawPermission` API. This allows you to use new OS permissions or platform-specific features without waiting for library updates.
 
-Grant provides extensibility through `RawPermission`, allowing you to add any custom permission without waiting for library updates.
+### When to Use Custom Permissions
 
-### Why This Matters
+- New OS versions (Android 15, iOS 18) introduce permissions not yet in `AppGrant`
+- Platform-specific or experimental permissions
+- Enterprise or company-specific permission requirements
 
-When Android 15 or iOS 18 introduces new permissions:
-- Enum-based libraries: Must wait for maintainer to add permission
-- Grant: Sealed interface + `RawPermission` = instant extensibility
+### Examples
 
-### Custom Permission Examples
-
-#### Android 15 New Permission
+#### Android 15 Permission
 
 ```kotlin
-// Android 15 introduces a new permission? Use it immediately!
+// Use new Android permissions immediately
 val predictiveBackPermission = RawPermission(
     identifier = "PREDICTIVE_BACK",
     androidPermissions = listOf("android.permission.PREDICTIVE_BACK"),
@@ -339,10 +324,10 @@ suspend fun requestPredictiveBack() {
 }
 ```
 
-#### iOS 18 New Permission
+#### iOS 18 Permission
 
 ```kotlin
-// iOS 18 adds a new privacy key? No problem!
+// Use new iOS permissions
 val healthKit = RawPermission(
     identifier = "HEALTH_KIT",
     androidPermissions = emptyList(),  // iOS-only
@@ -407,11 +392,10 @@ data class RawPermission(
 ) : GrantPermission
 ```
 
-**Benefits:**
-- `AppGrant` for common permissions (compile-time safety)
-- `RawPermission` for new/custom permissions (runtime flexibility)
-- Both work with `GrantManager.request()`, `GrantHandler`, and `GrantDialog`
-- No library update needed for OS updates
+**Design:**
+- `AppGrant` enum for common permissions (type-safe)
+- `RawPermission` for custom permissions (flexible)
+- Both work with all Grant APIs
 
 ### Important Notes
 
@@ -433,47 +417,33 @@ data class RawPermission(
    <string>We need this permission because...</string>
    ```
 
-### Real-World Use Cases
+### Use Cases
 
-- 🆕 **OS Updates**: Android 15 new permissions (available day one)
-- 🏢 **Enterprise**: Custom company-specific permissions
-- 🧪 **Testing**: Experimental or proprietary permissions
-- 🔧 **Edge Cases**: Platform-specific permissions not in `AppGrant`
+- New OS permissions (Android 15, iOS 18)
+- Enterprise-specific permissions
+- Experimental or proprietary features
+- Platform-specific permissions
 
 ---
 
-## 📊 Library Comparison
-
-Why choose Grant? Here's what makes it unique:
+## 📊 Comparison
 
 | Feature | Grant | Other KMP Libraries | Native APIs |
 |---------|-------|---------------------|-------------|
-| **Zero Boilerplate** | No Fragment/Activity | Requires binding | Complex setup |
-| **Smart Config Validation** | Validates Info.plist | No validation | No validation |
-| **Process Death Handling** | Zero timeout | Common timeout issues | Manual handling |
-| **iOS Deadlock Fix** | Works on first request | Known issue | Known issue |
-| **Custom Permissions** | RawPermission API | Limited to enum | Full control |
-| **Service Checking** | Built-in GPS/BT check | Separate implementation | Separate APIs |
-| **Android 14 Partial Gallery** | Full support | Varies by library | Full support |
-| **Granular Gallery Permissions** | Images/Videos separate | All or nothing | Manual handling |
-| **Production-Safe** | Comprehensive handling | Varies | Manual handling |
-| **Enum-Based Status** | Clean flow control | Varies | Multiple APIs |
+| **No Fragment/Activity** | ✅ | Varies | ❌ |
+| **Info.plist Validation** | ✅ | ❌ | ❌ |
+| **Process Death Recovery** | ✅ | Limited | Manual |
+| **Custom Permissions** | RawPermission | Limited | Full control |
+| **Service Checking** | Built-in | Separate | Separate APIs |
+| **Android 14 Partial Gallery** | ✅ | Varies | ✅ |
+| **Enum-Based Status** | ✅ | Varies | Multiple APIs |
 | **Cross-Platform** | Android + iOS | Android + iOS | Platform-specific |
 
-### Grant's Unique Features
-
-**Key Differentiators:**
-1. **Info.plist validation** - No production crashes from missing config
-2. **Process death recovery** - Zero timeout, no memory leaks
-3. **Service checking** - GPS/Bluetooth status built-in
-4. **RawPermission extensibility** - Custom permissions without library updates
-5. **Comprehensive bug fixes** - Addresses common production issues
-
-**Production Impact:**
-- No crashes from missing iOS config
-- No hangs from Android process death
-- No dead clicks from Android 12+ issues
-- Better UX with automatic dialog handling
+**Notable features:**
+- Info.plist validation prevents iOS crashes
+- Process death recovery without timeout
+- Service checking included (GPS, Bluetooth)
+- Extensible via RawPermission for custom permissions
 
 ---
 
@@ -501,10 +471,10 @@ Why choose Grant? Here's what makes it unique:
 - [Dependency Management](docs/DEPENDENCY_MANAGEMENT.md) - Handling version conflicts
 
 ### Production Checklist
-- 🔒 **iOS Info.plist**: [Add required keys](docs/platform-specific/ios/info-plist.md) (app crashes if missing)
-- 🔧 **Logging**: Disable in production: `GrantLogger.isEnabled = false`
-- 📦 **Backup**: [Exclude GrantStore from backup](docs/architecture/grant-store.md#backup-rules-android) if using persistent storage
-- ✅ **Testing**: Test all permission flows on real devices
+- **iOS Info.plist**: [Add required keys](docs/platform-specific/ios/info-plist.md) (required for iOS)
+- **Logging**: Disable in production: `GrantLogger.isEnabled = false`
+- **Backup**: [Exclude GrantStore from backup](docs/architecture/grant-store.md#backup-rules-android) if using persistent storage
+- **Testing**: Test permission flows on real devices
 
 ---
 
@@ -522,11 +492,11 @@ GrantLogger.isEnabled = true
 GrantLogger.isEnabled = false
 ```
 
-**Benefits of logging**:
-- ✅ Detects missing iOS Info.plist keys before crash
-- ✅ Shows permission flow: request → rationale → settings
-- ✅ Logs platform-specific behaviors (Android 12+, iOS deadlocks)
-- ✅ Helps debug denied/denied_always states
+**Logging helps with**:
+- Detecting missing iOS Info.plist keys
+- Debugging permission flows
+- Understanding platform-specific behaviors
+- Troubleshooting denied states
 
 ### Custom Log Handler
 
@@ -570,22 +540,14 @@ limitations under the License.
 
 ---
 
-## ⭐ Star Us on GitHub!
+## 🤝 Support
 
-If Grant saves you time, please give us a star!
-
-It helps other developers discover this project.
-
-[⬆️ Back to Top](#grant-)
+- **Website:** [brewkits.dev](https://brewkits.dev)
+- **Issues:** [GitHub Issues](https://github.com/brewkits/Grant/issues)
+- **Email:** datacenter111@gmail.com
 
 ---
 
-<div align="center">
+**License:** Apache 2.0 • **Author:** Nguyễn Tuấn Việt • [BrewKits](https://brewkits.dev)
 
-**Made with ❤️ by Nguyễn Tuấn Việt at Brewkits**
-
-**Support:** datacenter111@gmail.com • **Community:** [GitHub Issues](https://github.com/brewkits/Grant/issues)
-
-[⭐ Star on GitHub](https://github.com/brewkits/Grant) • [📦 Maven Central](https://central.sonatype.com/artifact/dev.brewkits/grant-core)
-
-</div>
+[⬆️ Back to Top](#grant-)

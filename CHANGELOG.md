@@ -6,7 +6,64 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [[1.0.0] - 2026-01-29]
+## [1.0.1] - 2026-02-10
+
+### 🐛 Bug Fixes
+
+- **CRITICAL:** Fixed GrantHandler to accept GrantPermission instead of AppGrant only
+  - Enables RawPermission usage with GrantHandler
+  - Allows custom Android 15+ permissions
+  - Backward compatible (AppGrant implements GrantPermission)
+
+- **iOS:** Implemented RawPermission support
+  - Validates Info.plist keys for custom permissions
+  - Returns appropriate status instead of always DENIED
+  - Provides clear developer guidance
+
+- **UX:** Fixed requestWithCustomUi showing double dialogs
+  - Added first-request protection
+  - No longer shows rationale immediately after system dialog denial
+  - Matches behavior of regular request() method
+
+### 📦 Dependency Changes
+
+- Changed grant-compose Material3 dependency from `implementation` to `api`
+  - Allows apps to control Material3 version
+  - Prevents version conflicts for apps using different Compose versions
+  - Apps using Material 2 can now choose to exclude grant-compose
+
+### 🧪 Testing
+
+- Added 22 new Android instrumented tests
+  - 7 tests for GrantRequestActivity
+  - 15 tests for PlatformGrantDelegate
+  - API-level specific testing with @SdkSuppress
+- Added 6 new unit tests for RawPermission support
+- Test coverage maintained at 80%+
+
+### 📚 Documentation
+
+- Added comprehensive Migration Guide
+  - From moko-permissions
+  - From Google Accompanist
+  - From custom implementations
+  - From native Android APIs
+  - Common patterns and troubleshooting
+
+### 🔧 Internal Improvements
+
+- Better error messages for iOS Info.plist validation
+- More detailed logging for RawPermission usage
+- Improved code documentation
+- Fixed deprecated androidTest directory naming
+
+### ⚠️ Breaking Changes
+
+None - this release is 100% backward compatible.
+
+---
+
+## [1.0.0] - 2026-01-29
 
 ### 🏆 Production-Grade Features
 

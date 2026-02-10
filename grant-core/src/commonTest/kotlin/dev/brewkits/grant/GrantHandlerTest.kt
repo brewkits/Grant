@@ -521,4 +521,117 @@ class GrantHandlerTest {
         // Last callback wins (overwrites previous)
         assertEquals(1, invocationCount, "Only last callback should be invoked once")
     }
+
+    // ==================== RawPermission Support Tests ====================
+
+    @Test
+    fun `should accept RawPermission in constructor`() = runTest {
+        // Create a custom permission
+        val customPermission = RawPermission(
+            identifier = "CUSTOM_FEATURE",
+            androidPermissions = listOf("com.example.permission.CUSTOM"),
+            iosUsageKey = "NSCustomUsageDescription"
+        )
+
+        mockGrantManager.mockStatus = GrantStatus.NOT_DETERMINED
+
+        // Should compile and not throw
+        val handler = GrantHandler(mockGrantManager, customPermission, testScope)
+        testScheduler.advanceUntilIdle()
+
+        // Verify handler is functional
+        assertNotNull(handler)
+        assertEquals(GrantStatus.NOT_DETERMINED, handler.status.value)
+    }
+
+    @Test
+    fun `should request RawPermission successfully`() = runTest {
+        val customPermission = RawPermission(
+            identifier = "BIOMETRIC",
+            androidPermissions = listOf("android.permission.USE_BIOMETRIC"),
+            iosUsageKey = "NSFaceIDUsageDescription"
+        )
+
+        mockGrantManager.mockStatus = GrantStatus.GRANTED
+        val handler = GrantHandler(mockGrantManager, customPermission, testScope)
+        testScheduler.advanceUntilIdle()
+
+        var callbackInvoked = false
+        handler.request {
+            callbackInvoked = true
+        }
+        testScheduler.advanceUntilIdle()
+
+        assertTrue(callbackInvoked, "Callback should be invoked for RawPermission when granted")
+        assertEquals(GrantStatus.GRANTED, handler.status.value)
+    }
+
+    @Test
+    fun `should handle RawPermission denial flow`() = runTest {
+        val customPermission = RawPermission(
+            identifier = "CUSTOM_SENSOR",
+            androidPermissions = listOf("com.example.permission.SENSOR"),
+            iosUsageKey = null  // Android-only permission
+        )
+
+        mockGrantManager.mockStatus = GrantStatus.DENIED
+        val handler = GrantHandler(mockGrantManager, customPermission, testScope)
+        testScheduler.advanceUntilIdle()
+
+        handler.state.test {
+            awaitItem() // Initial state
+
+            handler.request {
+                fail("Callback should not be invoked when denied")
+            }
+            testScheduler.advanceUntilIdle()
+
+            // Should show rationale for custom permission (second request)
+            handler.request {
+                fail("Callback should not be invoked")
+            }
+            testScheduler.advanceUntilIdle()
+
+            val state = awaitItem()
+            assertTrue(state.showRationale, "Should show rationale for denied RawPermission")
+        }
+    }
+
+    @Test
+    fun `should work with Android-only RawPermission`() = runTest {
+        val androidOnlyPermission = RawPermission(
+            identifier = "ANDROID_15_FEATURE",
+            androidPermissions = listOf("android.permission.NEW_FEATURE"),
+            iosUsageKey = null  // No iOS equivalent
+        )
+
+        mockGrantManager.mockStatus = GrantStatus.GRANTED
+        val handler = GrantHandler(mockGrantManager, androidOnlyPermission, testScope)
+        testScheduler.advanceUntilIdle()
+
+        var callbackInvoked = false
+        handler.request { callbackInvoked = true }
+        testScheduler.advanceUntilIdle()
+
+        assertTrue(callbackInvoked, "Android-only RawPermission should work")
+    }
+
+    @Test
+    fun `should work with iOS-only RawPermission`() = runTest {
+        val iosOnlyPermission = RawPermission(
+            identifier = "HEALTH_KIT",
+            androidPermissions = emptyList(),  // No Android equivalent
+            iosUsageKey = "NSHealthShareUsageDescription"
+        )
+
+        mockGrantManager.mockStatus = GrantStatus.GRANTED
+        val handler = GrantHandler(mockGrantManager, iosOnlyPermission, testScope)
+        testScheduler.advanceUntilIdle()
+
+        var callbackInvoked = false
+        handler.request { callbackInvoked = true }
+        testScheduler.advanceUntilIdle()
+
+        assertTrue(callbackInvoked, "iOS-only RawPermission should work")
+    }
 }

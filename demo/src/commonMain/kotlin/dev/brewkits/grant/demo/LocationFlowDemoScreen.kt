@@ -15,6 +15,7 @@ import dev.brewkits.grant.AppGrant
 import dev.brewkits.grant.GrantManager
 import dev.brewkits.grant.GrantStatus
 import dev.brewkits.grant.ServiceManager
+import dev.brewkits.grant.ServiceType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,6 +29,7 @@ import kotlinx.coroutines.launch
  *
  * See docs/recipes/location-permission-with-gps-check.md for detailed explanation.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LocationFlowDemoScreen(
     viewModel: LocationFlowViewModel,
@@ -37,7 +39,7 @@ fun LocationFlowDemoScreen(
 
     Scaffold(
         topBar = {
-            SmallTopAppBar(
+            TopAppBar(
                 title = { Text("Location Flow Demo") }
             )
         }
@@ -229,7 +231,7 @@ fun LocationFlowDemoScreen(
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = locationState.message,
+                                text = (locationState as LocationState.Error).message,
                                 style = MaterialTheme.typography.bodyMedium
                             )
                             Button(
@@ -358,7 +360,7 @@ class LocationFlowViewModel(
             }
 
             // Step 2: Check if GPS is enabled
-            if (!serviceManager.isLocationEnabled()) {
+            if (!serviceManager.isServiceEnabled(ServiceType.LOCATION_GPS)) {
                 _locationState.value = LocationState.ShowGpsPrompt
                 return@launch
             }
@@ -369,7 +371,9 @@ class LocationFlowViewModel(
     }
 
     fun openLocationSettings() {
-        serviceManager.openLocationSettings()
+        viewModelScope.launch {
+            serviceManager.openServiceSettings(ServiceType.LOCATION_GPS)
+        }
     }
 
     fun openAppSettings() {

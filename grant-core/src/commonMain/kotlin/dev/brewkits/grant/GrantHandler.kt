@@ -56,10 +56,10 @@ data class GrantUiState(
  *
  * **Usage in ViewModel**:
  * ```kotlin
- * class CameraViewModel(GrantManager: GrantManager) : ViewModel() {
+ * class CameraViewModel(grantManager: GrantManager) : ViewModel() {
  *     val cameraGrant = GrantHandler(
- *         GrantManager = GrantManager,
- *         grant = AppGrant.CAMERA,
+ *         grantManager = grantManager,
+ *         grant = AppGrant.CAMERA,  // Or use RawPermission for custom permissions
  *         scope = viewModelScope // CRITICAL: Use viewModelScope!
  *     )
  *
@@ -93,7 +93,7 @@ data class GrantUiState(
  * ```
  *
  * @param grantManager The underlying grant manager
- * @param grant The specific grant this handler manages
+ * @param grant The specific grant this handler manages (AppGrant or RawPermission)
  * @param scope CoroutineScope for launching grant requests.
  *
  *              **CRITICAL - Scope Requirements:**
@@ -128,7 +128,7 @@ data class GrantUiState(
  */
 class GrantHandler(
     private val grantManager: GrantManager,
-    private val grant: AppGrant,
+    private val grant: GrantPermission,
     scope: CoroutineScope,
     private val savedStateDelegate: SavedStateDelegate = NoOpSavedStateDelegate()
 ) {
@@ -504,13 +504,17 @@ class GrantHandler(
 
     /**
      * Internal handler for custom UI flow.
+     *
+     * @param isFirstRequest True if this is the first request from system dialog denial.
+     *                       Prevents showing rationale immediately after system dialog.
      */
     private suspend fun handleStatusWithCustomUi(
         status: GrantStatus,
         rationaleMessage: String?,
         settingsMessage: String?,
         onShowRationale: (message: String, onConfirm: () -> Unit, onDismiss: () -> Unit) -> Unit,
-        onShowSettings: (message: String, onConfirm: () -> Unit, onDismiss: () -> Unit) -> Unit
+        onShowSettings: (message: String, onConfirm: () -> Unit, onDismiss: () -> Unit) -> Unit,
+        isFirstRequest: Boolean = false
     ) {
         when (status) {
             GrantStatus.GRANTED -> {
@@ -530,7 +534,8 @@ class GrantHandler(
                         rationaleMessage = rationaleMessage,
                         settingsMessage = settingsMessage,
                         onShowRationale = onShowRationale,
-                        onShowSettings = onShowSettings
+                        onShowSettings = onShowSettings,
+                        isFirstRequest = true  // Mark as first request from system dialog
                     )
                 } else {
                     // Treat as soft denial to prevent infinite recursion
@@ -539,35 +544,45 @@ class GrantHandler(
                         rationaleMessage = rationaleMessage,
                         settingsMessage = settingsMessage,
                         onShowRationale = onShowRationale,
-                        onShowSettings = onShowSettings
+                        onShowSettings = onShowSettings,
+                        isFirstRequest = true
                     )
                 }
             }
             GrantStatus.DENIED -> {
-                // Soft denial - invoke rationale callback
-                val message = rationaleMessage ?: "This grant is required for this feature to work."
+                // Add first-request protection to prevent double dialogs
+                // If this is the first denial from system dialog, don't show rationale yet
+                if (!isFirstRequest) {
+                    // Soft denial - invoke rationale callback
+                    val message = rationaleMessage ?: "This grant is required for this feature to work."
 
-                val onConfirm: () -> Unit = {
-                    scope.launch {
-                        val newStatus = grantManager.request(grant)
-                        _status.value = newStatus
-                        refreshStatus()
-                        handleStatusWithCustomUi(
-                            status = newStatus,
-                            rationaleMessage = rationaleMessage,
-                            settingsMessage = settingsMessage,
-                            onShowRationale = onShowRationale,
-                            onShowSettings = onShowSettings
-                        )
+                    val onConfirm: () -> Unit = {
+                        scope.launch {
+                            val newStatus = grantManager.request(grant)
+                            _status.value = newStatus
+                            refreshStatus()
+                            handleStatusWithCustomUi(
+                                status = newStatus,
+                                rationaleMessage = rationaleMessage,
+                                settingsMessage = settingsMessage,
+                                onShowRationale = onShowRationale,
+                                onShowSettings = onShowSettings,
+                                isFirstRequest = true  // Mark subsequent requests as first
+                            )
+                        }
                     }
-                }
 
-                val onDismiss: () -> Unit = {
-                    // Clear callback to prevent memory leak
+                    val onDismiss: () -> Unit = {
+                        // Clear callback to prevent memory leak
+                        onGrantedCallback = null
+                    }
+
+                    onShowRationale(message, onConfirm, onDismiss)
+                } else {
+                    // Just denied from system dialog - don't show rationale yet
+                    // User can try again later and THEN we'll show rationale
                     onGrantedCallback = null
                 }
-
-                onShowRationale(message, onConfirm, onDismiss)
             }
             GrantStatus.DENIED_ALWAYS -> {
                 // Permanent denial - invoke settings callback
