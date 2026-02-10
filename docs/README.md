@@ -18,6 +18,7 @@ Welcome to Grant's comprehensive documentation!
 - [Service Checking](grant-core/SERVICES.md) - GPS, Bluetooth services
 - [Compose Integration](grant-compose/COMPOSE_SUPPORT_RELEASE_NOTES.md) - Compose support
 - [Best Practices](BEST_PRACTICES.md) - Production patterns
+- [Migration Guide](MIGRATION_GUIDE.md) - **NEW in v1.0.1** - Migrate from moko-permissions, Accompanist, or custom implementations
 
 ### 🧪 Recipes
 **Copy-paste solutions for common patterns**
@@ -71,8 +72,8 @@ Welcome to Grant's comprehensive documentation!
 **"Location permission + GPS check flow"**
 → [Location Recipe](recipes/location-permission-with-gps-check.md)
 
-**"Coming from moko-permissions"**
-→ [Comparison and Learnings](COMPARISON_AND_LEARNINGS.md)
+**"Coming from moko-permissions or other libraries"**
+→ [Migration Guide](MIGRATION_GUIDE.md) - Step-by-step migration with code examples
 
 **"App crashes on iOS when requesting permission"** ⚠️
 → [iOS Info.plist Setup](platform-specific/ios/info-plist.md)

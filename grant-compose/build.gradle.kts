@@ -9,7 +9,7 @@ plugins {
 }
 
 group = "dev.brewkits"
-version = "1.0.0"
+version = "1.0.1"
 
 kotlin {
     androidTarget {
@@ -45,9 +45,9 @@ kotlin {
             // Compose dependencies
             implementation(compose.runtime)
             implementation(compose.foundation)
-            // Material3 as implementation - standard for UI libraries
-            // Users can override version using Gradle dependency resolution
-            implementation(compose.material3)
+            // Material3 as api - allows apps to control version
+            // Apps using Material 2 or different Compose versions can override
+            api(compose.material3)
             implementation(compose.ui)
         }
 
@@ -82,7 +82,7 @@ publishing {
     publications.configureEach {
         (this as? MavenPublication)?.let {
             groupId = "dev.brewkits"
-            version = "1.0.0"
+            version = "1.0.1"
 
             pom {
                 name.set("KMP Grant Compose")

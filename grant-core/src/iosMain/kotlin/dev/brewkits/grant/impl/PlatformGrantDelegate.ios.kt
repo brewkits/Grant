@@ -110,11 +110,68 @@ actual class PlatformGrantDelegate(
         return true
     }
 
+    /**
+     * Validates Info.plist key for RawPermission (custom permissions).
+     *
+     * @param key The Info.plist key to check
+     * @param identifier The RawPermission identifier for error messaging
+     * @return true if key exists, false if missing
+     */
+    private fun validateInfoPlistKey(key: String, identifier: String): Boolean {
+        val bundle = NSBundle.mainBundle
+        val value = bundle.objectForInfoDictionaryKey(key)
+
+        if (value == null) {
+            GrantLogger.e(
+                "iOSGrant",
+                """
+                ⚠️ CRITICAL: Missing required Info.plist key for RawPermission '$identifier'
+
+                Required key: $key
+
+                Add this to your Info.plist file:
+                <key>$key</key>
+                <string>Describe why your app needs this permission</string>
+
+                Without this key, your app may CRASH immediately with SIGABRT
+                when calling the native iOS API for this permission.
+
+                For more information, see:
+                https://developer.apple.com/documentation/bundleresources/information_property_list
+                """.trimIndent()
+            )
+            return false
+        }
+
+        return true
+    }
+
     actual suspend fun checkStatus(grant: GrantPermission): GrantStatus {
-        // Handle RawPermission (custom permissions) - Not yet fully implemented
+        // Handle RawPermission (custom permissions)
         if (grant is RawPermission) {
-            GrantLogger.w("iOSGrant", "RawPermission support not yet implemented: ${grant.identifier}")
-            return GrantStatus.DENIED  // Conservative default
+            GrantLogger.i("iOSGrant", "Checking RawPermission: ${grant.identifier}")
+
+            val usageKey = grant.iosUsageKey
+            if (usageKey != null) {
+                // Validate Info.plist key exists
+                if (!validateInfoPlistKey(usageKey, grant.identifier)) {
+                    return GrantStatus.DENIED_ALWAYS
+                }
+
+                // For custom permissions, we can't determine the actual status
+                // without knowing which iOS API to call. Return NOT_DETERMINED
+                // so the user can call request() to trigger the permission dialog.
+                GrantLogger.d(
+                    "iOSGrant",
+                    "RawPermission '${grant.identifier}' has valid Info.plist key. " +
+                    "Status cannot be determined without calling request()."
+                )
+                return GrantStatus.NOT_DETERMINED
+            }
+
+            // No iOS usage key = no permission needed on iOS
+            GrantLogger.d("iOSGrant", "RawPermission '${grant.identifier}' has no iOS key, returning GRANTED")
+            return GrantStatus.GRANTED
         }
 
         // Cast to AppGrant
@@ -140,10 +197,46 @@ actual class PlatformGrantDelegate(
 
     actual suspend fun request(grant: GrantPermission): GrantStatus = requestMutex.withLock {
         return@withLock runOnMain {
-            // Handle RawPermission (custom permissions) - Not yet fully implemented
+            // Handle RawPermission (custom permissions)
             if (grant is RawPermission) {
-                GrantLogger.w("iOSGrant", "RawPermission support not yet implemented: ${grant.identifier}")
-                return@runOnMain GrantStatus.DENIED  // Conservative default
+                GrantLogger.i("iOSGrant", "Requesting RawPermission: ${grant.identifier}")
+
+                val usageKey = grant.iosUsageKey
+                if (usageKey != null) {
+                    // Validate Info.plist key before requesting
+                    if (!validateInfoPlistKey(usageKey, grant.identifier)) {
+                        return@runOnMain GrantStatus.DENIED_ALWAYS
+                    }
+
+                    // Log guidance for developers
+                    GrantLogger.w(
+                        "iOSGrant",
+                        """
+                        RawPermission '${grant.identifier}' detected with iOS key: $usageKey
+
+                        Grant has validated your Info.plist key exists, but iOS doesn't have
+                        a generic permission request API. To complete the implementation:
+
+                        1. Call the appropriate iOS native API for your permission type
+                        2. Use the Info.plist key you provided: $usageKey
+                        3. Example: AVCaptureDevice.requestAccessForMediaType() for camera
+
+                        For now, returning NOT_DETERMINED to indicate permission can be requested.
+                        The actual permission dialog must be triggered by native iOS code.
+                        """.trimIndent()
+                    )
+
+                    // Return NOT_DETERMINED to indicate permission flow is possible
+                    // but needs native implementation
+                    return@runOnMain GrantStatus.NOT_DETERMINED
+                }
+
+                // No iOS key = no permission needed on iOS
+                GrantLogger.i(
+                    "iOSGrant",
+                    "RawPermission '${grant.identifier}' has no iOS key, permission not required on iOS"
+                )
+                return@runOnMain GrantStatus.GRANTED
             }
 
             // Cast to AppGrant

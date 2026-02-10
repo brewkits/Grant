@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "dev.brewkits"
-version = "1.0.0"
+version = "1.0.1"
 
 kotlin {
     androidTarget {
@@ -58,6 +58,14 @@ kotlin {
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.turbine)
         }
+
+        androidInstrumentedTest.dependencies {
+            implementation(libs.kotlin.test)
+            implementation(libs.androidx.test.core)
+            implementation(libs.androidx.test.runner)
+            implementation(libs.androidx.test.junit)
+            implementation(libs.kotlinx.coroutines.test)
+        }
     }
 }
 
@@ -86,7 +94,7 @@ publishing {
     publications.configureEach {
         (this as? MavenPublication)?.let {
             groupId = "dev.brewkits"
-            version = "1.0.0"
+            version = "1.0.1"
 
             pom {
                 name.set("KMP Grant")

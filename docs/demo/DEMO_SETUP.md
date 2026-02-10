@@ -393,7 +393,7 @@ class BluetoothManagerDelegate {
 4. Integrate into your app
 
 ### For Integration:
-1. Add dependency: `implementation("dev.brewkits:grant-core:1.0.0")`
+1. Add dependency: `implementation("dev.brewkits:grant-core:1.0.1")`
 2. Setup Koin modules
 3. Inject `GrantManager` in ViewModels
 4. Use `GrantHandler` for clean grant flows
