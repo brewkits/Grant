@@ -1,18 +1,18 @@
-# Grant Compose 🎨
+# Grant Compose
 
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.1.0-blue.svg?logo=kotlin)](http://kotlinlang.org)
 [![Compose](https://img.shields.io/badge/Compose-1.7.1-green)](https://www.jetbrains.com/lp/compose-multiplatform/)
 [![Maven Central](https://img.shields.io/maven-central/v/dev.brewkits.grant/grant-compose)](https://central.sonatype.com/artifact/dev.brewkits.grant/grant-compose)
 
-**The Most Powerful Compose Multiplatform UI Layer for Permission Management**
+**Compose Multiplatform UI Layer for Permission Management**
 
-> 🎨 **One-line permission dialogs. Material 3 design. Fully customizable. Zero boilerplate.**
+One-line permission dialogs. Material 3 design. Fully customizable. Built with Headless UI architecture for maximum flexibility.
 
-Grant Compose provides first-class Compose support for the Grant permission library, making permission handling in Compose UI incredibly simple and elegant. Built with **Headless UI architecture** for maximum flexibility.
+Grant Compose provides first-class Compose support for the Grant permission library, making permission handling in Compose UI simple and elegant.
 
 ---
 
-## Why Grant Compose? 🚀
+## Why Grant Compose?
 
 ### The Problem with Traditional Approaches
 
@@ -33,7 +33,7 @@ fun CameraScreen() {
 }
 ```
 
-### The Grant Compose Way ✨
+### The Grant Compose Way
 
 ```kotlin
 // ✅ GRANT COMPOSE: One line, handles everything
@@ -48,38 +48,38 @@ fun CameraScreen(viewModel: CameraViewModel) {
 ```
 
 **Automatic handling** of:
-- ✅ Rationale dialogs when user denies
-- ✅ Settings dialogs when permanently denied
-- ✅ User interactions (confirm/dismiss)
-- ✅ State management
+- Rationale dialogs when user denies
+- Settings dialogs when permanently denied
+- User interactions (confirm/dismiss)
+- State management
 
 ---
 
-## Features ✨
+## Features
 
-### 🎯 Minimal Code - Maximum Power
-- ✅ **One-line integration** - `GrantDialog(handler)` handles all dialogs
-- ✅ **Zero boilerplate** - No manual state management
-- ✅ **Automatic UI** - Shows right dialog at right time
+### Minimal Code
+- **One-line integration** - `GrantDialog(handler)` handles all dialogs
+- **Zero boilerplate** - No manual state management
+- **Automatic UI** - Shows right dialog at right time
 
-### 🎨 Beautiful by Default
-- ✅ **Material 3 Design** - Modern, consistent dialogs out of the box
-- ✅ **Platform-aware** - Adapts to Android/iOS design language
-- ✅ **Customizable** - Override titles, messages, button labels
+### Material 3 Design
+- **Modern dialogs** - Consistent with Material 3 guidelines
+- **Platform-aware** - Adapts to Android/iOS design language
+- **Customizable** - Override titles, messages, button labels
 
-### 🏗️ Headless Architecture
-- ✅ **Logic in grant-core** - Platform-agnostic, testable
-- ✅ **UI in grant-compose** - Swappable, customizable
-- ✅ **Clean separation** - Business logic decoupled from UI
+### Headless Architecture
+- **Logic in grant-core** - Platform-agnostic, testable
+- **UI in grant-compose** - Swappable, customizable
+- **Clean separation** - Business logic decoupled from UI
 
-### 📱 Multiplatform
-- ✅ **Android** - Full Material 3 support
-- ✅ **iOS** - Native iOS styling
-- ✅ **Compose Multiplatform** - Works everywhere
+### Multiplatform
+- **Android** - Full Material 3 support
+- **iOS** - Native iOS styling
+- **Compose Multiplatform** - Works everywhere
 
 ---
 
-## Installation 📦
+## Installation
 
 Add the dependency to your `commonMain` sourceset:
 
@@ -97,7 +97,7 @@ kotlin {
 
 ---
 
-## Quick Start 🎯
+## Quick Start
 
 ### 1. Setup ViewModel
 
@@ -145,7 +145,7 @@ fun CameraScreen(viewModel: CameraViewModel) {
 
 ---
 
-## Advanced Usage 🔬
+## Advanced Usage
 
 ### Headless Pattern - Complete UI Control
 
@@ -200,10 +200,10 @@ fun MyCustomDialog(
 ```
 
 **Benefits of Headless Pattern**:
-- ✅ **No UI dependency** - Not forced to use Material 3
-- ✅ **Complete flexibility** - Use any dialog, bottom sheet, or custom UI
-- ✅ **Design system agnostic** - Works with Cupertino, Material 2, custom themes
-- ✅ **Platform-specific UI** - Show iOS-style on iOS, Material on Android
+- **No UI dependency** - Not forced to use Material 3
+- **Complete flexibility** - Use any dialog, bottom sheet, or custom UI
+- **Design system agnostic** - Works with Cupertino, Material 2, custom themes
+- **Platform-specific UI** - Show iOS-style on iOS, Material on Android
 
 ---
 
@@ -312,7 +312,7 @@ val settingsMessage = state.settingsMessage
 
 ---
 
-## Architecture 🏗️
+## Architecture
 
 Grant Compose follows the **Headless UI** pattern for maximum flexibility:
 
@@ -339,14 +339,14 @@ Grant Compose follows the **Headless UI** pattern for maximum flexibility:
 ```
 
 **Benefits**:
-- ✅ **Logic is testable** - Unit test business logic without UI
-- ✅ **UI is swappable** - Replace dialogs without touching logic
-- ✅ **Clean separation** - Changes isolated to appropriate layer
-- ✅ **Platform-agnostic** - Core logic works on all platforms
+- **Logic is testable** - Unit test business logic without UI
+- **UI is swappable** - Replace dialogs without touching logic
+- **Clean separation** - Changes isolated to appropriate layer
+- **Platform-agnostic** - Core logic works on all platforms
 
 ---
 
-## API Reference 📚
+## API Reference
 
 ### GrantDialog
 
@@ -429,7 +429,7 @@ GrantSettingsDialog(
 
 ---
 
-## UI Approaches Comparison 📊
+## UI Approaches Comparison
 
 Grant Compose offers **three approaches** to fit your needs:
 
@@ -464,7 +464,7 @@ if (state.showRationale) {
 
 ---
 
-## Best Practices 💡
+## Best Practices
 
 ### 1. Use ViewModel for Grant Handlers
 
@@ -522,7 +522,7 @@ if (status == GrantStatus.GRANTED) { openCamera() }
 
 ---
 
-## Testing 🧪
+## Testing
 
 Grant Compose components are fully testable:
 
@@ -548,7 +548,7 @@ See [Testing Guide](../docs/TESTING.md) for comprehensive examples.
 
 ---
 
-## Examples 📝
+## Examples
 
 See the [demo app](../demo/) for complete examples:
 - [MinimalGrantDemoScreen.kt](../demo/src/commonMain/kotlin/dev/brewkits/grant/demo/MinimalGrantDemoScreen.kt) - Minimal example
@@ -556,7 +556,7 @@ See the [demo app](../demo/) for complete examples:
 
 ---
 
-## Documentation 📚
+## Documentation
 
 - [Main README](../README.md)
 - [grant-core Documentation](../grant-core/README.md)
@@ -566,7 +566,7 @@ See the [demo app](../demo/) for complete examples:
 
 ---
 
-## License 📄
+## License
 
 ```
 Copyright 2026 BrewKits
@@ -586,7 +586,7 @@ limitations under the License.
 
 ---
 
-## Related Modules 🔗
+## Related Modules
 
 - **[grant-core](../grant-core/)** - Core permission management engine
 - **[demo](../demo/)** - Sample application with examples
@@ -595,8 +595,8 @@ limitations under the License.
 
 <div align="center">
 
-**Grant Compose - Beautiful, Powerful Permission Dialogs for Compose Multiplatform** 🎨
+**Grant Compose - Permission Dialogs for Compose Multiplatform**
 
-[⭐ Star on GitHub](https://github.com/brewkits/Grant) • [📦 Maven Central](https://central.sonatype.com/artifact/dev.brewkits.grant/grant-compose)
+[Star on GitHub](https://github.com/brewkits/Grant) • [Maven Central](https://central.sonatype.com/artifact/dev.brewkits.grant/grant-compose)
 
 </div>

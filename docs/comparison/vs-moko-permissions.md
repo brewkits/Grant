@@ -1,17 +1,14 @@
 # Grant vs moko-permissions: Comprehensive Comparison
 
-## TL;DR
+## Summary
 
-**Grant fixes 15 out of 17 bugs found in moko-permissions (88% coverage)**, including critical issues like iOS deadlocks, Android dead clicks, and memory leaks.
+Grant addresses several known issues found in moko-permissions, including iOS deadlocks, Android dead clicks, and memory management concerns.
 
-| Metric | Grant | moko-permissions |
-|--------|-------|------------------|
-| **Total Bugs Analyzed** | 17 | 17 (baseline) |
-| **Bugs Fixed** | 15 (88%) | 0 (0%) |
-| **Critical Bugs** | 0 | 4 |
-| **Memory Leaks** | None | Activity retention |
-| **Dead Clicks** | Fixed | Present on Android 13+ |
-| **iOS Deadlocks** | Fixed | Present (#129) |
+| Area | Grant | moko-permissions |
+|------|-------|------------------|
+| **Memory Management** | Uses application context | May retain Activity |
+| **Dead Clicks** | Addressed | Present on Android 13+ |
+| **iOS Deadlocks** | Addressed | Present (#129) |
 
 ---
 
@@ -357,14 +354,9 @@ fun CameraButton() {
 
 ---
 
-## Performance Comparison
+## Performance Notes
 
-| Metric | Grant | moko-permissions |
-|--------|-------|------------------|
-| **Startup Overhead** | ~1ms | ~5ms (Fragment binding) |
-| **Memory per Manager** | ~200 bytes | ~2KB (Activity reference) |
-| **Request Latency** | ~50ms | ~150ms (Fragment lifecycle) |
-| **Dead Clicks** | 0 | 1-2 per session on Android 13+ |
+Grant uses a lightweight custom implementation without external dependencies, resulting in smaller binary size. Both libraries handle permissions efficiently in typical use cases.
 
 ---
 
@@ -414,18 +406,20 @@ See [Migration Guide](migration-from-moko.md) for complete details.
 
 ## Conclusion
 
-**Grant is objectively superior to moko-permissions:**
-- ✅ 88% bug coverage (15/17 bugs fixed)
-- ✅ Zero boilerplate (no Fragment/binding)
-- ✅ Zero dead clicks (Android 13+ handled)
-- ✅ Zero memory leaks (app context only)
-- ✅ Better API (enum-based, not exceptions)
-- ✅ Built-in service checking
-- ✅ Compose-first design
+**Grant offers:**
+- No Fragment/binding requirement
+- Addressed Android 13+ dead clicks
+- Application context usage
+- Enum-based API (no exceptions)
+- Built-in service checking
+- Compose-first design
 
-**When to use moko-permissions**: Never. Grant is production-ready and superior in every way.
+**moko-permissions offers:**
+- Battle-tested in production
+- Broader platform support (JS/Desktop)
+- Larger community
 
-**When to use Grant**: Always, for any KMP project needing permissions.
+Both libraries are production-ready. Choose based on your project's specific needs and priorities.
 
 ---
 

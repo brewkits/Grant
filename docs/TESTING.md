@@ -4,13 +4,12 @@ Comprehensive test coverage for the Grant permission management library.
 
 ---
 
-## 📊 Test Coverage Summary
+## Test Coverage Summary
 
 ### Test Statistics
 - **Total Tests**: 103 test cases
 - **Pass Rate**: 100% (103 passed, 0 failures)
 - **Test Files**: 10 test classes
-- **Lines of Test Code**: ~1,500 lines
 
 ### Test Distribution
 

@@ -4,7 +4,7 @@ This document outlines what Grant library learned from moko-permissions, what we
 
 ---
 
-## 📚 What We Learned from moko-permissions
+## What We Learned from moko-permissions
 
 moko-permissions is a well-established library that taught us valuable lessons:
 
@@ -92,7 +92,7 @@ companion object {
 
 ---
 
-## 🏆 What Grant Does BETTER than moko-permissions
+## What Grant Does Differently from moko-permissions
 
 ### 1. Built-in UI Dialog Handling (Major Improvement)
 
@@ -273,7 +273,7 @@ GrantStatusIndicator(handler = cameraGrant) // Status UI
 
 ---
 
-## ⚖️ What moko-permissions Does Better
+## What moko-permissions Does Better
 
 To be fair and honest, here are areas where moko-permissions excels:
 
@@ -300,69 +300,64 @@ To be fair and honest, here are areas where moko-permissions excels:
 
 ---
 
-## 📊 Feature Comparison Table
+## Feature Comparison Table
 
-| Feature | moko-permissions | Grant | Winner |
-|---------|-----------------|-------|---------|
+| Feature | moko-permissions | Grant |
+|---------|-----------------|-------|
 | **Core Functionality** |
-| Check permission status | ✅ | ✅ | Tie |
-| Request permissions | ✅ | ✅ | Tie |
-| Open app settings | ✅ | ✅ Better error handling | 🏆 Grant |
-| Multiple permissions | ✅ | ✅ | Tie |
+| Check permission status | ✅ | ✅ |
+| Request permissions | ✅ | ✅ |
+| Open app settings | ✅ | ✅ |
+| Multiple permissions | ✅ | ✅ |
 | **UI/UX** |
-| Automatic rationale dialog | ❌ Manual | ✅ Automatic | 🏆 Grant |
-| Automatic settings dialog | ❌ Manual | ✅ Automatic | 🏆 Grant |
-| Compose integration | Basic | ✅ Complete module | 🏆 Grant |
-| Pre-built UI components | ❌ | ✅ | 🏆 Grant |
+| Automatic rationale dialog | Manual | Automatic |
+| Automatic settings dialog | Manual | Automatic |
+| Compose integration | Basic | Complete module |
+| Pre-built UI components | No | Yes |
 | **Android Features** |
-| Android 11+ background location | ⚠️ Broken | ✅ Proper 2-step flow | 🏆 Grant |
-| Transparent Activity pattern | ✅ | ✅ | Tie |
-| Activity Result API | ✅ | ✅ | Tie |
+| Android 11+ background location | Has issues | Proper 2-step flow |
+| Transparent Activity pattern | Yes | Yes |
+| Activity Result API | Yes | Yes |
 | **iOS Features** |
-| CoreLocation delegate | ✅ | ✅ | Tie |
-| CoreBluetooth delegate | ✅ | ✅ | Tie |
-| Main thread safety | ✅ | ✅ | Tie |
-| Simulator support | ⚠️ Limited | ✅ Smart mocking | 🏆 Grant |
+| CoreLocation delegate | Yes | Yes |
+| CoreBluetooth delegate | Yes | Yes |
+| Main thread safety | Yes | Yes |
+| Simulator support | Limited | Better support |
 | **Service Management** |
-| Check Bluetooth service | ❌ | ✅ ServiceManager | 🏆 Grant |
-| Check Location service | ❌ | ✅ ServiceManager | 🏆 Grant |
-| Open service settings | ❌ | ✅ | 🏆 Grant |
+| Check Bluetooth service | No | Yes (ServiceManager) |
+| Check Location service | No | Yes (ServiceManager) |
+| Open service settings | No | Yes |
 | **Developer Experience** |
-| Error handling | Exception-based | Status-based | 🏆 Grant |
-| API simplicity | Complex try-catch | Single request() | 🏆 Grant |
-| Type safety | ✅ | ✅ | Tie |
-| Zero dependencies | ❌ (moko-resources) | ✅ Pure Kotlin | 🏆 Grant |
+| Error handling | Exception-based | Status-based |
+| API simplicity | Requires try-catch | Direct when() |
+| Type safety | Yes | Yes |
+| Dependencies | Requires moko-resources | Pure Kotlin |
 | **Production Readiness** |
-| Battle-tested | ✅ Years in production | ⚠️ Newer (2026) | 🏆 moko |
-| Community size | ✅ Large | 🆕 Growing | 🏆 moko |
-| Platform support | ✅ All KMP targets | Android + iOS only | 🏆 moko |
-| Documentation | ✅ Extensive | ✅ Comprehensive | Tie |
-
-**Score:** Grant wins 13, moko wins 3, Tie 9
+| Battle-tested | Years in production | Newer (2026) |
+| Community size | Large | Growing |
+| Platform support | All KMP targets | Android + iOS |
+| Documentation | Extensive | Comprehensive |
 
 ---
 
-## 🎯 Which Library Should You Use?
+## Which Library Should You Use?
 
-### Use Grant if:
-- ✅ You're building a **mobile-only** KMP app (Android + iOS)
-- ✅ You want **automatic UI handling** (rationale + settings dialogs)
-- ✅ You need **Android 11+ background location** to work properly
-- ✅ You want **service status checking** (Bluetooth/Location enabled/disabled)
-- ✅ You prefer **clean, functional API** without try-catch
-- ✅ You're using **Jetpack Compose** and want pre-built components
-- ✅ You want **faster simulator development** (auto-mock hardware permissions)
+### Consider Grant if:
+- You're building a mobile-only KMP app (Android + iOS)
+- You want automatic UI handling (rationale + settings dialogs)
+- You need service status checking (Bluetooth/Location enabled/disabled)
+- You prefer a functional API without try-catch
+- You're using Jetpack Compose and want pre-built components
 
-### Use moko-permissions if:
-- ✅ You need **JS/Desktop/Web support** (broader platform support)
-- ✅ You want a **battle-tested** library with years of production use
-- ✅ You prefer **larger community** and more GitHub stars
-- ✅ You want more **blog posts and tutorials** available
-- ✅ You need **proven stability** over newer features
+### Consider moko-permissions if:
+- You need JS/Desktop/Web support (broader platform support)
+- You want a battle-tested library with years of production use
+- You prefer a larger community and ecosystem
+- You need proven stability over newer features
 
 ---
 
-## 🤝 Conclusion
+## Conclusion
 
 **Grant library learned valuable architectural patterns from moko-permissions:**
 - Delegate pattern for iOS
@@ -370,19 +365,19 @@ To be fair and honest, here are areas where moko-permissions excels:
 - Threading requirements and safety
 - Permission state management
 
-**Grant improved upon moko in key areas:**
-- Automatic UI dialog handling (major DX improvement)
-- Android 11+ background location (fixed broken behavior)
-- Service status checking (exclusive feature)
-- iOS Simulator support (better DX)
-- Cleaner API without exceptions
+**Grant offers different approaches in key areas:**
+- Automatic UI dialog handling
+- Android 11+ background location handling
+- Service status checking
+- iOS Simulator support
+- Status-based API instead of exceptions
 
-**moko-permissions remains strong in:**
+**moko-permissions strengths:**
 - Production maturity and battle-testing
 - Broader platform support (JS/Desktop)
-- Larger community
+- Larger community and ecosystem
 
-Both are excellent libraries. Grant is the **better choice for modern mobile-only KMP apps** that prioritize developer experience and automatic UI handling. moko-permissions is the **safer choice for maximum platform support and proven stability**.
+Both are solid libraries. Grant focuses on mobile-only KMP apps with automatic UI handling. moko-permissions offers broader platform support and proven stability.
 
 ---
 

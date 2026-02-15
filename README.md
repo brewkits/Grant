@@ -1,4 +1,4 @@
-# Grant 🎯
+# Grant
 
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.1.0-blue.svg?logo=kotlin)](http://kotlinlang.org)
 [![Compose](https://img.shields.io/badge/Compose-1.7.1-green)](https://www.jetbrains.com/lp/compose-multiplatform/)
@@ -18,7 +18,7 @@ Grant simplifies permission handling across Android and iOS with a clean, type-s
 
 ---
 
-## ⚡ Quick Start (30 seconds)
+## Quick Start
 
 ```kotlin
 // 1️⃣ In your ViewModel
@@ -52,38 +52,30 @@ Simple and straightforward - no Fragment, no BindEffect, no manual configuration
 
 ---
 
-## 📱 Platform Support
+## Platform Support
 
 | Platform | Version | Notes |
 |----------|---------|-------|
-| 🤖 **Android** | API 24+ | Full support for Android 12, 13, 14 (Partial Gallery Access) |
-| 🍎 **iOS** | 13.0+ | Crash-guard & Main thread safety built-in |
-| 🎨 **Compose** | 1.7.1+ | Separate `grant-compose` module with GrantDialog |
+| **Android** | API 24+ | Full support for Android 12, 13, 14 (Partial Gallery Access) |
+| **iOS** | 13.0+ | Crash-guard & Main thread safety built-in |
+| **Compose** | 1.7.1+ | Separate `grant-compose` module with GrantDialog |
 
 > 💡 **Note:** See [iOS Info.plist Setup](docs/platform-specific/ios/info-plist.md) and [iOS Setup Guide](docs/ios/IOS_SETUP_ANDROID_STUDIO.md) for detailed configuration.
 
 ---
 
-## 🎬 See It In Action
+## Demo
 
-<!-- TODO: Add screenshots/GIF showing:
-     - Permission dialog flow (rationale → settings guide)
-     - Android 14 partial gallery access
-     - Demo app with manifest validation warnings
-     Instructions: See docs/images/README.md for screenshot guidelines
--->
+Run the demo app to see all 14 permissions in action:
 
-> 📸 **Coming Soon:** Live demo GIF showing the complete permission flow with GrantDialog automatically handling rationale and settings dialogs.
->
-> 🎮 **Try it now:** Run the demo app to see all 14 permissions in action:
-> ```bash
-> ./gradlew :demo:installDebug  # Android
-> # Or open iosApp in Xcode for iOS
-> ```
+```bash
+./gradlew :demo:installDebug  # Android
+# Or open iosApp in Xcode for iOS
+```
 
 ---
 
-## Why Grant? 🎯
+## Why Grant?
 
 ### The Traditional Approach
 
@@ -103,7 +95,7 @@ class MyFragment : Fragment() {
 }
 ```
 
-### The Grant Way ✨
+### The Grant Way
 
 ```kotlin
 // ✅ GRANT WAY: Works anywhere, zero boilerplate
@@ -125,7 +117,7 @@ Simple, clean, and works anywhere.
 
 ---
 
-## 🚀 Key Features
+## Key Features
 
 ### Clean API Design
 - **No Fragment/Activity required** - Works in ViewModels, repositories, or Composables
@@ -152,7 +144,7 @@ Simple, clean, and works anywhere.
 ### Architecture
 - **Thread-safe** - Proper mutex handling for concurrent requests
 - **Memory efficient** - Application context only, no Activity retention
-- **Well-tested** - 125+ unit tests with comprehensive coverage
+- **Well-tested** - 103 unit tests covering core functionality
 - **Extensible** - Sealed interface design supports custom permissions
 
 ### Built-in Service Checking
@@ -187,14 +179,14 @@ if (!serviceManager.isBluetoothEnabled()) {
 
 This helps you detect when users grant permission but forget to enable the required service.
 
-### 📱 Cross-Platform Coverage
-- **Android**: API 24+ (100% coverage)
-- **iOS**: iOS 13.0+ (100% coverage)
+### Cross-Platform Coverage
+- **Android**: API 24+
+- **iOS**: iOS 13.0+
 - **14 Permission Types**: Camera, Microphone, Gallery (Images/Videos/Both), Storage, Location, Location Always, Notifications, Schedule Exact Alarm, Bluetooth, Contacts, Motion, Calendar
 
 ---
 
-## 📦 Installation
+## Installation
 
 ### Gradle (Kotlin DSL)
 
@@ -219,7 +211,7 @@ kotlin {
 
 ---
 
-## 🎯 Quick Start
+## Usage
 
 ### Basic Usage
 
@@ -273,7 +265,7 @@ See [Quick Start Guide](docs/getting-started/quick-start.md) for complete setup.
 
 ---
 
-## 📋 Supported Permissions
+## Supported Permissions
 
 | Permission | Android | iOS | Notes |
 |------------|---------|-----|-------|
@@ -294,7 +286,7 @@ See [Quick Start Guide](docs/getting-started/quick-start.md) for complete setup.
 
 ---
 
-## 🔧 Custom Permissions
+## Custom Permissions
 
 Grant supports custom permissions through the `RawPermission` API. This allows you to use new OS permissions or platform-specific features without waiting for library updates.
 
@@ -426,7 +418,7 @@ data class RawPermission(
 
 ---
 
-## 📊 Comparison
+## Comparison
 
 | Feature | Grant | Other KMP Libraries | Native APIs |
 |---------|-------|---------------------|-------------|
@@ -439,15 +431,15 @@ data class RawPermission(
 | **Enum-Based Status** | ✅ | Varies | Multiple APIs |
 | **Cross-Platform** | Android + iOS | Android + iOS | Platform-specific |
 
-**Notable features:**
+**Key differences:**
 - Info.plist validation prevents iOS crashes
-- Process death recovery without timeout
+- Process death recovery
 - Service checking included (GPS, Bluetooth)
-- Extensible via RawPermission for custom permissions
+- Extensible via RawPermission
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 ### Getting Started
 - [Quick Start Guide](docs/getting-started/quick-start.md) - Get running in 5 minutes
@@ -478,7 +470,7 @@ data class RawPermission(
 
 ---
 
-## 🛠️ Configuration
+## Configuration
 
 ### Enable Logging (Development Only)
 
@@ -514,13 +506,13 @@ GrantLogger.logHandler = { level, tag, message ->
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ---
 
-## 📄 License
+## License
 
 ```
 Copyright 2026 BrewKits
@@ -540,7 +532,7 @@ limitations under the License.
 
 ---
 
-## 🤝 Support
+## Support
 
 - **Website:** [brewkits.dev](https://brewkits.dev)
 - **Issues:** [GitHub Issues](https://github.com/brewkits/Grant/issues)

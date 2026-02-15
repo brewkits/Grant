@@ -1,8 +1,8 @@
-# ⚡ Quick Start Guide
+# Quick Start Guide
 
-Get started with KMP Grant in under 5 minutes!
+Get started with Grant in a few minutes.
 
-## 🎯 TL;DR
+## TL;DR
 
 Build and run the demo app:
 
@@ -19,9 +19,9 @@ open demo/iosApp/iosApp.xcodeproj
 
 ---
 
-## ✨ What's Working
+## What's Working
 
-### ✅ Production-Ready Custom Implementation
+### Production-Ready Custom Implementation
 
 - **No third-party dependencies** for core grants
 - **Full async support** on iOS (CoreLocation, AVFoundation, etc.)
@@ -31,7 +31,7 @@ open demo/iosApp/iosApp.xcodeproj
 - **Main thread-safe** on iOS
 - **Transparent Activity** pattern for Android grants
 
-### 🏗️ Clean Architecture
+### Clean Architecture
 
 - **Platform-agnostic** ViewModels
 - **Testable** with mockable interfaces
@@ -40,7 +40,7 @@ open demo/iosApp/iosApp.xcodeproj
 
 ---
 
-## 📦 Installation
+## Installation
 
 Add to your `build.gradle.kts`:
 
@@ -56,7 +56,7 @@ kotlin {
 
 ---
 
-## 🚀 Setup
+## Setup
 
 ### 1. Dependency Injection (Koin)
 
@@ -232,7 +232,7 @@ fun GrantDialogHandler(handler: GrantHandler) {
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌──────────────────────────────────┐
@@ -260,7 +260,7 @@ fun GrantDialogHandler(handler: GrantHandler) {
 
 ---
 
-## 📱 Platform Setup
+## Platform Setup
 
 ### Android - AndroidManifest.xml
 
@@ -316,9 +316,9 @@ fun GrantDialogHandler(handler: GrantHandler) {
 
 ---
 
-## 🎯 Why This Implementation?
+## Why This Implementation?
 
-### ✅ Advantages Over Third-Party Libraries
+### Advantages Over Third-Party Libraries
 
 1. **Zero Dependencies**
    - No waiting for external library updates
@@ -342,7 +342,7 @@ fun GrantDialogHandler(handler: GrantHandler) {
 
 ---
 
-## 🧪 Testing
+## Testing
 
 ### Quick Test - Android
 
@@ -370,19 +370,13 @@ open demo/iosApp/iosApp.xcodeproj
 
 ---
 
-## 📊 Performance
+## Performance
 
-| Metric | Custom Implementation | Third-Party Library |
-|--------|----------------------|---------------------|
-| **Android APK Size** | Baseline | +1.5 MB |
-| **iOS Framework Size** | Baseline | +2 MB |
-| **Runtime Overhead** | Minimal | Medium |
-| **Memory Usage** | Low | Medium |
-| **Startup Time** | Fast | Slightly slower |
+Grant uses a lightweight custom implementation that avoids external dependencies, resulting in smaller binary size and faster startup compared to third-party libraries.
 
 ---
 
-## 🔧 Advanced Usage
+## Advanced Usage
 
 ### Multiple Grants
 
@@ -436,7 +430,7 @@ cameraGrant.request(
 
 ---
 
-## ❓ Common Questions
+## Common Questions
 
 ### Q: Do I need to change my existing code?
 
@@ -456,7 +450,7 @@ cameraGrant.request(
 
 ---
 
-## 📚 Next Steps
+## Next Steps
 
 1. **Read Architecture Guide**: [ARCHITECTURE.md](ARCHITECTURE.md)
 2. **See All Grants**: [GRANTS.md](GRANTS.md)
@@ -465,16 +459,10 @@ cameraGrant.request(
 
 ---
 
-## ✨ Summary
+## Summary
 
-✅ **Clean Architecture** - Platform-agnostic ViewModels
-
-✅ **Zero Dependencies** - No third-party grant libraries
-
-✅ **Production-Ready** - Full feature parity with leading solutions
-
-✅ **3 Lines of Code** - Instead of 40+ lines per grant
-
-✅ **Fully Tested** - Works on Android (API 26+) and iOS (13.0+)
-
-**You're ready to handle grants like a pro!** 🎉
+- **Clean Architecture** - Platform-agnostic ViewModels
+- **Zero Dependencies** - No third-party libraries
+- **Production-Ready** - Full feature parity with leading solutions
+- **Minimal Code** - Significantly less boilerplate
+- **Fully Tested** - Works on Android (API 26+) and iOS (13.0+)

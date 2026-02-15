@@ -1,16 +1,16 @@
-# Grant Core 🎯
+# Grant Core
 
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.1.0-blue.svg?logo=kotlin)](http://kotlinlang.org)
 [![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20iOS-green.svg)](https://kotlinlang.org/docs/multiplatform.html)
 [![Maven Central](https://img.shields.io/maven-central/v/dev.brewkits.grant/grant-core)](https://central.sonatype.com/artifact/dev.brewkits.grant/grant-core)
 
-**The Most Comprehensive Permission Management Engine for Kotlin Multiplatform**
+**A Modern Permission Management Engine for Kotlin Multiplatform**
 
-> The foundation of Grant - zero boilerplate, production-ready permission handling that **fixes 88% of bugs** found in moko-permissions. Battle-tested, powerful, and built for enterprise KMP apps.
+The foundation of Grant - zero boilerplate, production-ready permission handling that addresses several known issues found in other KMP permission libraries.
 
 ---
 
-## Why Grant Core? 🚀
+## Why Grant Core?
 
 ### The Problem
 
@@ -50,42 +50,40 @@ class MyViewModel(private val grantManager: GrantManager) {
 
 ---
 
-## Features ✨
+## Features
 
-### 🎯 Core Capabilities - Complete Permission Coverage
+### Core Capabilities
 
-- ✅ **13 Permission Types** - Camera, Microphone, Gallery (with granular options), Location, Notifications, Bluetooth, Contacts, Motion, Storage, Alarms
-- ✅ **4 Clear States** - GRANTED, DENIED, DENIED_ALWAYS, NOT_DETERMINED (enum-based, not exceptions)
-- ✅ **Built-in Service Checking** - GPS, Bluetooth, Location services (unique to Grant)
-- ✅ **Thread-Safe** - Coroutine-first with proper mutex handling
-- ✅ **Memory Leak Free** - Application context only, zero Activity retention
-- ✅ **103+ Unit Tests** - Comprehensive coverage, all passing
+- **13 Permission Types** - Camera, Microphone, Gallery (with granular options), Location, Notifications, Bluetooth, Contacts, Motion, Storage, Alarms
+- **4 Clear States** - GRANTED, DENIED, DENIED_ALWAYS, NOT_DETERMINED (enum-based, not exceptions)
+- **Built-in Service Checking** - GPS, Bluetooth, Location services
+- **Thread-Safe** - Coroutine-first with proper mutex handling
+- **Memory Leak Free** - Application context only, no Activity retention
+- **103 Unit Tests** - Comprehensive coverage, all passing
 
-### 🏗️ Architecture - Enterprise-Grade Design
+### Architecture
 
-- ✅ **Clean Architecture** - Interface-based, platform-agnostic, testable
-- ✅ **Platform Delegates** - iOS/Android implementations cleanly separated
-- ✅ **GrantStore System** - Pluggable state management (in-memory default)
-- ✅ **Factory Pattern** - Easy instantiation, DI-ready (Koin support)
-- ✅ **Dependency Injection** - Constructor-based, mockable for testing
+- **Clean Architecture** - Interface-based, platform-agnostic, testable
+- **Platform Delegates** - iOS/Android implementations cleanly separated
+- **GrantStore System** - Pluggable state management (in-memory default)
+- **Factory Pattern** - Easy instantiation, DI-ready (Koin support)
+- **Dependency Injection** - Constructor-based, mockable for testing
 
-### 🐛 Bug Fixes vs moko-permissions - 88% Coverage
+### Improvements Over Other Libraries
 
-- ✅ **iOS Deadlock Fixed** (#129) - Camera/Microphone work on first request (critical bug)
-- ✅ **Android Dead Clicks Fixed** - Smart Android 12+ handling (100% elimination)
-- ✅ **No Memory Leaks** (#181) - Application context only
-- ✅ **Granular Gallery** (#178) - Images-only, Videos-only options (prevents silent denials)
-- ✅ **Bluetooth Retry-able** (#164) - Proper error handling (timeout, powered-off, initialization)
-- ✅ **Notification Status** - Correct on Android 12- (checks actual state)
-- ✅ **RECORD_AUDIO Safety** (#165) - Hardened with edge case handling
-- ✅ **iOS Settings API** (#185) - Modern API, no deprecation warnings
-- ✅ **LOCATION_ALWAYS Two-Step** (#139) - Proper Android 11+ flow
+- **iOS Deadlock Addressed** (#129) - Camera/Microphone work on first request
+- **Android Dead Clicks Addressed** - Smart Android 12+ handling
+- **No Memory Leaks** - Application context only
+- **Granular Gallery** - Images-only, Videos-only options (prevents silent denials)
+- **Bluetooth Error Handling** - Proper error handling (timeout, powered-off, initialization)
+- **iOS Settings API** - Modern API, no deprecation warnings
+- **LOCATION_ALWAYS Two-Step** - Proper Android 11+ flow
 
-**Grant fixes 15 out of 17 bugs (88%) found in moko-permissions, making it the most reliable KMP permission library available.**
+Grant addresses several known issues found in other KMP permission libraries.
 
 ---
 
-## Installation 📦
+## Installation
 
 ### Gradle (Kotlin DSL)
 
@@ -109,7 +107,7 @@ kotlin {
 
 ---
 
-## Quick Start 🎯
+## Quick Start
 
 ### 1. Create GrantManager
 
@@ -149,7 +147,7 @@ suspend fun requestCamera() {
 
 ---
 
-## Supported Permissions 📋
+## Supported Permissions
 
 | Permission | Android | iOS | Notes |
 |------------|---------|-----|-------|
@@ -169,7 +167,7 @@ suspend fun requestCamera() {
 
 ---
 
-## Service Checking 🛠️
+## Service Checking
 
 Grant Core includes built-in service checking:
 
@@ -189,7 +187,7 @@ if (!serviceManager.isBluetoothEnabled()) {
 
 ---
 
-## Advanced Usage 🔬
+## Advanced Usage
 
 ### Multiple Permissions
 
@@ -246,7 +244,7 @@ class MyRepository(private val grantManager: GrantManager) {
 
 ---
 
-## Architecture 🏗️
+## Architecture
 
 ### Core Components
 
@@ -278,7 +276,7 @@ grant-core/
 
 ---
 
-## Platform Setup 📱
+## Platform Setup
 
 ### Android
 
@@ -315,7 +313,7 @@ Add to `Info.plist`:
 
 ---
 
-## Testing 🧪
+## Testing
 
 Grant Core includes test utilities:
 
@@ -338,24 +336,23 @@ See [Testing Guide](../docs/advanced/testing.md) for details.
 
 ---
 
-## Comparison 📊
+## Comparison
 
 ### Grant Core vs moko-permissions
 
 | Feature | Grant Core | moko-permissions |
 |---------|------------|------------------|
-| Fragment Required | ❌ No | ✅ Yes |
-| BindEffect Boilerplate | ❌ No | ✅ Yes |
-| Exception-based | ❌ No (enum) | ✅ Yes |
-| Memory Leaks | ✅ None | ⚠️ Activity retention |
-| iOS Deadlock | ✅ Fixed | ❌ Present (#129) |
-| Dead Clicks | ✅ Fixed | ❌ Present |
-| Service Checking | ✅ Built-in | ❌ Manual |
-| **Bug Coverage** | **88% fixed** | **Baseline** |
+| Fragment Required | No | Yes |
+| BindEffect Boilerplate | No | Yes |
+| Exception-based | No (enum) | Yes |
+| Memory Management | App context | Activity reference |
+| iOS Deadlock | Addressed | Present (#129) |
+| Dead Clicks | Addressed | Present |
+| Service Checking | Built-in | Manual |
 
 ---
 
-## Configuration 🛠️
+## Configuration
 
 ### Enable Logging (Development)
 
@@ -390,7 +387,7 @@ See [GrantStore Architecture](../docs/architecture/grant-store.md) for persisten
 
 ---
 
-## Documentation 📚
+## Documentation
 
 - [Main README](../README.md)
 - [Quick Start Guide](../docs/getting-started/quick-start.md)
@@ -402,7 +399,7 @@ See [GrantStore Architecture](../docs/architecture/grant-store.md) for persisten
 
 ---
 
-## License 📄
+## License
 
 ```
 Copyright 2026 BrewKits
@@ -414,7 +411,7 @@ See [LICENSE](../LICENSE) for full text.
 
 ---
 
-## Related Modules 🔗
+## Related Modules
 
 - **[grant-compose](../grant-compose/)** - Compose Multiplatform integration
 - **[demo](../demo/)** - Sample application
@@ -423,8 +420,8 @@ See [LICENSE](../LICENSE) for full text.
 
 <div align="center">
 
-**Grant Core - The foundation of modern KMP permission handling** 🎯
+**Grant Core - Modern KMP permission handling**
 
-[⭐ Star on GitHub](https://github.com/brewkits/Grant) • [📦 Maven Central](https://central.sonatype.com/artifact/dev.brewkits.grant/grant-core)
+[Star on GitHub](https://github.com/brewkits/Grant) • [Maven Central](https://central.sonatype.com/artifact/dev.brewkits.grant/grant-core)
 
 </div>
