@@ -239,6 +239,7 @@ class MyViewModel(
 - Bluetooth: Checking requires CBCentralManager, which is complex. Currently returns `ENABLED` by default.
 - Wi-Fi/NFC: iOS doesn't provide APIs to check these programmatically.
 - Settings: iOS can only open the main Settings app, not specific service settings.
+- **openServiceSettings() return value**: On iOS, this method returns `true` immediately without waiting for the Settings app to actually open. The return value indicates whether the Settings URL is valid, not whether Settings opened successfully. This is an iOS platform limitation due to async callback behavior.
 
 ---
 

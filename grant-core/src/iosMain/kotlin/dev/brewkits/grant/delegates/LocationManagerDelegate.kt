@@ -106,7 +106,7 @@ internal class LocationManagerDelegate : NSObject(), CLLocationManagerDelegatePr
     /**
      * Legacy callback for iOS < 14 compatibility.
      */
-    @Suppress("CONFLICTING_OVERLOADS", "PARAMETER_NAME_CHANGED_ON_OVERRIDE")
+    @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
     override fun locationManager(manager: CLLocationManager, didChangeAuthorizationStatus: CLAuthorizationStatus) {
         val cont = continuation
         if (cont != null) {

@@ -303,15 +303,53 @@ actual class PlatformGrantDelegate(
         return@withLock status
     }
 
+    /**
+     * Opens the app's settings page where user can manually grant permissions.
+     *
+     * **Android Behavior:**
+     * - Opens Settings > Apps > [App Name] > Permissions
+     * - Intent: ACTION_APPLICATION_DETAILS_SETTINGS
+     * - FLAG_ACTIVITY_NEW_TASK: Launches settings in new task
+     *
+     * **Error Handling:**
+     * - ActivityNotFoundException: No settings app available (rare)
+     * - SecurityException: System denied access (very rare)
+     * - General Exception: Logs error for debugging
+     */
     actual fun openSettings() {
         try {
+            val packageName = context.packageName
             val intent = android.content.Intent(
                 android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                android.net.Uri.fromParts("package", context.packageName, null)
-            ).apply { addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK) }
+                android.net.Uri.fromParts("package", packageName, null)
+            ).apply {
+                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+
+            GrantLogger.i("AndroidGrant", "Opening app settings for package: $packageName")
             context.startActivity(intent)
+            GrantLogger.d("AndroidGrant", "Successfully launched settings activity")
+
+        } catch (e: android.content.ActivityNotFoundException) {
+            GrantLogger.e(
+                "AndroidGrant",
+                "Failed to open settings - ActivityNotFoundException. " +
+                "This device may not have a standard Settings app.",
+                e
+            )
+        } catch (e: SecurityException) {
+            GrantLogger.e(
+                "AndroidGrant",
+                "Failed to open settings - SecurityException. " +
+                "System denied access to settings (very rare).",
+                e
+            )
         } catch (e: Exception) {
-            e.printStackTrace()
+            GrantLogger.e(
+                "AndroidGrant",
+                "Unexpected error opening settings: ${e.javaClass.simpleName} - ${e.message}",
+                e
+            )
         }
     }
 

@@ -48,7 +48,7 @@ Add to your `build.gradle.kts`:
 kotlin {
     sourceSets {
         commonMain.dependencies {
-            implementation("dev.brewkits:grant-core:1.0.1")
+            implementation("dev.brewkits:grant-core:1.0.2")
         }
     }
 }

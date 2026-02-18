@@ -1,29 +1,29 @@
-# ⚡ Quick Start: Run iOS từ Android Studio
+# ⚡ Quick Start: Run iOS from Android Studio
 
-## TL;DR - 3 Bước Đơn Giản:
+## TL;DR - 3 Simple Steps:
 
-### 1️⃣ Tạo Xcode Project (1 lần duy nhất)
+### 1️⃣ Create Xcode Project (one-time only)
 
 ```bash
 # Open Xcode
 open -a Xcode
 
-# Hoặc dùng terminal
+# Or use terminal
 cd iosApp
 ```
 
-**Trong Xcode:**
+**In Xcode:**
 - File > New > Project > iOS App
 - Name: `GrantDemo`
 - Bundle ID: `dev.brewkits.grant.demo`
 - Interface: SwiftUI
-- Save trong folder `iosApp/`
+- Save in `iosApp/` folder
 
-### 2️⃣ Setup Run Configuration trong Android Studio
+### 2️⃣ Setup Run Configuration in Android Studio
 
 **Android Studio > Run > Edit Configurations > + > Shell Script**
 
-Điền:
+Fill in:
 - **Name**: `iOS Simulator`
 - **Script text**:
   ```bash
@@ -34,15 +34,15 @@ Click **OK**
 
 ### 3️⃣ Run!
 
-Click **Run** button ▶️ với configuration "iOS Simulator"
+Click **Run** button ▶️ with "iOS Simulator" configuration
 
 ---
 
-## Chi Tiết Hơn
+## More Details
 
-### Lần Đầu Tiên Setup (5 phút)
+### First-Time Setup (5 minutes)
 
-**Bước 1: Tạo Xcode Project**
+**Step 1: Create Xcode Project**
 
 ```bash
 open -a Xcode
@@ -56,7 +56,7 @@ open -a Xcode
 6. **Language**: **Swift**
 7. **Next** > Save in `iosApp/` folder
 
-**Bước 2: Link Framework**
+**Step 2: Link Framework**
 
 1. Select project "GrantDemo" in navigator
 2. Select target "GrantDemo"
@@ -68,13 +68,13 @@ open -a Xcode
    ```
    ../demo/build/bin/iosSimulatorArm64/debugFramework/GrantDemo.framework
    ```
-   (Nếu folder này chưa có, run `./gradlew :demo:linkDebugFrameworkIosSimulatorArm64` trước)
+   (If this folder doesn't exist yet, run `./gradlew :demo:linkDebugFrameworkIosSimulatorArm64` first)
 8. Click **Open**
 9. Ensure **Embed & Sign** is selected
 
-**Bước 3: Update App Code**
+**Step 3: Update App Code**
 
-Open `ContentView.swift` và replace với:
+Open `ContentView.swift` and replace with:
 
 ```swift
 import SwiftUI
@@ -103,12 +103,12 @@ struct ComposeView: UIViewControllerRepresentable {
 }
 ```
 
-**Bước 4: Update Info.plist**
+**Step 4: Update Info.plist**
 
-File này đã có sẵn trong `iosApp/Info.plist`. Copy nó vào Xcode project:
-- Drag & drop `iosApp/Info.plist` vào Xcode project
+This file already exists in `iosApp/Info.plist`. Copy it to Xcode project:
+- Drag & drop `iosApp/Info.plist` into Xcode project
 
-Hoặc add grants manually:
+Or add grants manually:
 1. Select project > Target > Info tab
 2. Add custom iOS target properties:
    - `NSCameraUsageDescription`: "Camera is needed for demo"
@@ -117,17 +117,17 @@ Hoặc add grants manually:
    - `NSContactsUsageDescription`: "Contacts is needed for demo"
    - `NSPhotoLibraryUsageDescription`: "Photo library is needed for demo"
 
-**Bước 5: Test Build từ Xcode**
+**Step 5: Test Build from Xcode**
 
 1. Select **iPhone 16 Pro** simulator (or any iPhone)
 2. Click **Run** button (⌘R)
 3. Verify app launches successfully
 
-✅ **Setup xong!** Giờ có thể run từ Android Studio.
+✅ **Setup complete!** Now you can run from Android Studio.
 
 ---
 
-### Setup Run Configuration trong Android Studio
+### Setup Run Configuration in Android Studio
 
 **Method 1: Shell Script (Recommended)**
 
@@ -158,14 +158,14 @@ Access via: **Tools** > **External Tools** > **iOS Simulator**
 
 ---
 
-### Run iOS App từ Android Studio
+### Run iOS App from Android Studio
 
 1. Select **iOS Simulator** run configuration
 2. Click **Run** ▶️
 
-Script sẽ:
+The script will:
 - ✅ Build KMP framework
-- ✅ Build iOS app với xcodebuild
+- ✅ Build iOS app with xcodebuild
 - ✅ Launch simulator
 - ✅ Install app
 - ✅ Run app
@@ -229,4 +229,4 @@ xcrun simctl list devices
 
 ---
 
-**Xong! Giờ có thể test iOS và Android cùng lúc!** 🎉
+**Done! Now you can test iOS and Android at the same time!** 🎉

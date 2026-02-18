@@ -1,34 +1,34 @@
-# 📱 iOS Development từ Android Studio
+# 📱 iOS Development from Android Studio
 
-## ✅ Setup Hoàn Tất!
+## ✅ Setup Complete!
 
-Bạn đã có **6 iOS run configurations** trong Android Studio toolbar:
+You now have **6 iOS run configurations** in Android Studio toolbar:
 
-### 🚀 Run Configurations Có Sẵn
+### 🚀 Available Run Configurations
 
-| Configuration | Mô tả | Device/Simulator |
-|---------------|-------|------------------|
+| Configuration | Description | Device/Simulator |
+|---------------|-------------|------------------|
 | **iosApp** | Default iOS app | iPhone 16 (Default) |
-| **iosApp (iPhone 16 Pro)** | iOS app trên iPhone Pro | iPhone 16 Pro |
-| **iosApp (iPad Pro)** | iOS app trên iPad | iPad Pro 11-inch |
-| **Build iOS Framework Only** | Chỉ build framework, không launch | N/A |
+| **iosApp (iPhone 16 Pro)** | iOS app on iPhone Pro | iPhone 16 Pro |
+| **iosApp (iPad Pro)** | iOS app on iPad | iPad Pro 11-inch |
+| **Build iOS Framework Only** | Build framework only, don't launch | N/A |
 | **iOS App (Simulator)** | Advanced config | iPhone 16 |
-| **Launch iOS Simulator** | Chỉ launch simulator | iPhone 16 |
+| **Launch iOS Simulator** | Launch simulator only | iPhone 16 |
 
 ---
 
-## 🎯 Cách Sử Dụng
+## 🎯 How to Use
 
-### Bước 1: Restart Android Studio
+### Step 1: Restart Android Studio
 
 ```bash
-# Restart Android Studio để load các run configurations mới
+# Restart Android Studio to load new run configurations
 ```
 
-### Bước 2: Chọn Configuration
+### Step 2: Select Configuration
 
-1. Ở toolbar trên cùng, click vào dropdown (bên cạnh nút Run ▶️)
-2. Bạn sẽ thấy các configuration:
+1. In the top toolbar, click the dropdown (next to Run ▶️ button)
+2. You will see the configurations:
    ```
    📱 iosApp
    📱 iosApp (iPhone 16 Pro)
@@ -36,59 +36,59 @@ Bạn đã có **6 iOS run configurations** trong Android Studio toolbar:
    🔧 Build iOS Framework Only
    ```
 
-### Bước 3: Run!
+### Step 3: Run!
 
-1. Chọn configuration bạn muốn (ví dụ: **iosApp**)
-2. Click nút **Run** ▶️ (hoặc **Shift+F10**)
-3. Xem console output trong Android Studio
-4. iOS Simulator sẽ tự động mở và launch app! 🎉
+1. Select the configuration you want (e.g., **iosApp**)
+2. Click **Run** ▶️ button (or **Shift+F10**)
+3. View console output in Android Studio
+4. iOS Simulator will automatically open and launch the app! 🎉
 
 ---
 
-## 🔧 Chi Tiết Các Configuration
+## 🔧 Configuration Details
 
 ### 1. **iosApp** (Recommended)
-- **Mô tả:** Run app trên iPhone 16 simulator (default)
-- **Sử dụng khi:** Development hàng ngày
+- **Description:** Run app on iPhone 16 simulator (default)
+- **Use when:** Daily development
 - **Steps:**
   1. Build Kotlin framework
-  2. Build iOS app với Xcode
-  3. Launch trên iPhone 16 simulator
+  2. Build iOS app with Xcode
+  3. Launch on iPhone 16 simulator
 
 ### 2. **iosApp (iPhone 16 Pro)**
-- **Mô tả:** Run app trên iPhone 16 Pro simulator
-- **Sử dụng khi:** Test trên màn hình lớn hơn, camera ProRAW, etc.
+- **Description:** Run app on iPhone 16 Pro simulator
+- **Use when:** Test on larger screen, camera ProRAW, etc.
 
 ### 3. **iosApp (iPad Pro)**
-- **Mô tả:** Run app trên iPad Pro simulator
-- **Sử dụng khi:** Test iPad layout, multitasking
+- **Description:** Run app on iPad Pro simulator
+- **Use when:** Test iPad layout, multitasking
 
 ### 4. **Build iOS Framework Only**
-- **Mô tả:** Chỉ build Kotlin framework, không launch app
-- **Sử dụng khi:**
-  - Muốn check framework build có lỗi không
-  - Sau đó tự mở Xcode để debug
+- **Description:** Build Kotlin framework only, don't launch app
+- **Use when:**
+  - Check if framework builds without errors
+  - Then open Xcode to debug
   - CI/CD pipeline
 
 ---
 
-## 🎨 Tạo Thêm Configuration Cho Simulator Khác
+## 🎨 Create Configuration for Other Simulators
 
-### Cách 1: Duplicate Configuration Có Sẵn
+### Method 1: Duplicate Existing Configuration
 
 1. **Run** → **Edit Configurations...**
-2. Chọn **iosApp**
-3. Click **Copy** (icon giống 2 tờ giấy)
-4. Đổi tên: `iosApp (iPhone 17 Pro)`
-5. Ở **Script options**, thay đổi:
+2. Select **iosApp**
+3. Click **Copy** (icon with 2 pages)
+4. Rename: `iosApp (iPhone 17 Pro)`
+5. In **Script options**, change to:
    ```
    "iPhone 17 Pro"
    ```
 6. Click **OK**
 
-### Cách 2: Tạo File XML Mới
+### Method 2: Create New XML File
 
-Tạo file `.idea/runConfigurations/iosApp__iPhone_17_Pro_.xml`:
+Create file `.idea/runConfigurations/iosApp__iPhone_17_Pro_.xml`:
 
 ```xml
 &lt;component name="ProjectRunConfigurationManager"&gt;
@@ -108,9 +108,9 @@ Restart Android Studio.
 
 ---
 
-## 🔍 Xem Danh Sách Simulators
+## 🔍 View Simulator List
 
-Chạy script helper:
+Run helper script:
 
 ```bash
 ./list-ios-simulators.sh
@@ -130,51 +130,51 @@ Output:
 
 ## 🐛 Troubleshooting
 
-### ❌ Không thấy iOS configurations trong dropdown
+### ❌ Can't see iOS configurations in dropdown
 
-**Giải pháp:**
+**Solution:**
 1. Restart Android Studio
-2. Hoặc: **File** → **Invalidate Caches** → **Invalidate and Restart**
+2. Or: **File** → **Invalidate Caches** → **Invalidate and Restart**
 
-### ❌ Lỗi: "Simulator not found"
+### ❌ Error: "Simulator not found"
 
-**Giải pháp:**
+**Solution:**
 ```bash
-# Xem danh sách simulators
+# View simulator list
 xcrun simctl list devices
 
-# Boot simulator trước
+# Boot simulator first
 xcrun simctl boot "iPhone 16"
 ```
 
-### ❌ Lỗi: "Framework not found"
+### ❌ Error: "Framework not found"
 
-**Giải pháp:**
+**Solution:**
 ```bash
-# Build lại framework
+# Rebuild framework
 ./gradlew clean :demo:linkDebugFrameworkIosSimulatorArm64
 ```
 
-### ❌ Lỗi: "xcodebuild command not found"
+### ❌ Error: "xcodebuild command not found"
 
-**Giải pháp:**
+**Solution:**
 ```bash
-# Cài Xcode Command Line Tools
+# Install Xcode Command Line Tools
 xcode-select --install
 ```
 
-### ❌ App launch nhưng crash ngay
+### ❌ App launches but crashes immediately
 
-**Giải pháp:**
-1. Xem console output trong Android Studio
-2. Hoặc xem logs:
+**Solution:**
+1. View console output in Android Studio
+2. Or view logs:
    ```bash
    xcrun simctl spawn booted log stream --predicate 'processImagePath contains "PermissionDemo"'
    ```
 
 ---
 
-## 📝 Shortcuts Hữu Ích
+## 📝 Useful Shortcuts
 
 | Action | Shortcut |
 |--------|----------|
@@ -186,16 +186,16 @@ xcode-select --install
 
 ## 🎯 Quick Commands (Alternative)
 
-Nếu không muốn dùng Android Studio UI, dùng terminal:
+If you don't want to use Android Studio UI, use terminal:
 
 ```bash
 # Run default (iPhone 16)
 ./ios-quick-run.sh
 
-# Run trên device khác
+# Run on different device
 ./ios-quick-run.sh "iPhone 16 Pro"
 
-# Chỉ build framework
+# Build framework only
 ./gradlew :demo:linkDebugFrameworkIosSimulatorArm64
 ```
 
@@ -205,43 +205,43 @@ Nếu không muốn dùng Android Studio UI, dùng terminal:
 
 ### 1. Setup Real Device Testing
 
-Để run trên real iPhone/iPad:
-1. Kết nối device qua USB
+To run on real iPhone/iPad:
+1. Connect device via USB
 2. Open Xcode project:
    ```bash
    open demo/iosApp/GrantDemo/GrantDemo.xcodeproj
    ```
-3. Select device từ Xcode
-4. Run từ Xcode (Android Studio chưa support real device)
+3. Select device from Xcode
+4. Run from Xcode (Android Studio doesn't support real devices yet)
 
 ### 2. Debug iOS App
 
-Dùng Xcode cho debugging:
+Use Xcode for debugging:
 ```bash
-# Build framework trước
+# Build framework first
 ./gradlew :demo:linkDebugFrameworkIosSimulatorArm64
 
-# Mở Xcode
+# Open Xcode
 open demo/iosApp/GrantDemo/GrantDemo.xcodeproj
 
-# Set breakpoints và debug như bình thường
+# Set breakpoints and debug as usual
 ```
 
 ### 3. Setup Hot Reload (Advanced)
 
-Chưa support cho iOS (limitation của KMP). Mỗi lần thay đổi code:
+Not supported for iOS yet (KMP limitation). For each code change:
 1. Rebuild framework
 2. Rerun app
 
 ---
 
-## ✅ Hoàn Tất!
+## ✅ Complete!
 
-Giờ bạn đã có thể:
-- ✅ Run iOS app từ Android Studio toolbar
-- ✅ Chọn simulators khác nhau
-- ✅ Build framework riêng biệt
-- ✅ Debug với Xcode khi cần
+Now you can:
+- ✅ Run iOS app from Android Studio toolbar
+- ✅ Select different simulators
+- ✅ Build framework separately
+- ✅ Debug with Xcode when needed
 
 **Enjoy coding! 🎉**
 
