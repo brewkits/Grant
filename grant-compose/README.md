@@ -88,8 +88,8 @@ Add the dependency to your `commonMain` sourceset:
 kotlin {
     sourceSets {
         commonMain.dependencies {
-            implementation("dev.brewkits.grant:grant-core:1.0.1")
-            implementation("dev.brewkits.grant:grant-compose:1.0.1")
+            implementation("dev.brewkits.grant:grant-core:1.0.2")
+            implementation("dev.brewkits.grant:grant-compose:1.0.2")
         }
     }
 }

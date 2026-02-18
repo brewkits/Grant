@@ -1,63 +1,63 @@
 # Fix "Dead Click" Issue on Android
 
-## 🐛 Vấn đề
+## 🐛 The Problem
 
-**Tình huống:**
-1. User mở app lần 1 → Click request Camera → Deny
-2. App lưu trạng thái vào `statusCache` (in-memory): `CAMERA = DENIED`
-3. App bị kill (restart)
-4. `statusCache` bị reset (mất hết data)
-5. User mở app lần 2 → Click request Camera
-6. `checkStatus()` return `NOT_DETERMINED` (vì cache mất rồi)
-7. `request()` show system dialog → System return `DENIED_ALWAYS` ngay
-8. `handleStatus(DENIED_ALWAYS, isFirstRequest=true)` → Không show dialog gì!
-9. **User thấy: Click vào không có gì xảy ra = "Dead Click"** 💀
+**Scenario:**
+1. User opens app (first time) → Click request Camera → Deny
+2. App saves status to `statusCache` (in-memory): `CAMERA = DENIED`
+3. App gets killed (restart)
+4. `statusCache` is reset (all data lost)
+5. User opens app (second time) → Click request Camera
+6. `checkStatus()` returns `NOT_DETERMINED` (because cache is lost)
+7. `request()` shows system dialog → System returns `DENIED_ALWAYS` immediately
+8. `handleStatus(DENIED_ALWAYS, isFirstRequest=true)` → Doesn't show any dialog!
+9. **User sees: Click does nothing = "Dead Click"** 💀
 
 ---
 
-## 🎯 Nguyên nhân
+## 🎯 Root Cause
 
-**Android không có API để phân biệt:**
-- `NOT_DETERMINED`: Chưa từng xin quyền
-- `DENIED`: Đã xin nhưng bị từ chối
+**Android doesn't have API to differentiate:**
+- `NOT_DETERMINED`: Never requested permission
+- `DENIED`: Requested but denied
 
-Cả 2 trường hợp đều:
+Both cases return:
 ```kotlin
 ContextCompat.checkSelfPermission(context, permission) == PERMISSION_DENIED
 ```
 
-**Giải pháp cũ (statusCache):**
-- ✅ Hoạt động tốt trong session hiện tại
-- ❌ Mất hết khi app restart
-- ❌ Gây "Dead Click" sau restart
+**Old solution (statusCache):**
+- ✅ Works well in current session
+- ❌ Lost when app restarts
+- ❌ Causes "Dead Click" after restart
 
 ---
 
-## ✅ Giải pháp
+## ✅ Solution
 
-**Dùng SharedPreferences để nhớ "đã từng request"**
+**Use SharedPreferences to remember "has requested"**
 
-### Tại sao an toàn?
+### Why is it safe?
 
-**❌ NGUY HIỂM: Lưu status**
+**❌ DANGEROUS: Store status**
 ```kotlin
 // BAD - Inconsistent with system
 prefs.putString("camera_status", "DENIED")
-// User có thể vào Settings enable lại → Status cũ sai!
+// User can go to Settings and enable it → Old status is wrong!
 ```
 
-**✅ AN TOÀN: Lưu boolean "đã request"**
+**✅ SAFE: Store boolean "has requested"**
 ```kotlin
 // GOOD - This is a fact that never changes
 prefs.putBoolean("requested_camera", true)
-// Fact: "Đã từng xin quyền này" → Không bao giờ sai!
+// Fact: "Have requested this permission" → Never wrong!
 ```
 
-### Logic Implementation
+### Implementation Logic
 
 **File:** `grant-core/src/androidMain/kotlin/dev/brewkits/grant/impl/PlatformGrantDelegate.android.kt`
 
-#### 1. Thêm SharedPreferences
+#### 1. Add SharedPreferences
 ```kotlin
 // Lines 28-42
 private val prefs by lazy {
@@ -99,9 +99,9 @@ setRequested(grant)
 
 ---
 
-## 📊 Flow So Sánh
+## 📊 Flow Comparison
 
-### ❌ TRƯỚC FIX (Dead Click)
+### ❌ BEFORE FIX (Dead Click)
 
 **Session 1:**
 ```
@@ -115,14 +115,14 @@ setRequested(grant)
 **Session 2:**
 ```
 1. checkStatus() → statusCache empty → return NOT_DETERMINED ❌
-2. request() → System dialog → DENIED_ALWAYS ngay
-3. handleStatus(DENIED_ALWAYS, isFirstRequest=true) → Không show dialog
-4. User: "Click vào không có gì?" 😕 DEAD CLICK!
+2. request() → System dialog → DENIED_ALWAYS immediately
+3. handleStatus(DENIED_ALWAYS, isFirstRequest=true) → Doesn't show dialog
+4. User: "Click does nothing?" 😕 DEAD CLICK!
 ```
 
 ---
 
-### ✅ SAU FIX (Works Perfectly)
+### ✅ AFTER FIX (Works Perfectly)
 
 **Session 1:**
 ```
@@ -140,7 +140,7 @@ setRequested(grant)
 2. checkStatus() → isRequestedBefore(CAMERA) = true ✅
 3. checkStatus() → return DENIED (not NOT_DETERMINED!) ✅
 4. handleStatus(DENIED, isFirstRequest=false) → Show rationale dialog ✅
-5. User: "Oh có dialog hướng dẫn!" ✅ WORKS!
+5. User: "Oh there's a guidance dialog!" ✅ WORKS!
 ```
 
 ---

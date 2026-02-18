@@ -1,7 +1,7 @@
 # Migration Guide to Grant
 
-**Version:** 1.0.1
-**Last Updated:** February 10, 2026
+**Version:** 1.0.2
+**Last Updated:** February 16, 2026
 
 This guide helps you migrate from other permission libraries to Grant with minimal code changes and maximum benefit.
 
@@ -614,13 +614,13 @@ See: [iOS Info.plist Setup](platform-specific/ios/info-plist.md)
 ```kotlin
 // Option 1: Use grant-core only (no Compose UI)
 dependencies {
-    implementation("dev.brewkits:grant-core:1.0.1")
+    implementation("dev.brewkits:grant-core:1.0.2")
     // Build your own dialogs
 }
 
 // Option 2: Override Material3 version
 dependencies {
-    implementation("dev.brewkits:grant-compose:1.0.1")
+    implementation("dev.brewkits:grant-compose:1.0.2")
     implementation("androidx.compose.material3:material3:YOUR_VERSION") {
         force = true
     }

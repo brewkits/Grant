@@ -15,6 +15,24 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import platform.Foundation.NSSelectorFromString
 
 /**
+ * Bluetooth request timeout in milliseconds.
+ *
+ * **Why 10 seconds?**
+ * - iOS typically responds within 1-2 seconds for permission dialogs
+ * - 10 seconds allows for:
+ *   - Slow devices or system lag
+ *   - User reading the permission prompt
+ *   - System animations/transitions
+ * - Prevents indefinite hangs if system fails to respond
+ *
+ * **What happens on timeout?**
+ * - Throws BluetoothTimeoutException (recoverable)
+ * - User can retry the request
+ * - Logs warning for debugging
+ */
+private const val BLUETOOTH_REQUEST_TIMEOUT_MS = 10_000L
+
+/**
  * Delegate for handling iOS CoreBluetooth grant requests.
  *
  * iOS Bluetooth grants are checked through CBCentralManager state.
@@ -68,12 +86,14 @@ internal class BluetoothManagerDelegate : NSObject(), CBCentralManagerDelegatePr
      * Requests Bluetooth grant by creating a CBCentralManager.
      * The OS will automatically show grant dialog on first access.
      *
-     * Timeout: 10 seconds
+     * **Timeout Behavior:**
+     * - Uses [BLUETOOTH_REQUEST_TIMEOUT_MS] (10 seconds) timeout
      * - iOS typically responds within 1-2 seconds
-     * - 10 seconds allows for slow systems while preventing indefinite hangs
+     * - Timeout allows for slow systems while preventing indefinite hangs
+     * - On timeout, throws BluetoothTimeoutException (recoverable - user can retry)
      *
      * @return The resulting grant status
-     * @throws BluetoothTimeoutException if request times out
+     * @throws BluetoothTimeoutException if request times out after 10 seconds
      * @throws BluetoothInitializationException if CBCentralManager creation fails
      * @throws BluetoothPoweredOffException if Bluetooth is powered off
      */
@@ -89,7 +109,7 @@ internal class BluetoothManagerDelegate : NSObject(), CBCentralManagerDelegatePr
         }
 
         return try {
-            withTimeout(10_000L) { // 10 second timeout
+            withTimeout(BLUETOOTH_REQUEST_TIMEOUT_MS) {
                 suspendCancellableCoroutine { cont ->
                     continuation = cont
 
@@ -117,10 +137,17 @@ internal class BluetoothManagerDelegate : NSObject(), CBCentralManagerDelegatePr
                 }
             }
         } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
-            GrantLogger.w("BluetoothDelegate", "Bluetooth request timed out after 10 seconds")
+            GrantLogger.w(
+                "BluetoothDelegate",
+                "Bluetooth request timed out after ${BLUETOOTH_REQUEST_TIMEOUT_MS}ms. " +
+                "This is recoverable - user can retry the request."
+            )
             continuation = null
             centralManager = null
-            throw BluetoothTimeoutException("Bluetooth permission request timed out after 10 seconds")
+            throw BluetoothTimeoutException(
+                "Bluetooth permission request timed out after ${BLUETOOTH_REQUEST_TIMEOUT_MS}ms. " +
+                "This may indicate system lag or user delay. Please retry."
+            )
         }
     }
 

@@ -1,6 +1,6 @@
-# 🚀 Quick Start: Run iOS App từ Android Studio
+# 🚀 Quick Start: Run iOS App from Android Studio
 
-## ⚡ 3 Bước Đơn Giản
+## ⚡ 3 Simple Steps
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -10,7 +10,7 @@
 └─────────────────────────────────────────────┘
                     ↓
 ┌─────────────────────────────────────────────┐
-│  Step 2: Chọn Configuration                 │
+│  Step 2: Select Configuration               │
 │  ─────────────────────────────────────────  │
 │  Toolbar → [demo] ▼ → iosApp               │
 └─────────────────────────────────────────────┘
@@ -18,28 +18,28 @@
 ┌─────────────────────────────────────────────┐
 │  Step 3: Click Run                          │
 │  ─────────────────────────────────────────  │
-│  Click ▶️ button (hoặc Shift+F10)          │
+│  Click ▶️ button (or Shift+F10)            │
 └─────────────────────────────────────────────┘
 ```
 
-## 📱 Configurations Có Sẵn
+## 📱 Available Configurations
 
-Sau khi restart, bạn sẽ thấy trong dropdown:
+After restart, you will see in the dropdown:
 
 ```
 📱 iosApp                      → iPhone 16 (default)
 📱 iosApp (iPhone 16 Pro)      → iPhone 16 Pro
 📱 iosApp (iPad Pro)           → iPad Pro 11-inch
-🔧 Build iOS Framework Only    → Chỉ build framework
+🔧 Build iOS Framework Only    → Build framework only
 ```
 
 ## 🎯 Demo Run
 
-### Run trên iPhone 16 (Default)
+### Run on iPhone 16 (Default)
 
-1. Chọn **iosApp** từ dropdown
+1. Select **iosApp** from dropdown
 2. Click **▶️ Run**
-3. Console sẽ hiển thị:
+3. Console will display:
 
 ```
 ════════════════════════════════════════════════════
@@ -59,41 +59,41 @@ Sau khi restart, bạn sẽ thấy trong dropdown:
 ════════════════════════════════════════════════════
 ```
 
-4. iOS Simulator sẽ tự động mở với app đang chạy! 🎉
+4. iOS Simulator will automatically open with the app running! 🎉
 
-## 🔧 Chọn Simulator Khác
+## 🔧 Select Different Simulator
 
-Muốn run trên iPhone 16 Pro Max?
+Want to run on iPhone 16 Pro Max?
 
-**Option 1: Tạo configuration mới**
+**Option 1: Create new configuration**
 1. **Run** → **Edit Configurations**
 2. Click **iosApp** → **Copy** 📋
-3. Đổi tên: `iosApp (iPhone 16 Pro Max)`
+3. Rename: `iosApp (iPhone 16 Pro Max)`
 4. **Script options**: `"iPhone 16 Pro Max"`
 5. **OK**
 
-**Option 2: Dùng terminal**
+**Option 2: Use terminal**
 ```bash
 ./ios-quick-run.sh "iPhone 16 Pro Max"
 ```
 
 ## ❓ FAQ
 
-**Q: Không thấy configurations trong dropdown?**
+**Q: Can't see configurations in dropdown?**
 A: Restart Android Studio (**File** → **Invalidate Caches**)
 
-**Q: Lỗi "Simulator not found"?**
-A: Chạy `./list-ios-simulators.sh` để xem tên chính xác
+**Q: "Simulator not found" error?**
+A: Run `./list-ios-simulators.sh` to see exact names
 
-**Q: Build thành công nhưng app không launch?**
-A: Kiểm tra Simulator app đã mở chưa, hoặc boot manual:
+**Q: Build succeeds but app doesn't launch?**
+A: Check if Simulator app is open, or boot manually:
 ```bash
 xcrun simctl boot "iPhone 16"
 open -a Simulator
 ```
 
-**Q: Muốn debug iOS app?**
-A: Dùng Xcode:
+**Q: Want to debug iOS app?**
+A: Use Xcode:
 ```bash
 ./gradlew :demo:linkDebugFrameworkIosSimulatorArm64
 open demo/iosApp/GrantDemo/GrantDemo.xcodeproj
@@ -101,7 +101,7 @@ open demo/iosApp/GrantDemo/GrantDemo.xcodeproj
 
 ## 📚 Full Guide
 
-Xem chi tiết tại: [IOS_SETUP_ANDROID_STUDIO.md](IOS_SETUP_ANDROID_STUDIO.md)
+See details at: [IOS_SETUP_ANDROID_STUDIO.md](IOS_SETUP_ANDROID_STUDIO.md)
 
 ---
 

@@ -120,7 +120,7 @@ For apps that want the in-app GPS dialog (instead of manual Settings navigation)
 ```gradle
 // app/build.gradle.kts
 dependencies {
-    implementation("dev.brewkits:grant-core:1.0.1")
+    implementation("dev.brewkits:grant-core:1.0.2")
     implementation("com.google.android.gms:play-services-location:21.1.0")
 }
 ```
