@@ -64,6 +64,64 @@ Simple and straightforward - no Fragment, no BindEffect, no manual configuration
 
 ---
 
+## Using with Web/Desktop Targets
+
+Grant currently provides **full implementations for Android and iOS only**. If your Kotlin Multiplatform project targets additional platforms like `js` (browser) or `jvm` (desktop), you cannot add Grant directly to `commonMain` as Gradle requires artifacts for all declared targets.
+
+### Recommended Approach: Use an Intermediate Source Set
+
+The best practice is to create a **mobile-specific source set** (e.g., `mobileMain`) that sits between `commonMain` and your Android/iOS source sets:
+
+```kotlin
+// shared/build.gradle.kts
+kotlin {
+    // Define your targets
+    androidTarget()
+    iosArm64()
+    iosSimulatorArm64()
+    js()  // Web target
+    jvm() // Desktop target
+
+    sourceSets {
+        // Create mobile-specific source set
+        val mobileMain by creating {
+            dependsOn(commonMain.get())
+        }
+
+        // Android and iOS depend on mobileMain
+        androidMain.get().dependsOn(mobileMain)
+        iosMain.get().dependsOn(mobileMain)
+
+        // Add Grant dependencies to mobileMain
+        mobileMain.dependencies {
+            implementation("dev.brewkits:grant-core:1.0.2")
+            implementation("dev.brewkits:grant-compose:1.0.2") // Optional
+        }
+
+        // Your JS/JVM code remains in commonMain without Grant
+        commonMain.dependencies {
+            // Other shared dependencies
+        }
+    }
+}
+```
+
+**Benefits:**
+- ✅ Keeps your mobile permission logic separate from web/desktop code
+- ✅ No compilation errors from missing JS/JVM artifacts
+- ✅ Clean architecture following KMP best practices
+- ✅ No risk of false-positive permission grants on unsupported platforms
+
+### Future Roadmap
+
+We're exploring **native implementations for JS (Browser Permissions API) and JVM (macOS TCC)** in future releases, rather than simple no-op stubs. This would provide real value for web and desktop applications.
+
+> **Why not no-op stubs?** Modern browsers and desktop platforms (macOS, Windows) have their own permission systems. A no-op implementation that returns `GRANTED` by default would be misleading and cause runtime failures when your app tries to access protected resources (camera, microphone, location). Any future implementation will properly integrate with platform-specific permission APIs.
+
+For updates, follow [Issue #19](https://github.com/brewkits/Grant/issues/19).
+
+---
+
 ## Demo
 
 Run the demo app to see all 14 permissions in action:
@@ -208,6 +266,8 @@ kotlin {
     }
 }
 ```
+
+> ⚠️ **Important for Multi-Platform Projects**: If your project targets platforms beyond Android and iOS (e.g., `js`, `jvm`), do **not** add Grant to `commonMain`. See [Using with Web/Desktop Targets](#using-with-webdesktop-targets) for the recommended configuration.
 
 ---
 
