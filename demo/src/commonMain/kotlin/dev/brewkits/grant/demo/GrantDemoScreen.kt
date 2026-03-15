@@ -34,6 +34,7 @@ fun GrantDemoScreen(
     val sequentialResult by viewModel.sequentialResult.collectAsState()
     val parallelResult by viewModel.parallelResult.collectAsState()
     val grantTypeResult by viewModel.grantTypeResult.collectAsState()
+    val v11Result by viewModel.v11Result.collectAsState()
 
     // Handle grant dialogs using grant-compose
     GrantDialog(handler = viewModel.cameraGrant)
@@ -41,8 +42,12 @@ fun GrantDemoScreen(
     GrantDialog(handler = viewModel.locationGrant)
     GrantDialog(handler = viewModel.storageGrant)
     GrantDialog(handler = viewModel.notificationGrant)
-    GrantDialog(handler = viewModel.contactsGrant)
     GrantDialog(handler = viewModel.locationAlwaysGrant)
+    // v1.1.0 new permissions
+    GrantDialog(handler = viewModel.readContactsGrant)
+    GrantDialog(handler = viewModel.contactsWriteGrant)
+    GrantDialog(handler = viewModel.bluetoothAdvertiseGrant)
+    GrantDialog(handler = viewModel.readCalendarGrant)
 
     Column(
         modifier = modifier
@@ -206,6 +211,126 @@ fun GrantDemoScreen(
                 ) {
                     Text(
                         text = grantTypeResult,
+                        modifier = Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+        }
+
+        HorizontalDivider()
+
+        // Scenario 4: v1.1.0 Granular Permissions
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Text(
+                text = "4. v1.1.0 — Granular Permissions",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "New in v1.1.0: Separate read-only variants for least-privilege, " +
+                        "CONTACTS now requests write access, BLUETOOTH_ADVERTISE for BLE peripheral mode.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            // READ_CONTACTS
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "READ_CONTACTS — Read-only (least privilege)",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Android: READ_CONTACTS only\niOS: CNContactStore (same as CONTACTS)",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Button(
+                        onClick = { viewModel.requestReadContactsGrant() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Request READ_CONTACTS") }
+                }
+            }
+
+            // CONTACTS (full)
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "CONTACTS — Read + Write (v1.1.0 breaking change)",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Android: READ_CONTACTS + WRITE_CONTACTS\niOS: CNContactStore",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Button(
+                        onClick = { viewModel.requestFullContactsGrant() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Request CONTACTS (read+write)") }
+                }
+            }
+
+            // BLUETOOTH_ADVERTISE
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "BLUETOOTH_ADVERTISE — BLE peripheral mode",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Android 12+: BLUETOOTH_ADVERTISE\nAndroid <12: auto-granted\niOS: CoreBluetooth",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Button(
+                        onClick = { viewModel.requestBluetoothAdvertiseGrant() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Request BLUETOOTH_ADVERTISE") }
+                }
+            }
+
+            // READ_CALENDAR
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "READ_CALENDAR — Read-only (least privilege)",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Android: READ_CALENDAR only\niOS: EKEventStore (same as CALENDAR)",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Button(
+                        onClick = { viewModel.requestReadCalendarGrant() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Request READ_CALENDAR") }
+                }
+            }
+
+            if (v11Result.isNotEmpty()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Text(
+                        text = v11Result,
                         modifier = Modifier.padding(16.dp),
                         style = MaterialTheme.typography.bodyMedium
                     )

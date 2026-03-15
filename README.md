@@ -94,8 +94,8 @@ kotlin {
 
         // Add Grant dependencies to mobileMain
         mobileMain.dependencies {
-            implementation("dev.brewkits:grant-core:1.0.2")
-            implementation("dev.brewkits:grant-compose:1.0.2") // Optional
+            implementation("dev.brewkits:grant-core:1.1.0")
+            implementation("dev.brewkits:grant-compose:1.1.0") // Optional
         }
 
         // Your JS/JVM code remains in commonMain without Grant
@@ -124,7 +124,7 @@ For updates, follow [Issue #19](https://github.com/brewkits/Grant/issues/19).
 
 ## Demo
 
-Run the demo app to see all 14 permissions in action:
+Run the demo app to see all 17 permissions in action:
 
 ```bash
 ./gradlew :demo:installDebug  # Android
@@ -240,7 +240,7 @@ This helps you detect when users grant permission but forget to enable the requi
 ### Cross-Platform Coverage
 - **Android**: API 24+
 - **iOS**: iOS 13.0+
-- **14 Permission Types**: Camera, Microphone, Gallery (Images/Videos/Both), Storage, Location, Location Always, Notifications, Schedule Exact Alarm, Bluetooth, Contacts, Motion, Calendar
+- **17 Permission Types**: Camera, Microphone, Gallery (Images/Videos/Both), Storage, Location, Location Always, Notifications, Schedule Exact Alarm, Bluetooth, Bluetooth Advertise, Contacts, Read Contacts, Motion, Calendar, Read Calendar
 
 ---
 
@@ -260,8 +260,8 @@ dependencyResolutionManagement {
 kotlin {
     sourceSets {
         commonMain.dependencies {
-            implementation("dev.brewkits:grant-core:1.0.2")
-            implementation("dev.brewkits:grant-compose:1.0.2") // Optional
+            implementation("dev.brewkits:grant-core:1.1.0")
+            implementation("dev.brewkits:grant-compose:1.1.0") // Optional
         }
     }
 }
@@ -339,10 +339,13 @@ See [Quick Start Guide](docs/getting-started/quick-start.md) for complete setup.
 | `LOCATION_ALWAYS` | ✅ API 29+ | ✅ iOS 13+ | Background location |
 | `NOTIFICATION` | ✅ API 33+ | ✅ iOS 13+ | Push notifications |
 | `SCHEDULE_EXACT_ALARM` | ✅ API 31+ | N/A | Exact alarm scheduling |
-| `BLUETOOTH` | ✅ API 31+ | ✅ iOS 13+ | BLE scanning/connecting |
-| `CONTACTS` | ✅ API 23+ | ✅ iOS 13+ | Read contacts |
+| `BLUETOOTH` | ✅ API 31+ | ✅ iOS 13+ | BLE scanning + connecting (central mode) |
+| `BLUETOOTH_ADVERTISE` | ✅ API 31+ | ✅ iOS 13+ | BLE advertising (peripheral/beacon mode) |
+| `CONTACTS` | ✅ API 23+ | ✅ iOS 13+ | Read + write contacts ⚠️ breaking change in v1.1.0 |
+| `READ_CONTACTS` | ✅ API 23+ | ✅ iOS 13+ | Read contacts only (least privilege) |
 | `MOTION` | ✅ API 29+ | ✅ iOS 13+ | Activity recognition |
-| `CALENDAR` | ✅ API 23+ | ✅ iOS 13+ | Calendar events access |
+| `CALENDAR` | ✅ API 23+ | ✅ iOS 13+ | Read + write calendar events |
+| `READ_CALENDAR` | ✅ API 23+ | ✅ iOS 13+ | Read calendar events only (least privilege) |
 
 ---
 

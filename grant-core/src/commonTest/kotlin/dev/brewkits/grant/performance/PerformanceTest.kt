@@ -165,20 +165,23 @@ class PerformanceTest {
             // Create 50 handlers concurrently
             repeat(50) { index ->
                 launch {
-                    val grant = when (index % 14) {
+                    val grant = when (index % 17) {
                         0 -> AppGrant.CAMERA
                         1 -> AppGrant.MICROPHONE
                         2 -> AppGrant.GALLERY
                         3 -> AppGrant.LOCATION
                         4 -> AppGrant.NOTIFICATION
                         5 -> AppGrant.BLUETOOTH
-                        6 -> AppGrant.CONTACTS
-                        7 -> AppGrant.CALENDAR
-                        8 -> AppGrant.MOTION
-                        9 -> AppGrant.STORAGE
-                        10 -> AppGrant.GALLERY_IMAGES_ONLY
-                        11 -> AppGrant.GALLERY_VIDEO_ONLY
-                        12 -> AppGrant.LOCATION_ALWAYS
+                        6 -> AppGrant.BLUETOOTH_ADVERTISE
+                        7 -> AppGrant.CONTACTS
+                        8 -> AppGrant.READ_CONTACTS
+                        9 -> AppGrant.CALENDAR
+                        10 -> AppGrant.READ_CALENDAR
+                        11 -> AppGrant.MOTION
+                        12 -> AppGrant.STORAGE
+                        13 -> AppGrant.GALLERY_IMAGES_ONLY
+                        14 -> AppGrant.GALLERY_VIDEO_ONLY
+                        15 -> AppGrant.LOCATION_ALWAYS
                         else -> AppGrant.SCHEDULE_EXACT_ALARM
                     }
 
@@ -235,8 +238,11 @@ class PerformanceTest {
             AppGrant.LOCATION_ALWAYS,
             AppGrant.NOTIFICATION,
             AppGrant.BLUETOOTH,
+            AppGrant.BLUETOOTH_ADVERTISE,
             AppGrant.CONTACTS,
+            AppGrant.READ_CONTACTS,
             AppGrant.CALENDAR,
+            AppGrant.READ_CALENDAR,
             AppGrant.MOTION,
             AppGrant.STORAGE,
             AppGrant.SCHEDULE_EXACT_ALARM
@@ -255,8 +261,8 @@ class PerformanceTest {
             }
         }
 
-        assertTrue(checksCompleted == 1400, "All 1400 checks should complete") // 14 permissions * 100 iterations
-        println("Batch check of all 14 permissions x 100 iterations in: $duration")
+        assertTrue(checksCompleted == 1700, "All 1700 checks should complete") // 17 permissions * 100 iterations
+        println("Batch check of all 17 permissions x 100 iterations in: $duration")
     }
 
     // ==================== StateFlow Performance Tests ====================

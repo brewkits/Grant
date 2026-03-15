@@ -355,8 +355,11 @@ class RegressionTest {
             AppGrant.LOCATION_ALWAYS,
             AppGrant.NOTIFICATION,
             AppGrant.BLUETOOTH,
+            AppGrant.BLUETOOTH_ADVERTISE,
             AppGrant.CONTACTS,
+            AppGrant.READ_CONTACTS,
             AppGrant.CALENDAR,
+            AppGrant.READ_CALENDAR,
             AppGrant.MOTION,
             AppGrant.STORAGE,
             AppGrant.SCHEDULE_EXACT_ALARM

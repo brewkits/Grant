@@ -47,7 +47,7 @@ fun SimpleGrantDemoScreen(
     GrantDialog(handler = viewModel.locationGrant)
     GrantDialog(handler = viewModel.storageGrant)
     GrantDialog(handler = viewModel.notificationGrant)
-    GrantDialog(handler = viewModel.contactsGrant)
+    GrantDialog(handler = viewModel.readContactsGrant)
     GrantDialog(handler = viewModel.locationAlwaysGrant)
     GrantDialog(handler = viewModel.bluetoothGrant)
     GrantDialog(handler = viewModel.galleryGrant)
@@ -236,11 +236,11 @@ fun SimpleGrantDemoScreen(
 
         // Contacts
         GrantCard(
-            title = "Contacts",
+            title = "Contacts (read-only)",
             description = "Read contact list",
             icon = "👥",
-            grant = AppGrant.CONTACTS,
-            handler = viewModel.contactsGrant,
+            grant = AppGrant.READ_CONTACTS,
+            handler = viewModel.readContactsGrant,
             onSuccess = ::showSuccess
         )
 
