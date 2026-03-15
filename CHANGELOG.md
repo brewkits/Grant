@@ -6,6 +6,80 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.1.0] - 2026-03-15
+
+### 🚨 Breaking Changes
+
+- **`CONTACTS` permission now requests `READ_CONTACTS` + `WRITE_CONTACTS` on Android** (previously only `READ_CONTACTS`)
+  - If your app only needs to read contacts, migrate to the new `READ_CONTACTS` permission
+  - Update your `AndroidManifest.xml` to declare `WRITE_CONTACTS` if you keep using `CONTACTS`
+  - iOS behavior unchanged (CNContactStore covers both read and write)
+
+### ✨ New Permissions (17 total, up from 14)
+
+#### Granular Contacts Access
+- **`READ_CONTACTS`** — Read-only contacts access (Android: `READ_CONTACTS` only)
+  - Use when your app only needs to read contacts (contact pickers, CRM viewers)
+  - Follows principle of least privilege
+  - iOS: maps to same `CNContactStore` authorization as `CONTACTS`
+
+#### Granular Calendar Access
+- **`READ_CALENDAR`** — Read-only calendar access (Android: `READ_CALENDAR` only)
+  - Use when your app only needs to read events (calendar viewers, reminder apps)
+  - Follows principle of least privilege
+  - iOS: maps to same `EKEventStore` authorization as `CALENDAR`
+
+#### Bluetooth Advertising
+- **`BLUETOOTH_ADVERTISE`** — BLE peripheral/advertising mode
+  - Android 12+ (API 31+): requests `BLUETOOTH_ADVERTISE` runtime permission
+  - Android < 12: auto-granted (covered by legacy install-time permission, no dialog)
+  - iOS: maps to same CoreBluetooth authorization as `BLUETOOTH`
+  - Use cases: beacons, proximity marketing, device-to-device transfer (sender), contact tracing
+  - Independent of `BLUETOOTH` — request only what your app needs
+
+### 📐 Design Rationale
+
+Permission split approach follows **moko-permissions** and **Flutter permission_handler** industry standards:
+- `CONTACTS` / `CALENDAR` = full access (read + write)
+- `READ_CONTACTS` / `READ_CALENDAR` = read-only (least privilege)
+- `BLUETOOTH` = scan + connect (BLE central mode)
+- `BLUETOOTH_ADVERTISE` = advertise only (BLE peripheral mode, independent)
+
+### 🧪 Testing
+
+- **17 permission types** covered in all test suites (up from 14)
+- Updated `GrantTypeTest`, `AllPermissionTypesTest`, `RegressionTest`, `PerformanceTest`, `GroupHandlerStressTest`
+- All 1700 batch checks pass (17 permissions × 100 iterations)
+
+### 📱 Demo App
+
+- New **Scenario 4: v1.1.0 Granular Permissions** section in demo
+- Live demos for `READ_CONTACTS`, `CONTACTS` (read+write), `BLUETOOTH_ADVERTISE`, `READ_CALENDAR`
+- All 4 new handlers wired to `refreshAllGrants()`
+
+### 📚 Migration Guide
+
+If you were using `AppGrant.CONTACTS` for read-only access (contact picker, address book viewer):
+
+```kotlin
+// Before (v1.0.x) — read only
+grantManager.request(AppGrant.CONTACTS)
+
+// After (v1.1.0) — if you only need read, use READ_CONTACTS
+grantManager.request(AppGrant.READ_CONTACTS)
+
+// After (v1.1.0) — if you need read + write (sync, contact manager)
+grantManager.request(AppGrant.CONTACTS)
+```
+
+Also update `AndroidManifest.xml` if keeping `CONTACTS`:
+```xml
+<!-- Add WRITE_CONTACTS if you use AppGrant.CONTACTS -->
+<uses-permission android:name="android.permission.WRITE_CONTACTS" />
+```
+
+---
+
 ## [Unreleased]
 
 ### 🔧 Internal Improvements

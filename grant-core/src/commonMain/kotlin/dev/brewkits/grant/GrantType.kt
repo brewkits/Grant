@@ -107,16 +107,35 @@ enum class AppGrant : GrantPermission {
     SCHEDULE_EXACT_ALARM,
 
     /**
-     * Bluetooth grant
-     * - Android API 31+: BLUETOOTH_SCAN, BLUETOOTH_CONNECT, BLUETOOTH_ADVERTISE
+     * Bluetooth scanning and connecting (BLE central mode)
+     * - Android API 31+: BLUETOOTH_SCAN + BLUETOOTH_CONNECT
      * - Android API 29-30: ACCESS_FINE_LOCATION (required for BLE scanning)
      * - Android API <29: ACCESS_COARSE_LOCATION
      * - iOS: NSBluetoothAlwaysUsageDescription (CoreBluetooth)
+     *
+     * Use this for the common BLE central use case: scanning nearby devices,
+     * pairing, connecting, reading/writing GATT characteristics.
+     * If your app also needs to advertise (BLE peripheral mode), additionally
+     * request [BLUETOOTH_ADVERTISE].
      *
      * Note: On Android < 31, location grant is required for Bluetooth scanning.
      * The implementation handles API version differences automatically.
      */
     BLUETOOTH,
+
+    /**
+     * Bluetooth advertising (BLE peripheral mode)
+     * - Android API 31+: BLUETOOTH_ADVERTISE
+     * - Android API <31: Not required (legacy install-time permission, always granted)
+     * - iOS: NSBluetoothAlwaysUsageDescription (same as [BLUETOOTH] — CoreBluetooth covers both)
+     *
+     * Use this when your app makes the device discoverable or acts as a BLE peripheral:
+     * beacons, proximity advertising, device-to-device transfer (sender side),
+     * multiplayer game hosting, contact tracing.
+     *
+     * This is independent of [BLUETOOTH] — request only what your app needs.
+     */
+    BLUETOOTH_ADVERTISE,
 
     /**
      * Microphone/audio recording
@@ -126,11 +145,28 @@ enum class AppGrant : GrantPermission {
     MICROPHONE,
 
     /**
-     * Contacts access
-     * - Android: READ_CONTACTS
+     * Contacts full access (read + write)
+     * - Android: READ_CONTACTS + WRITE_CONTACTS
      * - iOS: NSContactsUsageDescription
+     *
+     * Use this when your app needs to create, update, or delete contacts.
+     * If your app only reads contacts, use [READ_CONTACTS] instead.
+     *
+     * ⚠️ Migration note: In v1.0.x, CONTACTS only requested READ_CONTACTS.
+     * Starting v1.1.0, CONTACTS requests both READ_CONTACTS and WRITE_CONTACTS.
+     * If you only need read access, switch to READ_CONTACTS.
      */
     CONTACTS,
+
+    /**
+     * Contacts read-only access
+     * - Android: READ_CONTACTS
+     * - iOS: NSContactsUsageDescription (same as [CONTACTS] — iOS has no read/write distinction)
+     *
+     * Use this when your app only needs to read contacts (e.g., contact pickers, CRM viewers).
+     * Follows the principle of least privilege on Android.
+     */
+    READ_CONTACTS,
 
     /**
      * Motion / Activity Recognition
@@ -140,11 +176,24 @@ enum class AppGrant : GrantPermission {
     MOTION,
 
     /**
-     * Calendar access
-     * - Android: READ_CALENDAR / WRITE_CALENDAR
+     * Calendar full access (read + write)
+     * - Android: READ_CALENDAR + WRITE_CALENDAR
      * - iOS: NSCalendarsUsageDescription (EventKit)
+     *
+     * Use this when your app needs to create, update, or delete calendar events.
+     * If your app only reads events, use [READ_CALENDAR] instead.
      */
     CALENDAR,
+
+    /**
+     * Calendar read-only access
+     * - Android: READ_CALENDAR
+     * - iOS: NSCalendarsUsageDescription (same as [CALENDAR] — iOS has no read/write distinction)
+     *
+     * Use this when your app only needs to read calendar events.
+     * Follows the principle of least privilege on Android.
+     */
+    READ_CALENDAR,
     ;
 
     /**

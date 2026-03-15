@@ -87,7 +87,7 @@ class GroupHandlerStressTest {
     }
 
     @Test
-    fun `Group with all 14 permissions handles efficiently`() = runTest {
+    fun `Group with all 17 permissions handles efficiently`() = runTest {
         val grants = listOf(
             AppGrant.CAMERA,
             AppGrant.MICROPHONE,
@@ -98,8 +98,11 @@ class GroupHandlerStressTest {
             AppGrant.LOCATION_ALWAYS,
             AppGrant.NOTIFICATION,
             AppGrant.BLUETOOTH,
+            AppGrant.BLUETOOTH_ADVERTISE,
             AppGrant.CONTACTS,
+            AppGrant.READ_CONTACTS,
             AppGrant.CALENDAR,
+            AppGrant.READ_CALENDAR,
             AppGrant.MOTION,
             AppGrant.STORAGE,
             AppGrant.SCHEDULE_EXACT_ALARM
@@ -123,8 +126,8 @@ class GroupHandlerStressTest {
             testScope.advanceUntilIdle()
         }
 
-        assertTrue(completed, "All 14 permissions should be granted")
-        println("Group with all 14 permissions completed in: $duration")
+        assertTrue(completed, "All 17 permissions should be granted")
+        println("Group with all 17 permissions completed in: $duration")
     }
 
     @Test

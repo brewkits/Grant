@@ -9,7 +9,7 @@ class GrantTypeTest {
     @Test
     fun testAllGrantTypesExist() {
         val grants = AppGrant.entries
-        assertEquals(14, grants.size, "Expected 14 grant types")
+        assertEquals(17, grants.size, "Expected 17 grant types")
     }
 
     @Test
@@ -26,10 +26,13 @@ class GrantTypeTest {
         assertTrue(grants.contains(AppGrant.NOTIFICATION), "NOTIFICATION grant should exist")
         assertTrue(grants.contains(AppGrant.SCHEDULE_EXACT_ALARM), "SCHEDULE_EXACT_ALARM grant should exist")
         assertTrue(grants.contains(AppGrant.BLUETOOTH), "BLUETOOTH grant should exist")
+        assertTrue(grants.contains(AppGrant.BLUETOOTH_ADVERTISE), "BLUETOOTH_ADVERTISE grant should exist")
         assertTrue(grants.contains(AppGrant.MICROPHONE), "MICROPHONE grant should exist")
         assertTrue(grants.contains(AppGrant.CONTACTS), "CONTACTS grant should exist")
+        assertTrue(grants.contains(AppGrant.READ_CONTACTS), "READ_CONTACTS grant should exist")
         assertTrue(grants.contains(AppGrant.MOTION), "MOTION grant should exist")
         assertTrue(grants.contains(AppGrant.CALENDAR), "CALENDAR grant should exist")
+        assertTrue(grants.contains(AppGrant.READ_CALENDAR), "READ_CALENDAR grant should exist")
     }
 
     @Test
@@ -44,10 +47,13 @@ class GrantTypeTest {
         assertEquals("NOTIFICATION", AppGrant.NOTIFICATION.name)
         assertEquals("SCHEDULE_EXACT_ALARM", AppGrant.SCHEDULE_EXACT_ALARM.name)
         assertEquals("BLUETOOTH", AppGrant.BLUETOOTH.name)
+        assertEquals("BLUETOOTH_ADVERTISE", AppGrant.BLUETOOTH_ADVERTISE.name)
         assertEquals("MICROPHONE", AppGrant.MICROPHONE.name)
         assertEquals("CONTACTS", AppGrant.CONTACTS.name)
+        assertEquals("READ_CONTACTS", AppGrant.READ_CONTACTS.name)
         assertEquals("MOTION", AppGrant.MOTION.name)
         assertEquals("CALENDAR", AppGrant.CALENDAR.name)
+        assertEquals("READ_CALENDAR", AppGrant.READ_CALENDAR.name)
     }
 
     @Test
@@ -62,10 +68,13 @@ class GrantTypeTest {
         assertEquals(7, AppGrant.NOTIFICATION.ordinal)
         assertEquals(8, AppGrant.SCHEDULE_EXACT_ALARM.ordinal)
         assertEquals(9, AppGrant.BLUETOOTH.ordinal)
-        assertEquals(10, AppGrant.MICROPHONE.ordinal)
-        assertEquals(11, AppGrant.CONTACTS.ordinal)
-        assertEquals(12, AppGrant.MOTION.ordinal)
-        assertEquals(13, AppGrant.CALENDAR.ordinal)
+        assertEquals(10, AppGrant.BLUETOOTH_ADVERTISE.ordinal)
+        assertEquals(11, AppGrant.MICROPHONE.ordinal)
+        assertEquals(12, AppGrant.CONTACTS.ordinal)
+        assertEquals(13, AppGrant.READ_CONTACTS.ordinal)
+        assertEquals(14, AppGrant.MOTION.ordinal)
+        assertEquals(15, AppGrant.CALENDAR.ordinal)
+        assertEquals(16, AppGrant.READ_CALENDAR.ordinal)
     }
 
     @Test
@@ -80,9 +89,12 @@ class GrantTypeTest {
         assertEquals(AppGrant.NOTIFICATION, AppGrant.valueOf("NOTIFICATION"))
         assertEquals(AppGrant.SCHEDULE_EXACT_ALARM, AppGrant.valueOf("SCHEDULE_EXACT_ALARM"))
         assertEquals(AppGrant.BLUETOOTH, AppGrant.valueOf("BLUETOOTH"))
+        assertEquals(AppGrant.BLUETOOTH_ADVERTISE, AppGrant.valueOf("BLUETOOTH_ADVERTISE"))
         assertEquals(AppGrant.MICROPHONE, AppGrant.valueOf("MICROPHONE"))
         assertEquals(AppGrant.CONTACTS, AppGrant.valueOf("CONTACTS"))
+        assertEquals(AppGrant.READ_CONTACTS, AppGrant.valueOf("READ_CONTACTS"))
         assertEquals(AppGrant.MOTION, AppGrant.valueOf("MOTION"))
         assertEquals(AppGrant.CALENDAR, AppGrant.valueOf("CALENDAR"))
+        assertEquals(AppGrant.READ_CALENDAR, AppGrant.valueOf("READ_CALENDAR"))
     }
 }

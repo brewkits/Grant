@@ -187,10 +187,13 @@ actual class PlatformGrantDelegate(
             AppGrant.LOCATION -> checkLocationStatus(always = false)
             AppGrant.LOCATION_ALWAYS -> checkLocationStatus(always = true)
             AppGrant.CONTACTS -> checkContactsStatus()
+            AppGrant.READ_CONTACTS -> checkContactsStatus() // iOS has no read/write distinction
             AppGrant.NOTIFICATION -> checkNotificationStatus()
             AppGrant.BLUETOOTH -> bluetoothDelegate.checkStatus()
+            AppGrant.BLUETOOTH_ADVERTISE -> bluetoothDelegate.checkStatus() // iOS CoreBluetooth covers both scan and advertise
             AppGrant.MOTION -> checkMotionStatus()
             AppGrant.CALENDAR -> checkCalendarStatus()
+            AppGrant.READ_CALENDAR -> checkCalendarStatus() // iOS has no read/write distinction
             AppGrant.SCHEDULE_EXACT_ALARM -> GrantStatus.GRANTED // iOS: Always allowed, no permission needed
         }
     }
@@ -252,9 +255,12 @@ actual class PlatformGrantDelegate(
                 AppGrant.LOCATION -> requestLocationGrant(always = false)
                 AppGrant.LOCATION_ALWAYS -> requestLocationGrant(always = true)
                 AppGrant.CONTACTS -> requestContactsGrant()
+                AppGrant.READ_CONTACTS -> requestContactsGrant() // iOS has no read/write distinction
                 AppGrant.NOTIFICATION -> requestNotificationGrant()
-                AppGrant.BLUETOOTH -> try {
+                AppGrant.BLUETOOTH,
+                AppGrant.BLUETOOTH_ADVERTISE -> try {
                     // PRE-CHECK: Validate Info.plist key before requesting (iOS 13+)
+                    // CoreBluetooth covers both scanning and advertising under the same key
                     if (!validateInfoPlistKey("NSBluetoothAlwaysUsageDescription", AppGrant.BLUETOOTH)) {
                         return@runOnMain GrantStatus.DENIED_ALWAYS
                     }
@@ -279,6 +285,7 @@ actual class PlatformGrantDelegate(
 
                 AppGrant.MOTION -> requestMotionGrant()
                 AppGrant.CALENDAR -> requestCalendarGrant()
+                AppGrant.READ_CALENDAR -> requestCalendarGrant() // iOS has no read/write distinction
                 AppGrant.SCHEDULE_EXACT_ALARM -> {
                     // iOS: No permission needed for exact alarms, always granted
                     GrantLogger.i("iOSGrant", "SCHEDULE_EXACT_ALARM automatically granted on iOS")

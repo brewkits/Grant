@@ -492,12 +492,28 @@ actual class PlatformGrantDelegate(
                 }
             }
 
+            AppGrant.BLUETOOTH_ADVERTISE -> {
+                // BLUETOOTH_ADVERTISE: BLE peripheral mode (beacons, proximity, device-to-device)
+                // Android 12+ (API 31+): Runtime permission required
+                // Android < 12: Covered by legacy install-time BLUETOOTH permission — no runtime dialog needed
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    listOf(Manifest.permission.BLUETOOTH_ADVERTISE)
+                } else {
+                    emptyList() // No runtime permission needed on older Android
+                }
+            }
+
             AppGrant.MICROPHONE -> listOf(Manifest.permission.RECORD_AUDIO)
-            AppGrant.CONTACTS -> listOf(Manifest.permission.READ_CONTACTS)
+            AppGrant.CONTACTS -> listOf(
+                Manifest.permission.READ_CONTACTS,
+                Manifest.permission.WRITE_CONTACTS
+            )
+            AppGrant.READ_CONTACTS -> listOf(Manifest.permission.READ_CONTACTS)
             AppGrant.CALENDAR -> listOf(
                 Manifest.permission.READ_CALENDAR,
                 Manifest.permission.WRITE_CALENDAR
             )
+            AppGrant.READ_CALENDAR -> listOf(Manifest.permission.READ_CALENDAR)
 
             AppGrant.MOTION -> {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

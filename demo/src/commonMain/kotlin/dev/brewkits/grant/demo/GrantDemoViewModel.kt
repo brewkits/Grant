@@ -58,12 +58,53 @@ class GrantDemoViewModel(
     )
 
     /**
-     * DANGEROUS grant - Calendar access
+     * DANGEROUS grant - Calendar full access (read + write)
      * Used for: Reading/writing calendar events
      */
     val calendarGrant = GrantHandler(
         grantManager = grantManager,
         grant = AppGrant.CALENDAR,
+        scope = scope
+    )
+
+    /**
+     * DANGEROUS grant - Contacts full access (read + write)
+     * Used for: Creating, updating, or deleting contacts
+     * v1.1.0: CONTACTS now requests READ + WRITE on Android
+     */
+    val contactsWriteGrant = GrantHandler(
+        grantManager = grantManager,
+        grant = AppGrant.CONTACTS,
+        scope = scope
+    )
+
+    /**
+     * DANGEROUS grant - Contacts read-only access
+     * Used for: Contact pickers, address book viewers (principle of least privilege)
+     */
+    val readContactsGrant = GrantHandler(
+        grantManager = grantManager,
+        grant = AppGrant.READ_CONTACTS,
+        scope = scope
+    )
+
+    /**
+     * DANGEROUS grant - Bluetooth advertising (BLE peripheral mode)
+     * Used for: Beacons, proximity advertising, device-to-device transfer
+     */
+    val bluetoothAdvertiseGrant = GrantHandler(
+        grantManager = grantManager,
+        grant = AppGrant.BLUETOOTH_ADVERTISE,
+        scope = scope
+    )
+
+    /**
+     * DANGEROUS grant - Calendar read-only access
+     * Used for: Calendar viewers, reminder apps (principle of least privilege)
+     */
+    val readCalendarGrant = GrantHandler(
+        grantManager = grantManager,
+        grant = AppGrant.READ_CALENDAR,
         scope = scope
     )
 
@@ -207,16 +248,6 @@ class GrantDemoViewModel(
     )
 
     /**
-     * DANGEROUS grant - Contacts access
-     * Always requires explicit user consent
-     */
-    val contactsGrant = GrantHandler(
-        grantManager = grantManager,
-        grant = AppGrant.CONTACTS,
-        scope = scope
-    )
-
-    /**
      * DANGEROUS grant - Location (always/background)
      * Highest risk level - background access to location
      */
@@ -249,6 +280,9 @@ class GrantDemoViewModel(
     private val _grantTypeResult = MutableStateFlow("")
     val grantTypeResult: StateFlow<String> = _grantTypeResult.asStateFlow()
 
+    private val _v11Result = MutableStateFlow("")
+    val v11Result: StateFlow<String> = _v11Result.asStateFlow()
+
     /**
      * Scenario 3a: Runtime Grant Example
      *
@@ -277,13 +311,14 @@ class GrantDemoViewModel(
      * - Examples: Camera, Location, Contacts, Microphone
      */
     fun requestDangerousGrant() {
-        _grantTypeResult.value = "Requesting DANGEROUS grant (Contacts)..."
+        _grantTypeResult.value = "Requesting DANGEROUS grant (Contacts — read only)..."
 
-        contactsGrant.request(
-            rationaleMessage = "We need access to your contacts to help you find and invite friends",
+        // READ_CONTACTS: read-only use case (find & invite friends — no write needed)
+        readContactsGrant.request(
+            rationaleMessage = "We need read-only access to your contacts to help you find and invite friends",
             settingsMessage = "Contacts access is disabled. Enable it in Settings > Grants > Contacts"
         ) {
-            _grantTypeResult.value = "✓ DANGEROUS grant granted!\n\nAccessing contacts... 📇"
+            _grantTypeResult.value = "✓ DANGEROUS grant granted!\n\nAccessing contacts (read-only)... 📇"
             simulateContactsAccess()
         }
     }
@@ -316,6 +351,67 @@ class GrantDemoViewModel(
         }
     }
 
+    // ==============================================
+    // SCENARIO 4: v1.1.0 — GRANULAR PERMISSIONS
+    // Demonstrate READ_CONTACTS, READ_CALENDAR, BLUETOOTH_ADVERTISE
+    // ==============================================
+
+    /**
+     * Scenario 4a: Least-privilege contacts — read only
+     * Use case: Contact picker, CRM viewer (does NOT need write access)
+     */
+    fun requestReadContactsGrant() {
+        _v11Result.value = "Requesting READ_CONTACTS (read-only, least privilege)..."
+        readContactsGrant.request(
+            rationaleMessage = "We need read-only access to your contacts to help you find friends",
+            settingsMessage = "Contacts access is disabled. Enable it in Settings"
+        ) {
+            _v11Result.value = "✓ READ_CONTACTS granted!\n\nContact picker ready (read-only)"
+        }
+    }
+
+    /**
+     * Scenario 4b: Full contacts access — read + write
+     * Use case: Sync app, contact manager (needs to create/update contacts)
+     */
+    fun requestFullContactsGrant() {
+        _v11Result.value = "Requesting CONTACTS (read + write)..."
+        contactsWriteGrant.request(
+            rationaleMessage = "We need read and write access to sync your contacts with the server",
+            settingsMessage = "Contacts access is disabled. Enable it in Settings"
+        ) {
+            _v11Result.value = "✓ CONTACTS (read+write) granted!\n\nContact sync ready"
+        }
+    }
+
+    /**
+     * Scenario 4c: BLE advertising — peripheral mode
+     * Use case: Beacon app, proximity detection sender side
+     */
+    fun requestBluetoothAdvertiseGrant() {
+        _v11Result.value = "Requesting BLUETOOTH_ADVERTISE (BLE peripheral mode)..."
+        bluetoothAdvertiseGrant.request(
+            rationaleMessage = "We need Bluetooth advertising to make your device discoverable as a beacon",
+            settingsMessage = "Bluetooth advertising is disabled. Enable Nearby Devices in Settings"
+        ) {
+            _v11Result.value = "✓ BLUETOOTH_ADVERTISE granted!\n\nDevice can now advertise as BLE beacon"
+        }
+    }
+
+    /**
+     * Scenario 4d: Calendar read-only
+     * Use case: Calendar viewer, reminder app
+     */
+    fun requestReadCalendarGrant() {
+        _v11Result.value = "Requesting READ_CALENDAR (read-only, least privilege)..."
+        readCalendarGrant.request(
+            rationaleMessage = "We need read-only access to your calendar to show your upcoming events",
+            settingsMessage = "Calendar access is disabled. Enable it in Settings"
+        ) {
+            _v11Result.value = "✓ READ_CALENDAR granted!\n\nCalendar viewer ready (read-only)"
+        }
+    }
+
     private fun simulateBackgroundTracking() {
         scope.launch {
             _grantTypeResult.update {
@@ -332,6 +428,7 @@ class GrantDemoViewModel(
         _sequentialResult.value = ""
         _parallelResult.value = ""
         _grantTypeResult.value = ""
+        _v11Result.value = ""
         locationGranted = false
         storageGranted = false
     }
@@ -349,11 +446,14 @@ class GrantDemoViewModel(
             locationAlwaysGrant,
             storageGrant,
             galleryGrant,
-            contactsGrant,
             notificationGrant,
             bluetoothGrant,
+            bluetoothAdvertiseGrant,
             motionGrant,
-            calendarGrant
+            calendarGrant,
+            contactsWriteGrant,
+            readContactsGrant,
+            readCalendarGrant
         ).forEach { handler ->
             handler.refreshStatus()
         }

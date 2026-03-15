@@ -99,6 +99,15 @@ class AllPermissionTypesTest {
     }
 
     @Test
+    fun `BLUETOOTH_ADVERTISE permission should be requestable`() = runTest {
+        manager.mockStatus = GrantStatus.NOT_DETERMINED
+        manager.mockRequestResult = GrantStatus.GRANTED
+
+        val result = manager.request(AppGrant.BLUETOOTH_ADVERTISE)
+        assertEquals(GrantStatus.GRANTED, result)
+    }
+
+    @Test
     fun `CONTACTS permission should be requestable`() = runTest {
         manager.mockStatus = GrantStatus.NOT_DETERMINED
         manager.mockRequestResult = GrantStatus.GRANTED
@@ -108,11 +117,29 @@ class AllPermissionTypesTest {
     }
 
     @Test
+    fun `READ_CONTACTS permission should be requestable`() = runTest {
+        manager.mockStatus = GrantStatus.NOT_DETERMINED
+        manager.mockRequestResult = GrantStatus.GRANTED
+
+        val result = manager.request(AppGrant.READ_CONTACTS)
+        assertEquals(GrantStatus.GRANTED, result)
+    }
+
+    @Test
     fun `CALENDAR permission should be requestable`() = runTest {
         manager.mockStatus = GrantStatus.NOT_DETERMINED
         manager.mockRequestResult = GrantStatus.GRANTED
 
         val result = manager.request(AppGrant.CALENDAR)
+        assertEquals(GrantStatus.GRANTED, result)
+    }
+
+    @Test
+    fun `READ_CALENDAR permission should be requestable`() = runTest {
+        manager.mockStatus = GrantStatus.NOT_DETERMINED
+        manager.mockRequestResult = GrantStatus.GRANTED
+
+        val result = manager.request(AppGrant.READ_CALENDAR)
         assertEquals(GrantStatus.GRANTED, result)
     }
 
@@ -155,8 +182,11 @@ class AllPermissionTypesTest {
             AppGrant.LOCATION_ALWAYS,
             AppGrant.NOTIFICATION,
             AppGrant.BLUETOOTH,
+            AppGrant.BLUETOOTH_ADVERTISE,
             AppGrant.CONTACTS,
+            AppGrant.READ_CONTACTS,
             AppGrant.CALENDAR,
+            AppGrant.READ_CALENDAR,
             AppGrant.MOTION,
             AppGrant.STORAGE,
             AppGrant.SCHEDULE_EXACT_ALARM
@@ -180,8 +210,11 @@ class AllPermissionTypesTest {
             AppGrant.LOCATION_ALWAYS,
             AppGrant.NOTIFICATION,
             AppGrant.BLUETOOTH,
+            AppGrant.BLUETOOTH_ADVERTISE,
             AppGrant.CONTACTS,
+            AppGrant.READ_CONTACTS,
             AppGrant.CALENDAR,
+            AppGrant.READ_CALENDAR,
             AppGrant.MOTION,
             AppGrant.STORAGE,
             AppGrant.SCHEDULE_EXACT_ALARM
@@ -207,8 +240,11 @@ class AllPermissionTypesTest {
             AppGrant.LOCATION_ALWAYS,
             AppGrant.NOTIFICATION,
             AppGrant.BLUETOOTH,
+            AppGrant.BLUETOOTH_ADVERTISE,
             AppGrant.CONTACTS,
+            AppGrant.READ_CONTACTS,
             AppGrant.CALENDAR,
+            AppGrant.READ_CALENDAR,
             AppGrant.MOTION,
             AppGrant.STORAGE,
             AppGrant.SCHEDULE_EXACT_ALARM
