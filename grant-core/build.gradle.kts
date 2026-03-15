@@ -94,7 +94,7 @@ publishing {
     publications.configureEach {
         (this as? MavenPublication)?.let {
             groupId = "dev.brewkits"
-            version = "1.0.2"
+            version = "1.1.0"
 
             pom {
                 name.set("KMP Grant")
