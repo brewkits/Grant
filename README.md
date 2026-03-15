@@ -1,9 +1,10 @@
-# Grant
+# Grant — KMP Permission Library for Android & iOS
 
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.1.0-blue.svg?logo=kotlin)](http://kotlinlang.org)
 [![Compose](https://img.shields.io/badge/Compose-1.7.1-green)](https://www.jetbrains.com/lp/compose-multiplatform/)
 [![Maven Central](https://img.shields.io/maven-central/v/dev.brewkits/grant-core)](https://central.sonatype.com/artifact/dev.brewkits/grant-core)
 [![License](https://img.shields.io/badge/License-Apache%202.0-orange.svg)](https://opensource.org/licenses/Apache-2.0)
+[![GitHub Stars](https://img.shields.io/github/stars/brewkits/Grant?style=social)](https://github.com/brewkits/Grant/stargazers)
 
 **A Modern Permission Library for Kotlin Multiplatform**
 
@@ -49,6 +50,66 @@ fun CameraScreen(viewModel: CameraViewModel) {
 ```
 
 Simple and straightforward - no Fragment, no BindEffect, no manual configuration.
+
+---
+
+## Why Grant?
+
+### The Traditional Approach (moko-permissions / accompanist)
+
+Traditional KMP permission libraries require lifecycle binding and boilerplate:
+
+```kotlin
+// ❌ TRADITIONAL: Fragment/Activity required + Boilerplate
+class MyFragment : Fragment() {
+    private val permissionHelper = PermissionHelper(this) // Needs Fragment!
+
+    fun requestCamera() {
+        permissionHelper.bindToLifecycle() // BindEffect boilerplate
+        permissionHelper.request(Permission.CAMERA) {
+            // Complex state management
+        }
+    }
+}
+```
+
+### The Grant Way
+
+```kotlin
+// ✅ GRANT WAY: Works anywhere, zero boilerplate
+@Composable
+fun CameraScreen() {
+    val grantManager = remember { GrantFactory.create(context) }
+
+    Button(onClick = {
+        when (grantManager.request(AppGrant.CAMERA)) {
+            GrantStatus.GRANTED -> openCamera()
+            GrantStatus.DENIED -> showRationale()
+            GrantStatus.DENIED_ALWAYS -> openSettings()
+        }
+    }) { Text("Take Photo") }
+}
+```
+
+Simple, clean, and works anywhere — ViewModels, repositories, or Composables.
+
+---
+
+## Comparison
+
+| Feature | Grant | moko-permissions | accompanist-permissions |
+|---------|-------|-----------------|------------------------|
+| **No Fragment/Activity** | ✅ | ❌ (needs BindEffect) | ❌ (needs Activity) |
+| **ViewModel-first** | ✅ | Partial | ❌ |
+| **Info.plist Validation** | ✅ | ❌ | ❌ |
+| **Process Death Recovery** | ✅ | ❌ | Manual |
+| **Custom Permissions** | ✅ RawPermission | Limited | Limited |
+| **Service Checking** | ✅ Built-in | ❌ Separate | ❌ Separate |
+| **Android 14 Partial Gallery** | ✅ | Varies | ✅ |
+| **Enum-Based Status** | ✅ | ✅ | ❌ Multiple APIs |
+| **iOS Deadlock Fix** | ✅ | ❌ | N/A |
+| **Android Dead Click Fix** | ✅ | ❌ | ❌ |
+| **Cross-Platform** | Android + iOS | Android + iOS | Android only |
 
 ---
 
@@ -130,48 +191,6 @@ Run the demo app to see all 17 permissions in action:
 ./gradlew :demo:installDebug  # Android
 # Or open iosApp in Xcode for iOS
 ```
-
----
-
-## Why Grant?
-
-### The Traditional Approach
-
-Traditional permission handling requires extensive boilerplate and lifecycle management:
-
-```kotlin
-// ❌ TRADITIONAL: Fragment/Activity required + Boilerplate
-class MyFragment : Fragment() {
-    private val permissionHelper = PermissionHelper(this) // Needs Fragment!
-
-    fun requestCamera() {
-        permissionHelper.bindToLifecycle() // BindEffect boilerplate
-        permissionHelper.request(Permission.CAMERA) {
-            // Complex state management
-        }
-    }
-}
-```
-
-### The Grant Way
-
-```kotlin
-// ✅ GRANT WAY: Works anywhere, zero boilerplate
-@Composable
-fun CameraScreen() {
-    val grantManager = remember { GrantFactory.create(context) }
-
-    Button(onClick = {
-        when (grantManager.request(AppGrant.CAMERA)) {
-            GrantStatus.GRANTED -> openCamera()
-            GrantStatus.DENIED -> showRationale()
-            GrantStatus.DENIED_ALWAYS -> openSettings()
-        }
-    }) { Text("Take Photo") }
-}
-```
-
-Simple, clean, and works anywhere.
 
 ---
 
@@ -478,27 +497,6 @@ data class RawPermission(
 - Enterprise-specific permissions
 - Experimental or proprietary features
 - Platform-specific permissions
-
----
-
-## Comparison
-
-| Feature | Grant | Other KMP Libraries | Native APIs |
-|---------|-------|---------------------|-------------|
-| **No Fragment/Activity** | ✅ | Varies | ❌ |
-| **Info.plist Validation** | ✅ | ❌ | ❌ |
-| **Process Death Recovery** | ✅ | Limited | Manual |
-| **Custom Permissions** | RawPermission | Limited | Full control |
-| **Service Checking** | Built-in | Separate | Separate APIs |
-| **Android 14 Partial Gallery** | ✅ | Varies | ✅ |
-| **Enum-Based Status** | ✅ | Varies | Multiple APIs |
-| **Cross-Platform** | Android + iOS | Android + iOS | Platform-specific |
-
-**Key differences:**
-- Info.plist validation prevents iOS crashes
-- Process death recovery
-- Service checking included (GPS, Bluetooth)
-- Extensible via RawPermission
 
 ---
 
