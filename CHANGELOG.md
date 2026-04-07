@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2.0] - 2026-04-08
+
+### 🚀 Architectural Overhaul & Stability
+- **`PARTIAL_GRANTED` Status**: Added support for partial access (e.g., Android 14+ "Select Photos" and iOS Limited Photo Library access).
+- **Atomic Group Requests**: `GrantGroupHandler` now uses `GrantManager.request(List<GrantPermission>)` to request all denied permissions at once, allowing the OS to group dialogs and improving UX significantly.
+- **Keyed Mutex for Concurrency**: Eliminated request bottlenecks in `PlatformGrantDelegate` by locking per-identifier instead of globally. Allows requesting unrelated permissions in parallel.
+- **Monotonic Time Cache (iOS)**: `checkStatus` cache now uses `NSProcessInfo.processInfo.systemUptime` to prevent bugs when users change system time.
+- **Reasonable Minimum Versions**: Downgraded to Kotlin 2.1.0 and Compose 1.9.3 to maximize compatibility across different consumer apps without forcing bleeding-edge requirements.
+- **GrantRequestActivity Optimizations**: Replaced `UUID` with `AtomicInteger` for lighter request IDs, and `MutableStateFlow` with `CompletableDeferred` for efficient, single-shot result handling. Added standard `launchMode` for better concurrency.
+- **Compose `GrantGroupDialog`**: Added a new dialog helper to auto-handle `GrantGroupHandler` UI flows in Compose.
+- **New Test Suites**: Added `ThreadingStressTest`, `PlatformCacheTest`, `SecurityPlatformTest`, bringing coverage and stability guarantees to the next level.
+
+---
+
 ## [1.1.0] - 2026-03-15
 
 ### 🚨 Breaking Changes

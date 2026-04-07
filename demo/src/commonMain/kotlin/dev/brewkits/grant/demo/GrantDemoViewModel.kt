@@ -149,8 +149,8 @@ class GrantDemoViewModel(
     }
 
     // ==============================================
-    // SCENARIO 2: PARALLEL GRANTS
-    // Request location + storage at the same time
+    // SCENARIO 2: ATOMIC GROUP GRANTS
+    // Request location + storage at the same time using GrantGroupHandler
     // ==============================================
 
     /**
@@ -173,52 +173,44 @@ class GrantDemoViewModel(
         scope = scope
     )
 
+    /**
+     * Group Handler for related grants
+     * Used for: Photo location tagging app that needs BOTH location and storage
+     */
+    val locationAndStorageGroup = dev.brewkits.grant.GrantGroupHandler(
+        grantManager = grantManager,
+        grants = listOf(AppGrant.LOCATION, AppGrant.STORAGE),
+        scope = scope
+    )
+
     private val _parallelResult = MutableStateFlow("")
     val parallelResult: StateFlow<String> = _parallelResult.asStateFlow()
 
-    private var locationGranted = false
-    private var storageGranted = false
-
     /**
-     * Scenario 2: Parallel Grant Requests
+     * Scenario 2: Atomic Group Grant Requests
      *
      * Use case: Photo location tagging app that needs BOTH location and storage
-     * Flow: Request both → Wait for both → Save geotagged photos
+     * Flow: Request both at once → System groups dialogs → Save geotagged photos
      *
      * This pattern allows requesting multiple independent grants simultaneously.
-     * User sees both dialogs in sequence, but we handle them in parallel.
+     * The OS handles them efficiently (e.g. one grouped dialog on Android).
      */
     fun requestParallelGrants() {
-        _parallelResult.value = "Requesting location and storage grants..."
-        locationGranted = false
-        storageGranted = false
+        _parallelResult.value = "Requesting location and storage grants via Group Handler..."
 
-        // Request both grants in parallel
-        // Note: System shows dialogs one at a time, but we handle results concurrently
-
-        locationGrant.request(
-            rationaleMessage = "Location is needed to geotag your photos with the place they were taken",
-            settingsMessage = "Location access is disabled. Enable it in Settings > Grants > Location"
+        locationAndStorageGroup.request(
+            rationaleMessages = mapOf(
+                AppGrant.LOCATION to "Location is needed to geotag your photos.",
+                AppGrant.STORAGE to "Storage access is needed to save your photos."
+            ),
+            settingsMessages = mapOf(
+                AppGrant.LOCATION to "Enable Location in Settings.",
+                AppGrant.STORAGE to "Enable Storage in Settings."
+            )
         ) {
-            locationGranted = true
-            _parallelResult.update { it + "\n✓ Location grant granted" }
-            checkParallelCompletion()
-        }
-
-        storageGrant.request(
-            rationaleMessage = "Storage access is needed to save your photos to the gallery",
-            settingsMessage = "Storage access is disabled. Enable it in Settings > Grants > Storage"
-        ) {
-            storageGranted = true
-            _parallelResult.update { it + "\n✓ Storage grant granted" }
-            checkParallelCompletion()
-        }
-    }
-
-    private fun checkParallelCompletion() {
-        if (locationGranted && storageGranted) {
+            // Callback is only invoked when ALL grants in the group are granted!
             _parallelResult.update {
-                it + "\n\n✓✓ All grants granted! Saving geotagged photos..."
+                it + "\n\n✓✓ All grants in group granted! Saving geotagged photos..."
             }
             simulatePhotoSaving()
         }
@@ -310,16 +302,19 @@ class GrantDemoViewModel(
      * - Can be revoked at any time
      * - Examples: Camera, Location, Contacts, Microphone
      */
-    fun requestDangerousGrant() {
-        _grantTypeResult.value = "Requesting DANGEROUS grant (Contacts — read only)..."
+    fun requestGalleryGrant() {
+        _grantTypeResult.value = "Requesting GALLERY grant (Supports PARTIAL_GRANTED)..."
 
-        // READ_CONTACTS: read-only use case (find & invite friends — no write needed)
-        readContactsGrant.request(
-            rationaleMessage = "We need read-only access to your contacts to help you find and invite friends",
-            settingsMessage = "Contacts access is disabled. Enable it in Settings > Grants > Contacts"
+        galleryGrant.request(
+            rationaleMessage = "We need access to your gallery to let you pick a profile picture.",
+            settingsMessage = "Gallery access is disabled. Enable it in Settings."
         ) {
-            _grantTypeResult.value = "✓ DANGEROUS grant granted!\n\nAccessing contacts (read-only)... 📇"
-            simulateContactsAccess()
+            val status = galleryGrant.status.value
+            if (status == dev.brewkits.grant.GrantStatus.PARTIAL_GRANTED) {
+                _grantTypeResult.value = "✓ GALLERY PARTIAL_GRANTED!\n\nAccessing limited photos... 🖼️"
+            } else {
+                _grantTypeResult.value = "✓ GALLERY GRANTED!\n\nAccessing all photos... 🖼️"
+            }
         }
     }
 
@@ -429,8 +424,6 @@ class GrantDemoViewModel(
         _parallelResult.value = ""
         _grantTypeResult.value = ""
         _v11Result.value = ""
-        locationGranted = false
-        storageGranted = false
     }
 
 
@@ -443,8 +436,8 @@ class GrantDemoViewModel(
             cameraGrant,
             microphoneGrant,
             locationGrant,
-            locationAlwaysGrant,
             storageGrant,
+            locationAlwaysGrant,
             galleryGrant,
             notificationGrant,
             bluetoothGrant,
@@ -457,5 +450,6 @@ class GrantDemoViewModel(
         ).forEach { handler ->
             handler.refreshStatus()
         }
+        locationAndStorageGroup.refreshAllStatuses()
     }
 }

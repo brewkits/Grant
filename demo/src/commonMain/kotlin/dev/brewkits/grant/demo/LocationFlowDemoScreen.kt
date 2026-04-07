@@ -354,7 +354,7 @@ class LocationFlowViewModel(
                     return@launch
                 }
 
-                GrantStatus.GRANTED -> {
+                GrantStatus.GRANTED, GrantStatus.PARTIAL_GRANTED -> {
                     // Permission granted, continue to GPS check
                 }
             }

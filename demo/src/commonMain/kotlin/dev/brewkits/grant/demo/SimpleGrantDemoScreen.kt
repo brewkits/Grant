@@ -138,7 +138,7 @@ fun SimpleGrantDemoScreen(
             description = "Request Contacts grant. Deny it twice to see rationale → settings guide flow.",
             buttonText = "Request Contacts (Test Denial)",
             result = grantTypeResult,
-            onClick = { viewModel.requestDangerousGrant() }
+            onClick = { viewModel.requestGalleryGrant() },
         )
 
         HorizontalDivider()
@@ -471,7 +471,7 @@ private fun GrantCard(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = when (GrantStatus) {
-                dev.brewkits.grant.GrantStatus.GRANTED -> MaterialTheme.colorScheme.primaryContainer
+                dev.brewkits.grant.GrantStatus.GRANTED, dev.brewkits.grant.GrantStatus.PARTIAL_GRANTED -> MaterialTheme.colorScheme.primaryContainer
                 dev.brewkits.grant.GrantStatus.DENIED_ALWAYS -> MaterialTheme.colorScheme.errorContainer
                 dev.brewkits.grant.GrantStatus.DENIED,
                 dev.brewkits.grant.GrantStatus.NOT_DETERMINED -> MaterialTheme.colorScheme.surfaceVariant
@@ -546,7 +546,7 @@ private fun GrantCard(
                     // Status badge with background
                     Surface(
                         color = when (GrantStatus) {
-                            dev.brewkits.grant.GrantStatus.GRANTED -> MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                            dev.brewkits.grant.GrantStatus.GRANTED, dev.brewkits.grant.GrantStatus.PARTIAL_GRANTED -> MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                             dev.brewkits.grant.GrantStatus.DENIED_ALWAYS -> MaterialTheme.colorScheme.error.copy(alpha = 0.15f)
                             dev.brewkits.grant.GrantStatus.DENIED -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f)
                             dev.brewkits.grant.GrantStatus.NOT_DETERMINED -> MaterialTheme.colorScheme.surfaceVariant
@@ -557,6 +557,7 @@ private fun GrantCard(
                         Text(
                             text = when (GrantStatus) {
                                 dev.brewkits.grant.GrantStatus.GRANTED -> "✓ Granted"
+                                dev.brewkits.grant.GrantStatus.PARTIAL_GRANTED -> "✓ Partial"
                                 dev.brewkits.grant.GrantStatus.DENIED -> "✗ Denied"
                                 dev.brewkits.grant.GrantStatus.DENIED_ALWAYS -> "⚠️ Denied Always"
                                 dev.brewkits.grant.GrantStatus.NOT_DETERMINED -> "? Not Determined"
@@ -564,7 +565,7 @@ private fun GrantCard(
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Medium,
                             color = when (GrantStatus) {
-                                dev.brewkits.grant.GrantStatus.GRANTED -> MaterialTheme.colorScheme.primary
+                                dev.brewkits.grant.GrantStatus.GRANTED, dev.brewkits.grant.GrantStatus.PARTIAL_GRANTED -> MaterialTheme.colorScheme.primary
                                 dev.brewkits.grant.GrantStatus.DENIED_ALWAYS -> MaterialTheme.colorScheme.error
                                 dev.brewkits.grant.GrantStatus.DENIED -> MaterialTheme.colorScheme.tertiary
                                 dev.brewkits.grant.GrantStatus.NOT_DETERMINED -> MaterialTheme.colorScheme.onSurfaceVariant
@@ -585,9 +586,9 @@ private fun GrantCard(
                         onSuccess(title)
                     }
                 },
-                enabled = GrantStatus != dev.brewkits.grant.GrantStatus.GRANTED,
+                enabled = GrantStatus != dev.brewkits.grant.GrantStatus.GRANTED && GrantStatus != dev.brewkits.grant.GrantStatus.PARTIAL_GRANTED,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (GrantStatus == dev.brewkits.grant.GrantStatus.GRANTED)
+                    containerColor = if (GrantStatus == dev.brewkits.grant.GrantStatus.GRANTED || GrantStatus == dev.brewkits.grant.GrantStatus.PARTIAL_GRANTED)
                         MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
                     else
                         MaterialTheme.colorScheme.primary,
@@ -595,7 +596,7 @@ private fun GrantCard(
                 )
             ) {
                 Text(
-                    text = if (GrantStatus == dev.brewkits.grant.GrantStatus.GRANTED) "✓ Granted" else "Request",
+                    text = if (GrantStatus == dev.brewkits.grant.GrantStatus.GRANTED) "✓ Granted" else if (GrantStatus == dev.brewkits.grant.GrantStatus.PARTIAL_GRANTED) "✓ Partial" else "Request",
                     fontWeight = FontWeight.Medium
                 )
             }

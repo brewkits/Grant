@@ -12,13 +12,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.brewkits.grant.compose.GrantDialog
+import dev.brewkits.grant.compose.GrantGroupDialog
 
 /**
  * Demo screen showcasing various grant request scenarios.
  *
  * This demonstrates:
  * 1. Sequential grant requests (Camera → Microphone)
- * 2. Parallel grant requests (Location + Storage)
+ * 2. Atomic Group grant requests (Location + Storage)
  * 3. Different grant types (Runtime vs Dangerous)
  *
  * Each scenario includes:
@@ -39,8 +40,7 @@ fun GrantDemoScreen(
     // Handle grant dialogs using grant-compose
     GrantDialog(handler = viewModel.cameraGrant)
     GrantDialog(handler = viewModel.microphoneGrant)
-    GrantDialog(handler = viewModel.locationGrant)
-    GrantDialog(handler = viewModel.storageGrant)
+    GrantGroupDialog(handler = viewModel.locationAndStorageGroup)
     GrantDialog(handler = viewModel.notificationGrant)
     GrantDialog(handler = viewModel.locationAlwaysGrant)
     // v1.1.0 new permissions
@@ -83,12 +83,12 @@ fun GrantDemoScreen(
 
         HorizontalDivider()
 
-        // Scenario 2: Parallel Grants
+        // Scenario 2: Atomic Group Grants
         DemoSection(
-            title = "2. Parallel Grants",
-            description = "Request Location and Storage simultaneously.\n\n" +
-                    "Use case: Photo app that saves geotagged images.",
-            buttonText = "Request Location + Storage",
+            title = "2. Atomic Group Grants",
+            description = "Request Location and Storage simultaneously using GrantGroupHandler.\n\n" +
+                    "OS groups these dialogs if supported. Callback only fires when ALL are granted.",
+            buttonText = "Request Group (Location + Storage)",
             onClick = { viewModel.requestParallelGrants() },
             result = parallelResult
         )
@@ -155,14 +155,14 @@ fun GrantDemoScreen(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Example: Contacts\nAccesses sensitive user data",
+                        text = "Example: Gallery\nCan support PARTIAL_GRANTED on Android 14+ and iOS",
                         style = MaterialTheme.typography.bodySmall
                     )
                     Button(
-                        onClick = { viewModel.requestDangerousGrant() },
+                        onClick = { viewModel.requestGalleryGrant() },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Request Contacts Grant")
+                        Text("Request Gallery Grant")
                     }
                 }
             }
