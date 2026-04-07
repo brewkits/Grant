@@ -493,13 +493,20 @@ class GrantHandler(
      * This ensures state is restored after process death.
      */
     private fun updateState(block: (GrantUiState) -> GrantUiState) {
+        val oldState = _state.value
         _state.update(block)
+        val newState = _state.value
 
-        // Save to delegate for process death recovery
-        val current = _state.value
-        savedStateDelegate.saveState(KEY_IS_VISIBLE, current.isVisible.toString())
-        savedStateDelegate.saveState(KEY_SHOW_RATIONALE, current.showRationale.toString())
-        savedStateDelegate.saveState(KEY_SHOW_SETTINGS, current.showSettingsGuide.toString())
+        // Optimization: Only save to delegate if visible state changed
+        // We only care about persisting visibility and dialog types for process death
+        if (oldState.isVisible != newState.isVisible ||
+            oldState.showRationale != newState.showRationale ||
+            oldState.showSettingsGuide != newState.showSettingsGuide
+        ) {
+            savedStateDelegate.saveState(KEY_IS_VISIBLE, newState.isVisible.toString())
+            savedStateDelegate.saveState(KEY_SHOW_RATIONALE, newState.showRationale.toString())
+            savedStateDelegate.saveState(KEY_SHOW_SETTINGS, newState.showSettingsGuide.toString())
+        }
     }
 
     /**

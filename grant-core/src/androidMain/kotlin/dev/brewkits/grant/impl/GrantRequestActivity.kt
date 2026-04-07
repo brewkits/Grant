@@ -10,9 +10,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import dev.brewkits.grant.utils.GrantLogger
-import kotlinx.coroutines.flow.MutableStateFlow
-import java.util.UUID
+import kotlinx.coroutines.CompletableDeferred
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Transparent Activity for handling runtime grant requests.
@@ -56,95 +56,106 @@ class GrantRequestActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Don't set any content view - keep activity completely empty
-        // This prevents any UI rendering and ensures zero visual impact
+        try {
+            // Don't set any content view - keep activity completely empty
+            // This prevents any UI rendering and ensures zero visual impact
 
-        // Get request ID from savedInstanceState (process death recovery) or intent (new request)
-        requestId = savedInstanceState?.getString(KEY_REQUEST_ID)
-            ?: intent.getStringExtra(EXTRA_REQUEST_ID)
-            ?: run {
+            // Get request ID from savedInstanceState (process death recovery) or intent (new request)
+            requestId = savedInstanceState?.getString(KEY_REQUEST_ID)
+                ?: intent.getStringExtra(EXTRA_REQUEST_ID)
+                ?: ""
+
+            if (requestId.isEmpty()) {
                 GrantLogger.w(TAG, "No requestId found - finishing activity")
                 finish()
                 return
             }
 
-        // Check if this requestId still has a waiting coroutine
-        // If process died, the old requestId has no waiting coroutine and should be abandoned
-        if (!pendingResults.containsKey(requestId)) {
-            GrantLogger.w(TAG, "RequestId $requestId has no pending coroutine - orphaned request after process death")
-            finish()
-            return
-        }
-
-        currentGrants = intent.getStringArrayExtra(EXTRA_GRANTS) ?: run {
-            setResult(requestId, GrantResult.ERROR)
-            finish()
-            return
-        }
-
-        // Register grant launcher for multiple grants
-        requestMultipleGrantsLauncher = registerForActivityResult(
-            ActivityResultContracts.RequestMultiplePermissions()
-        ) { grantsResult: Map<String, Boolean> ->
-            // Determine overall result based on all grants
-            val allGranted = grantsResult.values.all { it }
-
-            val result = when {
-                allGranted -> GrantResult.GRANTED
-                else -> {
-                    // Check if ALL denied permissions are permanently denied
-                    // If at least one denied permission can still show rationale, return DENIED
-                    // Only return DENIED_PERMANENTLY if ALL denied permissions are permanent
-                    val deniedGrants = grantsResult.filter { !it.value }.keys
-
-                    val rationaleStatus = deniedGrants.map { grant ->
-                        val canShow = shouldShowRequestPermissionRationale(grant)
-                        grant to canShow
-                    }
-
-                    val anyCanShowRationale = rationaleStatus.any { it.second }
-
-                    if (anyCanShowRationale) {
-                        GrantResult.DENIED
-                    } else {
-                        // All denied permissions are permanently denied
-                        GrantResult.DENIED_PERMANENTLY
-                    }
-                }
+            // Check if this requestId still has a waiting coroutine
+            // If process died, the old requestId has no waiting coroutine and should be abandoned
+            if (!pendingResults.containsKey(requestId)) {
+                GrantLogger.w(TAG, "RequestId $requestId has no pending coroutine - orphaned request after process death")
+                finish()
+                return
             }
 
-            setResult(requestId, result)
-            finish()
-        }
-
-        // Add lifecycle observer for cleanup
-        lifecycle.addObserver(object : DefaultLifecycleObserver {
-            override fun onDestroy(owner: LifecycleOwner) {
-                // Cleanup to prevent memory leaks
-                requestMultipleGrantsLauncher?.unregister()
-                requestMultipleGrantsLauncher = null
-
-                // Clear pending result if activity is destroyed without result
-                val flow = pendingResults[requestId]
-                if (flow?.value == null) {
-                    setResult(requestId, GrantResult.ERROR)
-                }
+            currentGrants = intent.getStringArrayExtra(EXTRA_GRANTS) ?: run {
+                setResult(requestId, GrantResult.ERROR)
+                finish()
+                return
             }
-        })
 
-        // Check if all grants are already granted
-        val allAlreadyGranted = currentGrants.all { grant ->
-            checkSelfPermission(grant) == PackageManager.PERMISSION_GRANTED
-        }
+            // Register grant launcher for multiple grants
+            requestMultipleGrantsLauncher = registerForActivityResult(
+                ActivityResultContracts.RequestMultiplePermissions()
+            ) { grantsResult: Map<String, Boolean> ->
+                // Determine overall result based on all grants
+                val allGranted = grantsResult.values.all { it }
 
-        if (allAlreadyGranted) {
-            setResult(requestId, GrantResult.GRANTED)
+                val result = when {
+                    allGranted -> GrantResult.GRANTED
+                    else -> {
+                        // Check if ALL denied permissions are permanently denied
+                        // If at least one denied permission can still show rationale, return DENIED
+                        // Only return DENIED_PERMANENTLY if ALL denied permissions are permanent
+                        val deniedGrants = grantsResult.filter { !it.value }.keys
+
+                        val rationaleStatus = deniedGrants.map { grant ->
+                            val canShow = shouldShowRequestPermissionRationale(grant)
+                            grant to canShow
+                        }
+
+                        val anyCanShowRationale = rationaleStatus.any { it.second }
+
+                        if (anyCanShowRationale) {
+                            GrantResult.DENIED
+                        } else {
+                            // All denied permissions are permanently denied
+                            GrantResult.DENIED_PERMANENTLY
+                        }
+                    }
+                }
+
+                setResult(requestId, result)
+                finish()
+            }
+
+            // Add lifecycle observer for cleanup
+            lifecycle.addObserver(object : DefaultLifecycleObserver {
+                override fun onDestroy(owner: LifecycleOwner) {
+                    // Clear pending result if activity is destroyed without result
+                    // Optimization: Do this BEFORE unregistering launcher to ensure no race
+                    val deferred = pendingResults[requestId]
+                    if (deferred?.isActive == true) {
+                        setResult(requestId, GrantResult.ERROR)
+                    }
+
+                    // Cleanup to prevent memory leaks
+                    requestMultipleGrantsLauncher?.unregister()
+                    requestMultipleGrantsLauncher = null
+                }
+            })
+
+            // Check if all grants are already granted
+            val allAlreadyGranted = currentGrants.all { grant ->
+                checkSelfPermission(grant) == PackageManager.PERMISSION_GRANTED
+            }
+
+            if (allAlreadyGranted) {
+                setResult(requestId, GrantResult.GRANTED)
+                finish()
+                return
+            }
+
+            // Request the grants (all at once for better UX)
+            requestMultipleGrantsLauncher?.launch(currentGrants)
+        } catch (e: Exception) {
+            GrantLogger.e(TAG, "Error in onCreate: ${e.message}", e)
+            if (requestId.isNotEmpty()) {
+                setResult(requestId, GrantResult.ERROR)
+            }
             finish()
-            return
         }
-
-        // Request the grants (all at once for better UX)
-        requestMultipleGrantsLauncher?.launch(currentGrants)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -155,7 +166,7 @@ class GrantRequestActivity : ComponentActivity() {
     }
 
     private fun setResult(requestId: String, result: GrantResult) {
-        pendingResults[requestId]?.value = result
+        pendingResults[requestId]?.complete(result)
     }
 
     companion object {
@@ -165,11 +176,16 @@ class GrantRequestActivity : ComponentActivity() {
         private const val KEY_REQUEST_ID = "saved_request_id"
 
         /**
-         * Map of request ID to result StateFlow.
-         * Thread-safe ConcurrentHashMap prevents race conditions when multiple
-         * grants are requested simultaneously.
+         * Counter for generating unique request IDs.
+         * More efficient than UUID for simple tracking.
          */
-        private val pendingResults = ConcurrentHashMap<String, MutableStateFlow<GrantResult?>>()
+        private val requestIdCounter = AtomicInteger(0)
+
+        /**
+         * Map of request ID to result Deferred.
+         * Using CompletableDeferred is more efficient than StateFlow for single results.
+         */
+        private val pendingResults = ConcurrentHashMap<String, CompletableDeferred<GrantResult>>()
 
         /**
          * Map of request ID to creation timestamp for orphan cleanup.
@@ -201,10 +217,10 @@ class GrantRequestActivity : ComponentActivity() {
          * @return Unique request ID to track this grant request
          */
         fun requestGrants(context: Context, androidGrants: List<String>): String {
-            val requestId = UUID.randomUUID().toString()
+            val requestId = requestIdCounter.incrementAndGet().toString()
 
-            // Create StateFlow for this request
-            pendingResults[requestId] = MutableStateFlow(null)
+            // Create Deferred for this request
+            pendingResults[requestId] = CompletableDeferred()
             pendingTimestamps[requestId] = System.currentTimeMillis()
 
             // Cleanup orphaned entries before starting new request
@@ -243,6 +259,8 @@ class GrantRequestActivity : ComponentActivity() {
             }
 
             orphanedIds.forEach { requestId ->
+                // Complete with error before removing to ensure no waiting coroutine hangs
+                pendingResults[requestId]?.complete(GrantResult.ERROR)
                 pendingResults.remove(requestId)
                 pendingTimestamps.remove(requestId)
             }
@@ -253,12 +271,12 @@ class GrantRequestActivity : ComponentActivity() {
         }
 
         /**
-         * Get the StateFlow for a specific request ID.
+         * Get the result Deferred for a specific request ID.
          *
-         * @param requestId The unique request ID returned by requestGrant()
-         * @return StateFlow that will emit the result, or null if invalid request ID
+         * @param requestId The unique request ID returned by requestGrants()
+         * @return Deferred that will complete with the result, or null if invalid request ID
          */
-        internal fun getResultFlow(requestId: String): MutableStateFlow<GrantResult?>? {
+        internal fun getResultDeferred(requestId: String): CompletableDeferred<GrantResult>? {
             return pendingResults[requestId]
         }
 

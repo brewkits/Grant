@@ -63,6 +63,14 @@ actual class PlatformGrantDelegate(
 
     private val requestMutex = Mutex()
 
+    // Short-lived status cache for all grants to prevent redundant OS calls
+    // Map: Grant identifier (String) -> (GrantStatus, timestamp)
+    private val statusCacheMap = mutableMapOf<String, Pair<GrantStatus, Long>>()
+
+    private companion object {
+        const val STATUS_CACHE_TTL_MS = 1000L // 1 second
+    }
+
     /**
      * Validates that the required Info.plist key exists before requesting permission.
      *
@@ -147,6 +155,24 @@ actual class PlatformGrantDelegate(
     }
 
     actual suspend fun checkStatus(grant: GrantPermission): GrantStatus {
+        val identifier = grant.identifier
+        // Optimization: Check short-lived cache first
+        statusCacheMap[identifier]?.let { (cachedStatus, timestamp) ->
+            val now = (NSDate().timeIntervalSince1970 * 1000).toLong()
+            if (now - timestamp < STATUS_CACHE_TTL_MS) {
+                return cachedStatus
+            }
+        }
+
+        val status = checkStatusInternal(grant)
+
+        // Update cache
+        val now = (NSDate().timeIntervalSince1970 * 1000).toLong()
+        statusCacheMap[identifier] = status to now
+        return status
+    }
+
+    private suspend fun checkStatusInternal(grant: GrantPermission): GrantStatus = runOnMain {
         // Handle RawPermission (custom permissions)
         if (grant is RawPermission) {
             GrantLogger.i("iOSGrant", "Checking RawPermission: ${grant.identifier}")

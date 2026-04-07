@@ -141,14 +141,18 @@ class GrantGroupHandler(
             val deniedGrants = mutableListOf<GrantPermission>()
 
             // Check which grants need to be requested
+            val currentStatuses = mutableMapOf<GrantPermission, GrantStatus>()
             for (grant in grants) {
                 val status = grantManager.checkStatus(grant)
-                _statuses.value += (grant to status)
+                currentStatuses[grant] = status
 
                 if (status != GrantStatus.GRANTED) {
                     deniedGrants.add(grant)
                 }
             }
+
+            // Update all statuses at once (avoids multiple emissions)
+            _statuses.update { it + currentStatuses }
 
             if (deniedGrants.isEmpty()) {
                 // All already granted!
@@ -185,7 +189,7 @@ class GrantGroupHandler(
             val currentPerm = _state.value.currentGrant ?: return@launch
 
             val newStatus = grantManager.request(currentPerm)
-            _statuses.value = _statuses.value + (currentPerm to newStatus)
+            _statuses.update { it + (currentPerm to newStatus) }
 
             handleStatus(currentPerm, newStatus)
         }
@@ -210,14 +214,14 @@ class GrantGroupHandler(
 
     private suspend fun requestSingleGrant(grant: GrantPermission): Boolean {
         val currentStatus = grantManager.checkStatus(grant)
-        _statuses.value += (grant to currentStatus)
+        _statuses.update { it + (grant to currentStatus) }
 
         return when (currentStatus) {
             GrantStatus.GRANTED -> true
             GrantStatus.NOT_DETERMINED -> {
                 // First time - request immediately
                 val result = grantManager.request(grant)
-                _statuses.value += (grant to result)
+                _statuses.update { it + (grant to result) }
                 handleStatus(grant, result)
                 result == GrantStatus.GRANTED
             }

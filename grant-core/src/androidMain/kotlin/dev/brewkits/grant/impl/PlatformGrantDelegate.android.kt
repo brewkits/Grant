@@ -12,7 +12,6 @@ import dev.brewkits.grant.GrantStatus
 import dev.brewkits.grant.GrantStore
 import dev.brewkits.grant.RawPermission
 import dev.brewkits.grant.utils.GrantLogger
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
@@ -27,11 +26,16 @@ actual class PlatformGrantDelegate(
     // Pair: (GrantStatus, timestamp in milliseconds)
     private var notificationStatusCache: Pair<GrantStatus, Long>? = null
 
+    // Short-lived status cache for all grants to prevent redundant OS calls
+    // Map: Grant identifier (String) -> (GrantStatus, timestamp)
+    private val statusCacheMap = mutableMapOf<String, Pair<GrantStatus, Long>>()
+
     // Android 14+ (API 34+) partial gallery access permission
     // This permission is granted when user selects "Select photos" instead of "Allow all"
     private companion object {
         const val READ_MEDIA_VISUAL_USER_SELECTED = "android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
         const val NOTIFICATION_CACHE_TTL_MS = 5000L // 5 seconds
+        const val STATUS_CACHE_TTL_MS = 1000L // 1 second
     }
 
     /**
@@ -51,6 +55,22 @@ actual class PlatformGrantDelegate(
     }
 
     actual suspend fun checkStatus(grant: GrantPermission): GrantStatus {
+        val identifier = grant.identifier
+        // Optimization: Check short-lived cache first
+        statusCacheMap[identifier]?.let { (cachedStatus, timestamp) ->
+            if (System.currentTimeMillis() - timestamp < STATUS_CACHE_TTL_MS) {
+                return cachedStatus
+            }
+        }
+
+        val status = checkStatusInternal(grant)
+
+        // Update cache
+        statusCacheMap[identifier] = status to System.currentTimeMillis()
+        return status
+    }
+
+    private suspend fun checkStatusInternal(grant: GrantPermission): GrantStatus {
         // Handle RawPermission (custom permissions)
         if (grant is RawPermission) {
             GrantLogger.d("AndroidGrant", "Checking RawPermission: ${grant.identifier}")
@@ -67,9 +87,25 @@ actual class PlatformGrantDelegate(
 
             // Check if we've requested before (via identifier-based tracking)
             val wasRequested = store.isRawPermissionRequested(grant.identifier)
-            return if (wasRequested) {
+            if (!wasRequested) {
+                return GrantStatus.NOT_DETERMINED
+            }
+
+            // If requested but not granted, check if it's a runtime permission
+            // Runtime permissions will return true for shouldShowRequestPermissionRationale 
+            // after being denied at least once.
+            val isActivity = context is android.app.Activity
+            val anyCanShowRationale = androidPermissions.any { permission ->
+                isActivity && (context as android.app.Activity).shouldShowRequestPermissionRationale(permission)
+            }
+
+            return if (anyCanShowRationale) {
                 GrantStatus.DENIED
             } else {
+                // If we can't show rationale but it's requested and not granted,
+                // it might be permanently denied OR it might not be a runtime permission at all.
+                // For safety, we return NOT_DETERMINED for non-runtime permissions 
+                // that aren't granted yet.
                 GrantStatus.NOT_DETERMINED
             }
         }
@@ -197,12 +233,13 @@ actual class PlatformGrantDelegate(
             // Launch GrantRequestActivity with raw permissions
             val status = try {
                 val requestId = GrantRequestActivity.requestGrants(context, grant.androidPermissions)
-                val resultFlow = GrantRequestActivity.getResultFlow(requestId)
+                val deferred = GrantRequestActivity.getResultDeferred(requestId)
                     ?: return@withLock GrantStatus.DENIED
 
                 val result = try {
-                    withTimeout(60_000) { resultFlow.first { it != null } }
-                        ?: GrantRequestActivity.GrantResult.ERROR
+                    withTimeout(60_000) { deferred.await() }
+                } catch (e: Exception) {
+                    GrantRequestActivity.GrantResult.ERROR
                 } finally {
                     GrantRequestActivity.cleanup(requestId)
                 }
@@ -271,12 +308,13 @@ actual class PlatformGrantDelegate(
 
         val status = try {
             val requestId = GrantRequestActivity.requestGrants(context, androidGrants)
-            val resultFlow = GrantRequestActivity.getResultFlow(requestId)
+            val deferred = GrantRequestActivity.getResultDeferred(requestId)
                 ?: return@withLock GrantStatus.DENIED
 
             val result = try {
-                withTimeout(60_000) { resultFlow.first { it != null } }
-                    ?: GrantRequestActivity.GrantResult.ERROR
+                withTimeout(60_000) { deferred.await() }
+            } catch (e: Exception) {
+                GrantRequestActivity.GrantResult.ERROR
             } finally {
                 GrantRequestActivity.cleanup(requestId)
             }
