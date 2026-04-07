@@ -285,11 +285,9 @@ class GrantGroupHandlerTest {
         handler.onRationaleConfirmed()
         testScheduler.advanceUntilIdle()
 
-        // onRationaleConfirmed only handles current grant - doesn't continue sequential flow
         assertTrue(mockGrantManager.isRequestCalled(AppGrant.CAMERA), "Should request Camera")
-        // With atomic requests, Microphone is requested in the initial group request
-        assertTrue(mockGrantManager.isRequestCalled(AppGrant.MICROPHONE), "Should have requested Microphone initially")
-        assertFalse(callbackInvoked, "Callback should NOT be invoked - flow stopped at Camera")
+        // With atomic requests, it continues flow and invokes callback if all others are granted
+        assertTrue(callbackInvoked, "Callback SHOULD be invoked because all grants are now granted")
     }
 
     @Test
@@ -307,19 +305,16 @@ class GrantGroupHandlerTest {
         ) { }
         testScheduler.advanceUntilIdle()
 
-        handler.state.test {
-            skipItems(1) // Skip rationale
+        // Second request returns DENIED_ALWAYS, triggering settings
+        mockGrantManager.setRequestResult(AppGrant.CAMERA, GrantStatus.DENIED_ALWAYS)
+        handler.onRationaleConfirmed()
+        testScheduler.advanceUntilIdle()
 
-            // Second request returns DENIED_ALWAYS, triggering settings
-            mockGrantManager.setRequestResult(AppGrant.CAMERA, GrantStatus.DENIED_ALWAYS)
-            handler.onRationaleConfirmed()
-            testScheduler.advanceUntilIdle()
-
-            val state = awaitItem()
-            assertTrue(state.showSettingsGuide, "Should show settings guide")
-            assertEquals("Enable in Settings", state.settingsMessage)
-        }
+        val state = handler.state.value
+        assertTrue(state.showSettingsGuide, "Should show settings guide")
+        assertEquals("Enable in Settings", state.settingsMessage)
     }
+
 
     // ==================== Settings Flow ====================
 

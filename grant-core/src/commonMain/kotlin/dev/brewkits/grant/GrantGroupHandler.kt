@@ -153,8 +153,11 @@ class GrantGroupHandler(
             
             if (deniedGrants.isEmpty()) {
                 // Everything already good!
+                resetState()
                 _state.update { it.copy(grantedGrants = grants.toSet()) }
-                onAllGranted()
+                val callback = onAllGrantedCallback
+                onAllGrantedCallback = null
+                callback?.invoke()
                 return@launch
             }
 
@@ -170,7 +173,10 @@ class GrantGroupHandler(
             val stillDenied = results.filter { it.value != GrantStatus.GRANTED && it.value != GrantStatus.PARTIAL_GRANTED }
             
             if (stillDenied.isEmpty()) {
-                onAllGranted()
+                resetState()
+                val callback = onAllGrantedCallback
+                onAllGrantedCallback = null
+                callback?.invoke()
             } else {
                 // Show dialog for the first denied permission
                 val firstDenied = stillDenied.keys.first()
@@ -189,7 +195,29 @@ class GrantGroupHandler(
             val newStatus = grantManager.request(currentPerm)
             _statuses.update { it + (currentPerm to newStatus) }
 
-            handleStatus(currentPerm, newStatus)
+            if (newStatus == GrantStatus.GRANTED || newStatus == GrantStatus.PARTIAL_GRANTED) {
+                // Update granted set
+                _state.update { it.copy(grantedGrants = it.grantedGrants + currentPerm) }
+                
+                // Re-evaluate if there are any remaining denied permissions in the group
+                val stillDenied = _statuses.value.filter { 
+                    grants.contains(it.key) && it.value != GrantStatus.GRANTED && it.value != GrantStatus.PARTIAL_GRANTED 
+                }
+                
+                if (stillDenied.isEmpty()) {
+                    resetState()
+                    val callback = onAllGrantedCallback
+                    onAllGrantedCallback = null
+                    callback?.invoke()
+                } else {
+                    // Show dialog for the next denied permission
+                    val nextDenied = stillDenied.keys.first()
+                    handleStatus(nextDenied, stillDenied[nextDenied]!!)
+                }
+            } else {
+                // Still denied, handle the new status (might be DENIED_ALWAYS now)
+                handleStatus(currentPerm, newStatus)
+            }
         }
     }
 
@@ -198,6 +226,7 @@ class GrantGroupHandler(
      */
     fun onSettingsConfirmed() {
         resetState()
+        onAllGrantedCallback = null
         grantManager.openSettings()
     }
 
@@ -206,6 +235,7 @@ class GrantGroupHandler(
      */
     fun onDismiss() {
         resetState()
+        onAllGrantedCallback = null
     }
 
     // --- Internal Logic ---
