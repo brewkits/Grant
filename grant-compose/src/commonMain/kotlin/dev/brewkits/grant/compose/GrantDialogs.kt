@@ -5,7 +5,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import dev.brewkits.grant.GrantGroupHandler
 import dev.brewkits.grant.GrantHandler
 
 /**
@@ -65,6 +67,74 @@ fun GrantDialog(
     settingsDismiss: String = "Cancel"
 ) {
     val state by handler.collectAsState()
+
+    if (state.isVisible) {
+        when {
+            state.showRationale -> {
+                GrantRationaleDialog(
+                    message = state.rationaleMessage
+                        ?: "This permission is needed for this feature to work properly.",
+                    title = rationaleTitle,
+                    confirmText = rationaleConfirm,
+                    dismissText = rationaleDismiss,
+                    onConfirm = { handler.onRationaleConfirmed() },
+                    onDismiss = { handler.onDismiss() }
+                )
+            }
+
+            state.showSettingsGuide -> {
+                GrantSettingsDialog(
+                    message = state.settingsMessage
+                        ?: "This permission was denied. Please enable it in Settings.",
+                    title = settingsTitle,
+                    confirmText = settingsConfirm,
+                    dismissText = settingsDismiss,
+                    onConfirm = { handler.onSettingsConfirmed() },
+                    onDismiss = { handler.onDismiss() }
+                )
+            }
+        }
+    }
+}
+
+/**
+ * A Dialog Handler for group permission requests.
+ *
+ * Observes [GrantGroupHandler] state and automatically shows appropriate dialogs
+ * for each permission in the group as they are requested.
+ *
+ * **Usage**:
+ * ```kotlin
+ * @Composable
+ * fun MediaScreen(viewModel: MediaViewModel) {
+ *     // Handles all dialogs for the group automatically
+ *     GrantGroupDialog(handler = viewModel.mediaGrants)
+ *
+ *     Button(onClick = { viewModel.mediaGrants.request { startRecording() } }) {
+ *         Text("Start Recording")
+ *     }
+ * }
+ * ```
+ *
+ * @param handler The GrantGroupHandler from your ViewModel
+ * @param rationaleTitle Title for rationale dialogs
+ * @param rationaleConfirm Text for rationale confirm button
+ * @param rationaleDismiss Text for rationale dismiss button
+ * @param settingsTitle Title for settings dialogs
+ * @param settingsConfirm Text for settings confirm button
+ * @param settingsDismiss Text for settings dismiss button
+ */
+@Composable
+fun GrantGroupDialog(
+    handler: GrantGroupHandler,
+    rationaleTitle: String = "Permission Required",
+    rationaleConfirm: String = "Continue",
+    rationaleDismiss: String = "Cancel",
+    settingsTitle: String = "Permission Denied",
+    settingsConfirm: String = "Open Settings",
+    settingsDismiss: String = "Cancel"
+) {
+    val state by handler.state.collectAsState()
 
     if (state.isVisible) {
         when {

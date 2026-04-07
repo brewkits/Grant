@@ -12,12 +12,12 @@ import kotlinx.coroutines.launch
  */
 data class GrantGroupUiState(
     val isVisible: Boolean = false,
-    val currentGrant: AppGrant? = null,
+    val currentGrant: GrantPermission? = null,
     val showRationale: Boolean = false,
     val showSettingsGuide: Boolean = false,
     val rationaleMessage: String? = null,
     val settingsMessage: String? = null,
-    val grantedGrants: Set<AppGrant> = emptySet(),
+    val grantedGrants: Set<GrantPermission> = emptySet(),
     val totalGrants: Int = 0
 )
 
@@ -67,7 +67,7 @@ data class GrantGroupUiState(
  */
 class GrantGroupHandler(
     private val grantManager: GrantManager,
-    private val grants: List<AppGrant>,
+    private val grants: List<GrantPermission>,
     scope: CoroutineScope
 ) {
     private val scope: CoroutineScope
@@ -85,12 +85,12 @@ class GrantGroupHandler(
     private val _state = MutableStateFlow(GrantGroupUiState(totalGrants = grants.size))
     val state: StateFlow<GrantGroupUiState> = _state.asStateFlow()
 
-    private val _statuses = MutableStateFlow<Map<AppGrant, GrantStatus>>(emptyMap())
-    val statuses: StateFlow<Map<AppGrant, GrantStatus>> = _statuses.asStateFlow()
+    private val _statuses = MutableStateFlow<Map<GrantPermission, GrantStatus>>(emptyMap())
+    val statuses: StateFlow<Map<GrantPermission, GrantStatus>> = _statuses.asStateFlow()
 
     private var onAllGrantedCallback: (() -> Unit)? = null
-    private var currentRationaleMessages: Map<AppGrant, String> = emptyMap()
-    private var currentSettingsMessages: Map<AppGrant, String> = emptyMap()
+    private var currentRationaleMessages: Map<GrantPermission, String> = emptyMap()
+    private var currentSettingsMessages: Map<GrantPermission, String> = emptyMap()
 
     init {
         refreshAllStatuses()
@@ -102,8 +102,8 @@ class GrantGroupHandler(
      */
     fun refreshAllStatuses() {
         scope.launch {
-            val statusMap = mutableMapOf<AppGrant, GrantStatus>()
-            val grantedSet = mutableSetOf<AppGrant>()
+            val statusMap = mutableMapOf<GrantPermission, GrantStatus>()
+            val grantedSet = mutableSetOf<GrantPermission>()
 
             for (grant in grants) {
                 val status = grantManager.checkStatus(grant)
@@ -129,8 +129,8 @@ class GrantGroupHandler(
      * @param onAllGranted Callback that executes ONLY when all grants are granted
      */
     fun request(
-        rationaleMessages: Map<AppGrant, String> = emptyMap(),
-        settingsMessages: Map<AppGrant, String> = emptyMap(),
+        rationaleMessages: Map<GrantPermission, String> = emptyMap(),
+        settingsMessages: Map<GrantPermission, String> = emptyMap(),
         onAllGranted: () -> Unit
     ) {
         this.onAllGrantedCallback = onAllGranted
@@ -138,7 +138,7 @@ class GrantGroupHandler(
         this.currentSettingsMessages = settingsMessages
 
         scope.launch {
-            val deniedGrants = mutableListOf<AppGrant>()
+            val deniedGrants = mutableListOf<GrantPermission>()
 
             // Check which grants need to be requested
             for (grant in grants) {
@@ -208,7 +208,7 @@ class GrantGroupHandler(
 
     // --- Internal Logic ---
 
-    private suspend fun requestSingleGrant(grant: AppGrant): Boolean {
+    private suspend fun requestSingleGrant(grant: GrantPermission): Boolean {
         val currentStatus = grantManager.checkStatus(grant)
         _statuses.value += (grant to currentStatus)
 
@@ -230,7 +230,7 @@ class GrantGroupHandler(
         }
     }
 
-    private fun handleStatus(grant: AppGrant, status: GrantStatus): Boolean {
+    private fun handleStatus(grant: GrantPermission, status: GrantStatus): Boolean {
         return when (status) {
             GrantStatus.GRANTED -> true
             GrantStatus.NOT_DETERMINED -> {

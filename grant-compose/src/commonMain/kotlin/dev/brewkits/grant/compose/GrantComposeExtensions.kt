@@ -3,7 +3,10 @@ package dev.brewkits.grant.compose
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
+import dev.brewkits.grant.GrantGroupHandler
+import dev.brewkits.grant.GrantGroupUiState
 import dev.brewkits.grant.GrantHandler
+import dev.brewkits.grant.GrantPermission
 import dev.brewkits.grant.GrantStatus
 import dev.brewkits.grant.GrantUiState
 
@@ -55,4 +58,42 @@ fun GrantHandler.collectAsState(): State<GrantUiState> {
 @Composable
 fun GrantHandler.collectStatusAsState(): State<GrantStatus> {
     return this.status.collectAsState()
+}
+
+/**
+ * Extension function to collect GrantGroupUiState from GrantGroupHandler in a Composable.
+ *
+ * **Usage**:
+ * ```kotlin
+ * @Composable
+ * fun MyScreen(handler: GrantGroupHandler) {
+ *     val state by handler.collectAsState()
+ *     // Now use state.isVisible, state.grantedGrants, etc.
+ * }
+ * ```
+ *
+ * @return State holder containing the current GrantGroupUiState
+ */
+@Composable
+fun GrantGroupHandler.collectAsState(): State<GrantGroupUiState> {
+    return this.state.collectAsState()
+}
+
+/**
+ * Extension function to collect all grant statuses from GrantGroupHandler in a Composable.
+ *
+ * **Usage**:
+ * ```kotlin
+ * @Composable
+ * fun MyScreen(handler: GrantGroupHandler) {
+ *     val statuses by handler.collectStatusesAsState()
+ *     // statuses is Map<GrantPermission, GrantStatus>
+ * }
+ * ```
+ *
+ * @return State holder containing the current map of grant statuses
+ */
+@Composable
+fun GrantGroupHandler.collectStatusesAsState(): State<Map<GrantPermission, GrantStatus>> {
+    return this.statuses.collectAsState()
 }

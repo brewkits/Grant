@@ -112,6 +112,28 @@ class GrantGroupHandlerTest {
         assertFalse(state.isVisible, "No dialog should be shown")
     }
 
+    @Test
+    fun `should work with RawPermission in group`() = runTest {
+        val customPermission = RawPermission(
+            identifier = "CUSTOM",
+            androidPermissions = listOf("android.permission.CUSTOM"),
+            iosUsageKey = null
+        )
+        
+        mockGrantManager.setStatus(AppGrant.CAMERA, GrantStatus.GRANTED)
+        mockGrantManager.setStatus(customPermission, GrantStatus.GRANTED)
+
+        val grants = listOf(AppGrant.CAMERA, customPermission)
+        val handler = GrantGroupHandler(mockGrantManager, grants, testScope)
+        testScheduler.advanceUntilIdle()
+
+        var callbackInvoked = false
+        handler.request { callbackInvoked = true }
+        testScheduler.advanceUntilIdle()
+
+        assertTrue(callbackInvoked, "Callback should be invoked for RawPermission group")
+    }
+
     // ==================== Sequential Grant Requests ====================
 
     @Test

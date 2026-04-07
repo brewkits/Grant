@@ -14,15 +14,15 @@ class MultiGrantFakeManager : GrantManager {
     private val requestCalls = mutableSetOf<GrantPermission>()
     var openSettingsCalled = false
 
-    fun setStatus(grant: AppGrant, status: GrantStatus) {
+    fun setStatus(grant: GrantPermission, status: GrantStatus) {
         statusMap[grant] = status
     }
 
-    fun setRequestResult(grant: AppGrant, result: GrantStatus) {
+    fun setRequestResult(grant: GrantPermission, result: GrantStatus) {
         requestResults[grant] = result
     }
 
-    fun isRequestCalled(grant: AppGrant): Boolean = requestCalls.contains(grant)
+    fun isRequestCalled(grant: GrantPermission): Boolean = requestCalls.contains(grant)
 
     override suspend fun checkStatus(grant: GrantPermission): GrantStatus {
         return statusMap[grant] ?: GrantStatus.NOT_DETERMINED
