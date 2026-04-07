@@ -136,6 +136,14 @@ class SimpleGrantManager : GrantManager {
         }
     }
 
+    override suspend fun request(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus> {
+        val results = mutableMapOf<GrantPermission, GrantStatus>()
+        for (grant in grants) {
+            results[grant] = request(grant)
+        }
+        return results
+    }
+
     override fun openSettings() {
         // Mock implementation - does nothing
         // In real app, this would open system settings

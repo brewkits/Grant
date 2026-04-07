@@ -27,6 +27,7 @@ class CacheOptimizationPerformanceTest {
         }
 
         override suspend fun request(grant: GrantPermission): GrantStatus = mockStatus
+        override suspend fun request(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus> = grants.associateWith { mockStatus }
         override fun openSettings() {}
     }
 

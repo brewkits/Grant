@@ -398,7 +398,7 @@ class GrantHandler(
         isFirstRequest: Boolean = false
     ) {
         when (status) {
-            GrantStatus.GRANTED -> {
+            GrantStatus.GRANTED, GrantStatus.PARTIAL_GRANTED -> {
                 resetState()
                 hasShownRationaleDialog = false  // Reset flag when granted
                 // Invoke callback and immediately clear to prevent memory leak
@@ -524,7 +524,7 @@ class GrantHandler(
         isFirstRequest: Boolean = false
     ) {
         when (status) {
-            GrantStatus.GRANTED -> {
+            GrantStatus.GRANTED, GrantStatus.PARTIAL_GRANTED -> {
                 // Invoke callback and immediately clear to prevent memory leak
                 onGrantedCallback?.invoke()
                 onGrantedCallback = null

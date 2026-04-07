@@ -24,6 +24,11 @@ class FakeGrantManager : GrantManager {
         return mockRequestResult
     }
 
+    override suspend fun request(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus> {
+        requestCalled = true
+        return grants.associateWith { mockRequestResult }
+    }
+
     override fun openSettings() {
         openSettingsCalled = true
     }

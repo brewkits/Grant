@@ -87,6 +87,19 @@ interface GrantManager {
     suspend fun request(grant: GrantPermission): GrantStatus
 
     /**
+     * Request multiple grants from the system at once.
+     *
+     * **Platform Behavior**:
+     * - **Android**: Shows a single system dialog flow for all requested grants.
+     *   Better UX for related permissions (e.g. FINE + COARSE Location).
+     * - **iOS**: Requests each permission sequentially (iOS native behavior).
+     *
+     * @param grants List of grants to request
+     * @return Map of each grant to its final status
+     */
+    suspend fun request(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus>
+
+    /**
      * Opens the app's settings page where user can manually enable grants.
      *
      * Use this when grant is DENIED_ALWAYS and must be enabled via Settings.

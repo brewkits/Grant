@@ -268,6 +268,10 @@ private class FakeGrantManager(
         return statusToReturn
     }
 
+    override suspend fun request(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus> {
+        return grants.associateWith { statusToReturn }
+    }
+
     override fun openSettings() {
         // No-op
     }

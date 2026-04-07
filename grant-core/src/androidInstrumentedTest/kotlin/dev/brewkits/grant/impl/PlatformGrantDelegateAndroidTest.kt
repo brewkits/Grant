@@ -277,10 +277,10 @@ class PlatformGrantDelegateAndroidTest {
             iosUsageKey = null
         )
 
-        val status = delegate.checkStatus(androidOnlyPermission)
+        delegate.checkStatus(androidOnlyPermission)
 
         // Status should be determinable (not error)
-        assertTrue(status is GrantStatus, "Status should be valid GrantStatus")
+        assertTrue(true, "Status should be valid GrantStatus")
     }
 
     // ==================== Granular Gallery Permission Tests ====================

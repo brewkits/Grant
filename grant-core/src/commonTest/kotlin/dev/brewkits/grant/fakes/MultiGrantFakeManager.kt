@@ -33,6 +33,14 @@ class MultiGrantFakeManager : GrantManager {
         return requestResults[grant] ?: GrantStatus.GRANTED
     }
 
+    override suspend fun request(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus> {
+        val results = mutableMapOf<GrantPermission, GrantStatus>()
+        for (grant in grants) {
+            results[grant] = request(grant)
+        }
+        return results
+    }
+
     override fun openSettings() {
         openSettingsCalled = true
     }

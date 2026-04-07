@@ -14,6 +14,17 @@ enum class GrantStatus {
     GRANTED,
 
     /**
+     * Grant is granted, but only partially.
+     *
+     * **Platform Specifics**:
+     * - Android 14+: User selected "Select photos and videos" instead of "Allow all".
+     * - iOS: User selected "Limited" access to Photo Library.
+     *
+     * **Next Action**: Proceed with limited access or explain why full access is better.
+     */
+    PARTIAL_GRANTED,
+
+    /**
      * Grant was denied by the user, but can be requested again.
      *
      * **Android**: User denied but didn't check "Don't ask again"

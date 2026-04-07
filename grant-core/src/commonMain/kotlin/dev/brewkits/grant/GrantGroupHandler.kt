@@ -121,10 +121,9 @@ class GrantGroupHandler(
     /**
      * Request all grants in the group.
      *
-     * Grants are requested sequentially for better UX.
-     * If user denies one grant, the flow stops and shows appropriate dialog.
+     * Grants are requested as a group for better UX (on platforms that support it).
      *
-     * @param rationaleMessages Custom messages per grant for rationale dialog
+     * @param rationaleMessages Custom messages per grant for rationale dialog (currently not used in group flow)
      * @param settingsMessages Custom messages per grant for settings dialog
      * @param onAllGranted Callback that executes ONLY when all grants are granted
      */
@@ -138,46 +137,45 @@ class GrantGroupHandler(
         this.currentSettingsMessages = settingsMessages
 
         scope.launch {
+            // 1. Initial check: What is already granted?
             val deniedGrants = mutableListOf<GrantPermission>()
-
-            // Check which grants need to be requested
             val currentStatuses = mutableMapOf<GrantPermission, GrantStatus>()
+            
             for (grant in grants) {
                 val status = grantManager.checkStatus(grant)
                 currentStatuses[grant] = status
-
-                if (status != GrantStatus.GRANTED) {
+                if (status != GrantStatus.GRANTED && status != GrantStatus.PARTIAL_GRANTED) {
                     deniedGrants.add(grant)
                 }
             }
-
-            // Update all statuses at once (avoids multiple emissions)
+            
             _statuses.update { it + currentStatuses }
-
+            
             if (deniedGrants.isEmpty()) {
-                // All already granted!
+                // Everything already good!
                 _state.update { it.copy(grantedGrants = grants.toSet()) }
                 onAllGranted()
                 return@launch
             }
 
-            // Request each denied grant sequentially
-            for (grant in deniedGrants) {
-                val granted = requestSingleGrant(grant)
-
-                if (granted) {
-                    // Update granted set
-                    _state.update {
-                        it.copy(grantedGrants = it.grantedGrants + grant)
-                    }
-                } else {
-                    // User denied, stop the flow
-                    return@launch
-                }
+            // 2. Request all denied grants at once
+            // This allows Android to show a single system dialog flow
+            val results = grantManager.request(deniedGrants)
+            _statuses.update { it + results }
+            
+            // 3. Evaluate results
+            val newlyGranted = results.filter { it.value == GrantStatus.GRANTED || it.value == GrantStatus.PARTIAL_GRANTED }.keys
+            _state.update { it.copy(grantedGrants = it.grantedGrants + newlyGranted) }
+            
+            val stillDenied = results.filter { it.value != GrantStatus.GRANTED && it.value != GrantStatus.PARTIAL_GRANTED }
+            
+            if (stillDenied.isEmpty()) {
+                onAllGranted()
+            } else {
+                // Show dialog for the first denied permission
+                val firstDenied = stillDenied.keys.first()
+                handleStatus(firstDenied, stillDenied[firstDenied]!!)
             }
-
-            // All granted!
-            onAllGranted()
         }
     }
 
@@ -212,31 +210,9 @@ class GrantGroupHandler(
 
     // --- Internal Logic ---
 
-    private suspend fun requestSingleGrant(grant: GrantPermission): Boolean {
-        val currentStatus = grantManager.checkStatus(grant)
-        _statuses.update { it + (grant to currentStatus) }
-
-        return when (currentStatus) {
-            GrantStatus.GRANTED -> true
-            GrantStatus.NOT_DETERMINED -> {
-                // First time - request immediately
-                val result = grantManager.request(grant)
-                _statuses.update { it + (grant to result) }
-                handleStatus(grant, result)
-                result == GrantStatus.GRANTED
-            }
-            GrantStatus.DENIED,
-            GrantStatus.DENIED_ALWAYS -> {
-                // Show appropriate dialog
-                handleStatus(grant, currentStatus)
-                false
-            }
-        }
-    }
-
     private fun handleStatus(grant: GrantPermission, status: GrantStatus): Boolean {
         return when (status) {
-            GrantStatus.GRANTED -> true
+            GrantStatus.GRANTED, GrantStatus.PARTIAL_GRANTED -> true
             GrantStatus.NOT_DETERMINED -> {
                 // This shouldn't happen as we handle it above
                 false

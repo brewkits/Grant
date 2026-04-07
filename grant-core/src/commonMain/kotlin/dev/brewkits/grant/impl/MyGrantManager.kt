@@ -35,6 +35,10 @@ class MyGrantManager(
         return platformDelegate.request(grant)
     }
 
+    override suspend fun request(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus> {
+        return platformDelegate.request(grants)
+    }
+
     override fun openSettings() {
         platformDelegate.openSettings()
     }
@@ -54,5 +58,6 @@ class MyGrantManager(
 expect class PlatformGrantDelegate {
     suspend fun checkStatus(grant: GrantPermission): GrantStatus
     suspend fun request(grant: GrantPermission): GrantStatus
+    suspend fun request(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus>
     fun openSettings()
 }

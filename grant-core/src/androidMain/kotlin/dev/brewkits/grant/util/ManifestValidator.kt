@@ -3,7 +3,6 @@ package dev.brewkits.grant.util
 import android.content.Context
 import android.content.pm.PackageManager
 import dev.brewkits.grant.AppGrant
-import dev.brewkits.grant.impl.toAndroidGrants
 
 /**
  * Utility for validating manifest permissions declarations.
@@ -38,7 +37,10 @@ object ManifestValidator {
      * @return ValidationResult indicating if valid or which permissions are missing
      */
     fun validateGrant(context: Context, grant: AppGrant): ValidationResult {
-        val requiredPermissions = dev.brewkits.grant.impl.toAndroidGrants(grant, context)
+        // Create temporary delegate to access platform-specific mapping
+        val delegate = dev.brewkits.grant.impl.PlatformGrantDelegate(context, dev.brewkits.grant.InMemoryGrantStore())
+        val requiredPermissions = with(delegate) { grant.toAndroidGrants() }
+        
         val missingPermissions = requiredPermissions.filter {
             !isPermissionDeclared(context, it)
         }
