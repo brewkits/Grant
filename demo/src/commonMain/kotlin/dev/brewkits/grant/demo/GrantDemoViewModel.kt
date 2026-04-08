@@ -3,6 +3,7 @@ package dev.brewkits.grant.demo
 import dev.brewkits.grant.AppGrant
 import dev.brewkits.grant.GrantHandler
 import dev.brewkits.grant.GrantManager
+import dev.brewkits.grant.GrantStatus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -149,8 +150,8 @@ class GrantDemoViewModel(
     }
 
     // ==============================================
-    // SCENARIO 2: PARALLEL GRANTS
-    // Request location + storage at the same time
+    // SCENARIO 2: ATOMIC GROUP GRANTS
+    // Request location + storage at the same time using GrantGroupHandler
     // ==============================================
 
     /**
@@ -173,52 +174,44 @@ class GrantDemoViewModel(
         scope = scope
     )
 
+    /**
+     * Group Handler for related grants
+     * Used for: Photo location tagging app that needs BOTH location and storage
+     */
+    val locationAndStorageGroup = dev.brewkits.grant.GrantGroupHandler(
+        grantManager = grantManager,
+        grants = listOf(AppGrant.LOCATION, AppGrant.STORAGE),
+        scope = scope
+    )
+
     private val _parallelResult = MutableStateFlow("")
     val parallelResult: StateFlow<String> = _parallelResult.asStateFlow()
 
-    private var locationGranted = false
-    private var storageGranted = false
-
     /**
-     * Scenario 2: Parallel Grant Requests
+     * Scenario 2: Atomic Group Grant Requests
      *
      * Use case: Photo location tagging app that needs BOTH location and storage
-     * Flow: Request both → Wait for both → Save geotagged photos
+     * Flow: Request both at once → System groups dialogs → Save geotagged photos
      *
      * This pattern allows requesting multiple independent grants simultaneously.
-     * User sees both dialogs in sequence, but we handle them in parallel.
+     * The OS handles them efficiently (e.g. one grouped dialog on Android).
      */
     fun requestParallelGrants() {
-        _parallelResult.value = "Requesting location and storage grants..."
-        locationGranted = false
-        storageGranted = false
+        _parallelResult.value = "Requesting location and storage grants via Group Handler..."
 
-        // Request both grants in parallel
-        // Note: System shows dialogs one at a time, but we handle results concurrently
-
-        locationGrant.request(
-            rationaleMessage = "Location is needed to geotag your photos with the place they were taken",
-            settingsMessage = "Location access is disabled. Enable it in Settings > Grants > Location"
+        locationAndStorageGroup.request(
+            rationaleMessages = mapOf(
+                AppGrant.LOCATION to "Location is needed to geotag your photos.",
+                AppGrant.STORAGE to "Storage access is needed to save your photos."
+            ),
+            settingsMessages = mapOf(
+                AppGrant.LOCATION to "Enable Location in Settings.",
+                AppGrant.STORAGE to "Enable Storage in Settings."
+            )
         ) {
-            locationGranted = true
-            _parallelResult.update { it + "\n✓ Location grant granted" }
-            checkParallelCompletion()
-        }
-
-        storageGrant.request(
-            rationaleMessage = "Storage access is needed to save your photos to the gallery",
-            settingsMessage = "Storage access is disabled. Enable it in Settings > Grants > Storage"
-        ) {
-            storageGranted = true
-            _parallelResult.update { it + "\n✓ Storage grant granted" }
-            checkParallelCompletion()
-        }
-    }
-
-    private fun checkParallelCompletion() {
-        if (locationGranted && storageGranted) {
+            // Callback is only invoked when ALL grants in the group are granted!
             _parallelResult.update {
-                it + "\n\n✓✓ All grants granted! Saving geotagged photos..."
+                it + "\n\n✓✓ All grants in group granted! Saving geotagged photos..."
             }
             simulatePhotoSaving()
         }
@@ -310,16 +303,19 @@ class GrantDemoViewModel(
      * - Can be revoked at any time
      * - Examples: Camera, Location, Contacts, Microphone
      */
-    fun requestDangerousGrant() {
-        _grantTypeResult.value = "Requesting DANGEROUS grant (Contacts — read only)..."
+    fun requestGalleryGrant() {
+        _grantTypeResult.value = "Requesting GALLERY grant (Supports PARTIAL_GRANTED)..."
 
-        // READ_CONTACTS: read-only use case (find & invite friends — no write needed)
-        readContactsGrant.request(
-            rationaleMessage = "We need read-only access to your contacts to help you find and invite friends",
-            settingsMessage = "Contacts access is disabled. Enable it in Settings > Grants > Contacts"
+        galleryGrant.request(
+            rationaleMessage = "We need access to your gallery to let you pick a profile picture.",
+            settingsMessage = "Gallery access is disabled. Enable it in Settings."
         ) {
-            _grantTypeResult.value = "✓ DANGEROUS grant granted!\n\nAccessing contacts (read-only)... 📇"
-            simulateContactsAccess()
+            val status = galleryGrant.status.value
+            if (status == dev.brewkits.grant.GrantStatus.PARTIAL_GRANTED) {
+                _grantTypeResult.value = "✓ GALLERY PARTIAL_GRANTED!\n\nAccessing limited photos... 🖼️"
+            } else {
+                _grantTypeResult.value = "✓ GALLERY GRANTED!\n\nAccessing all photos... 🖼️"
+            }
         }
     }
 
@@ -421,6 +417,88 @@ class GrantDemoViewModel(
     }
 
     // ==============================================
+    // SCENARIO 5: ADVANCED / OS-VERSION-SPECIFIC
+    // Motion (Dummy Query), Calendar (iOS 17+ writeOnly),
+    // Gallery partial (Android 14+ SELECT_PHOTOS)
+    // ==============================================
+
+    private val _scenario5Result = MutableStateFlow("")
+    val scenario5Result: StateFlow<String> = _scenario5Result.asStateFlow()
+
+    /**
+     * Scenario 5a: Motion — Dummy Query pattern on iOS.
+     * Android: ACTIVITY_RECOGNITION (API 29+) or GMS fallback (< API 29)
+     */
+    fun requestMotionGrant() {
+        _scenario5Result.value = "Requesting MOTION...\n${OsInfo.motionBehaviorNote()}"
+        motionGrant.request(
+            rationaleMessage = "Motion access is needed to detect your physical activity (walking, running, cycling).",
+            settingsMessage = "Motion permission denied. Enable it in Settings > Privacy > Motion & Fitness"
+        ) {
+            val status = motionGrant.status.value
+            _scenario5Result.value = when (status) {
+                GrantStatus.GRANTED -> "✓ MOTION GRANTED\n${OsInfo.motionBehaviorNote()}\n\n🏃 Activity tracking active!"
+                GrantStatus.DENIED_ALWAYS -> "⛔ MOTION BLOCKED\nUser must enable in Settings > Privacy > Motion & Fitness"
+                else -> "✕ MOTION DENIED (status: $status)"
+            }
+        }
+    }
+
+    /**
+     * Scenario 5b: Calendar full access (CALENDAR read+write).
+     * iOS 17+: returns PARTIAL_GRANTED if user grants write-only access.
+     */
+    fun requestCalendarFullGrant() {
+        _scenario5Result.value = "Requesting CALENDAR (full access)...\n• iOS 17+: System shows Full Access vs Add Only\n• Write-Only → PARTIAL_GRANTED"
+        calendarGrant.request(
+            rationaleMessage = "Calendar access is needed to create and manage your event reminders.",
+            settingsMessage = "Calendar access denied. Enable it in Settings > Privacy > Calendars"
+        ) {
+            val status = calendarGrant.status.value
+            _scenario5Result.value = when (status) {
+                GrantStatus.GRANTED -> "✓ CALENDAR GRANTED (Full Access)\n\n📅 Can read and write all events"
+                GrantStatus.PARTIAL_GRANTED -> "◑ CALENDAR PARTIAL (Write-Only on iOS 17+)\n\n📅 Can add events, cannot read existing ones"
+                GrantStatus.DENIED_ALWAYS -> "⛔ CALENDAR BLOCKED\nEnable in Settings > Privacy > Calendars"
+                else -> "✕ CALENDAR DENIED (status: $status)"
+            }
+        }
+    }
+
+    /**
+     * Scenario 5c: Gallery with explicit PARTIAL_GRANTED handling.
+     * Android 14+: Shows "Select Photos" option → PARTIAL_GRANTED
+     * iOS: "Limited Library" → PARTIAL_GRANTED
+     */
+    fun requestGalleryPartialGrant() {
+        _scenario5Result.value = "Requesting GALLERY...\n${OsInfo.galleryBehaviorNote()}"
+        galleryGrant.request(
+            rationaleMessage = "Photo library access is needed to let you pick and share photos.",
+            settingsMessage = "Gallery access denied. Enable it in Settings > Privacy > Photos"
+        ) {
+            val status = galleryGrant.status.value
+            _scenario5Result.value = when (status) {
+                GrantStatus.GRANTED -> "✓ GALLERY GRANTED (Full Access)\n${OsInfo.galleryBehaviorNote()}\n\n🖼️ All photos accessible"
+                GrantStatus.PARTIAL_GRANTED -> "◑ GALLERY PARTIAL (Limited Access!)\n${OsInfo.galleryBehaviorNote()}\n\n🖼️ Only selected photos accessible"
+                GrantStatus.DENIED_ALWAYS -> "⛔ GALLERY BLOCKED\nEnable in Settings > Privacy > Photos"
+                else -> "✕ GALLERY DENIED (status: $status)"
+            }
+        }
+    }
+
+    /**
+     * Scenario 5d: Notification — shows the API 33+ requirement.
+     */
+    fun requestNotificationScenario5() {
+        _scenario5Result.value = "Requesting NOTIFICATION...\n${OsInfo.notificationBehaviorNote()}"
+        notificationGrant.request(
+            rationaleMessage = "Enable notifications to receive real-time updates and reminders.",
+            settingsMessage = "Notifications disabled. Enable in Settings > Notifications"
+        ) {
+            _scenario5Result.value = "✓ NOTIFICATION GRANTED\n${OsInfo.notificationBehaviorNote()}\n\n🔔 Push notifications enabled!"
+        }
+    }
+
+    // ==============================================
     // UTILITY FUNCTIONS
     // ==============================================
 
@@ -429,8 +507,6 @@ class GrantDemoViewModel(
         _parallelResult.value = ""
         _grantTypeResult.value = ""
         _v11Result.value = ""
-        locationGranted = false
-        storageGranted = false
     }
 
 
@@ -443,8 +519,8 @@ class GrantDemoViewModel(
             cameraGrant,
             microphoneGrant,
             locationGrant,
-            locationAlwaysGrant,
             storageGrant,
+            locationAlwaysGrant,
             galleryGrant,
             notificationGrant,
             bluetoothGrant,
@@ -457,5 +533,6 @@ class GrantDemoViewModel(
         ).forEach { handler ->
             handler.refreshStatus()
         }
+        locationAndStorageGroup.refreshAllStatuses()
     }
 }

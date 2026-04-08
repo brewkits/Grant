@@ -111,6 +111,8 @@ class GrantGroupHandlerIntegrationTest {
         // Setup: Camera already denied permanently
         mockGrantManager.setStatus(AppGrant.CAMERA, GrantStatus.DENIED_ALWAYS)
         mockGrantManager.setStatus(AppGrant.MICROPHONE, GrantStatus.NOT_DETERMINED)
+        mockGrantManager.setRequestResult(AppGrant.CAMERA, GrantStatus.DENIED_ALWAYS)
+        mockGrantManager.setRequestResult(AppGrant.MICROPHONE, GrantStatus.GRANTED)
 
         val handler = GrantGroupHandler(
             grantManager = mockGrantManager,
@@ -125,15 +127,14 @@ class GrantGroupHandlerIntegrationTest {
         ) { }
         testScope.advanceUntilIdle()
 
-        // Verify: Settings guide shown for Camera, Microphone never requested
-        handler.state.test {
-            val state = awaitItem()
-            assertTrue(state.showSettingsGuide, "Should show settings guide")
-            assertEquals(AppGrant.CAMERA, state.currentGrant)
-        }
+        // Verify: Settings guide shown for Camera (the first failed one)
+        val state = handler.state.value
+        assertTrue(state.showSettingsGuide, "Should show settings guide")
+        assertEquals(AppGrant.CAMERA, state.currentGrant)
 
-        assertFalse(mockGrantManager.isRequestCalled(AppGrant.MICROPHONE),
-            "Microphone should NOT be requested")
+        // Both are requested simultaneously in the new atomic flow
+        assertTrue(mockGrantManager.isRequestCalled(AppGrant.MICROPHONE),
+            "Microphone SHOULD be requested due to atomic multi-request")
     }
 
     // ==================== Location Photos Flow (Camera + Location) ====================
@@ -181,24 +182,14 @@ class GrantGroupHandlerIntegrationTest {
 
         var locationPhotosEnabled = false
 
-        // Track granted permissions progress
-        handler.state.test {
-            skipItems(1) // Skip initial state
+        handler.request { locationPhotosEnabled = true }
+        testScope.advanceUntilIdle()
 
-            handler.request { locationPhotosEnabled = true }
-            testScope.advanceUntilIdle()
-
-            // First: Camera granted
-            val state1 = awaitItem()
-            assertTrue(state1.grantedGrants.contains(AppGrant.CAMERA))
-            assertEquals(1, state1.grantedGrants.size)
-
-            // Second: Location granted
-            val state2 = awaitItem()
-            assertTrue(state2.grantedGrants.contains(AppGrant.CAMERA))
-            assertTrue(state2.grantedGrants.contains(AppGrant.LOCATION))
-            assertEquals(2, state2.grantedGrants.size)
-        }
+        // Track granted permissions progress - updated atomically
+        val state = handler.state.value
+        assertTrue(state.grantedGrants.contains(AppGrant.CAMERA))
+        assertTrue(state.grantedGrants.contains(AppGrant.LOCATION))
+        assertEquals(2, state.grantedGrants.size)
 
         assertTrue(locationPhotosEnabled, "Location photos should be enabled")
     }
@@ -360,6 +351,7 @@ class GrantGroupHandlerIntegrationTest {
     fun `Dialog dismissal during multi-permission flow`() = runTest {
         mockGrantManager.setStatus(AppGrant.CAMERA, GrantStatus.DENIED)
         mockGrantManager.setStatus(AppGrant.MICROPHONE, GrantStatus.NOT_DETERMINED)
+        mockGrantManager.setRequestResult(AppGrant.CAMERA, GrantStatus.DENIED)
 
         val handler = GrantGroupHandler(
             grantManager = mockGrantManager,
@@ -373,21 +365,18 @@ class GrantGroupHandlerIntegrationTest {
         testScope.advanceUntilIdle()
 
         // Rationale shown for Camera
-        handler.state.test {
-            assertTrue(awaitItem().showRationale)
-        }
+        val state1 = handler.state.value
+        assertTrue(state1.showRationale)
 
         // User dismisses dialog without action
         handler.onDismiss()
         testScope.advanceUntilIdle()
 
         // Verify: Dialog hidden, callback not invoked
-        handler.state.test {
-            val state = awaitItem()
-            assertFalse(state.isVisible)
-            assertFalse(state.showRationale)
-            assertFalse(state.showSettingsGuide)
-        }
+        val state2 = handler.state.value
+        assertFalse(state2.isVisible)
+        assertFalse(state2.showRationale)
+        assertFalse(state2.showSettingsGuide)
 
         assertFalse(callbackInvoked, "Callback should not be invoked")
     }
@@ -399,6 +388,7 @@ class GrantGroupHandlerIntegrationTest {
         mockGrantManager.setStatus(AppGrant.LOCATION, GrantStatus.NOT_DETERMINED)
         mockGrantManager.setRequestResult(AppGrant.CAMERA, GrantStatus.GRANTED)
         mockGrantManager.setRequestResult(AppGrant.MICROPHONE, GrantStatus.DENIED)
+        mockGrantManager.setRequestResult(AppGrant.LOCATION, GrantStatus.DENIED)
 
         val handler = GrantGroupHandler(
             grantManager = mockGrantManager,
@@ -411,19 +401,17 @@ class GrantGroupHandlerIntegrationTest {
         handler.request { allGranted = true }
         testScope.advanceUntilIdle()
 
-        // Verify: Camera granted, Microphone denied, Location never requested
+        // Verify: With atomic requests, all are requested at once
         assertTrue(mockGrantManager.isRequestCalled(AppGrant.CAMERA))
         assertTrue(mockGrantManager.isRequestCalled(AppGrant.MICROPHONE))
-        assertFalse(mockGrantManager.isRequestCalled(AppGrant.LOCATION))
+        assertTrue(mockGrantManager.isRequestCalled(AppGrant.LOCATION))
         assertFalse(allGranted, "Callback should not be invoked")
 
         // Verify granted set has only Camera
-        handler.state.test {
-            val state = awaitItem()
-            assertTrue(state.grantedGrants.contains(AppGrant.CAMERA))
-            assertFalse(state.grantedGrants.contains(AppGrant.MICROPHONE))
-            assertFalse(state.grantedGrants.contains(AppGrant.LOCATION))
-        }
+        val state = handler.state.value
+        assertTrue(state.grantedGrants.contains(AppGrant.CAMERA))
+        assertFalse(state.grantedGrants.contains(AppGrant.MICROPHONE))
+        assertFalse(state.grantedGrants.contains(AppGrant.LOCATION))
     }
 
     @Test
@@ -475,20 +463,16 @@ class GrantGroupHandlerIntegrationTest {
             handler.request { }
             testScope.advanceUntilIdle()
 
-            // Progress: 1/3
-            val state1 = awaitItem()
-            assertEquals(1, state1.grantedGrants.size)
-            assertEquals(3, state1.totalGrants)
-
-            // Progress: 2/3
-            val state2 = awaitItem()
-            assertEquals(2, state2.grantedGrants.size)
-
-            // Progress: 3/3 (complete)
-            val state3 = awaitItem()
-            assertEquals(3, state3.grantedGrants.size)
+            // Progress: 3/3 (complete in one go due to atomic multi-request)
+            val state = awaitItem()
+            assertEquals(3, state.grantedGrants.size)
+            assertEquals(3, state.totalGrants)
+            assertTrue(state.grantedGrants.contains(AppGrant.CAMERA))
+            assertTrue(state.grantedGrants.contains(AppGrant.MICROPHONE))
+            assertTrue(state.grantedGrants.contains(AppGrant.LOCATION))
         }
     }
+
 
     // ==================== Real-World Use Case: Contact Sync ====================
 

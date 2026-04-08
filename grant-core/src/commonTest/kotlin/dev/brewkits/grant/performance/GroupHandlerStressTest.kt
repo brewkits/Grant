@@ -280,6 +280,7 @@ class GroupHandlerStressTest {
         mockGrantManager.setStatus(AppGrant.CAMERA, GrantStatus.GRANTED)
         mockGrantManager.setStatus(AppGrant.MICROPHONE, GrantStatus.GRANTED)
         mockGrantManager.setStatus(AppGrant.LOCATION, GrantStatus.DENIED)
+        mockGrantManager.setRequestResult(AppGrant.LOCATION, GrantStatus.DENIED)
 
         val handler = GrantGroupHandler(
             grantManager = mockGrantManager,

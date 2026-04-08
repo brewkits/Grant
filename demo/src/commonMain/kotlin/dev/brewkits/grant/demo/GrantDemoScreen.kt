@@ -11,14 +11,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import dev.brewkits.grant.GrantStatus
 import dev.brewkits.grant.compose.GrantDialog
+import dev.brewkits.grant.compose.GrantGroupDialog
 
 /**
  * Demo screen showcasing various grant request scenarios.
  *
  * This demonstrates:
  * 1. Sequential grant requests (Camera → Microphone)
- * 2. Parallel grant requests (Location + Storage)
+ * 2. Atomic Group grant requests (Location + Storage)
  * 3. Different grant types (Runtime vs Dangerous)
  *
  * Each scenario includes:
@@ -35,12 +37,21 @@ fun GrantDemoScreen(
     val parallelResult by viewModel.parallelResult.collectAsState()
     val grantTypeResult by viewModel.grantTypeResult.collectAsState()
     val v11Result by viewModel.v11Result.collectAsState()
+    val scenario5Result by viewModel.scenario5Result.collectAsState()
+
+    // Live status for status chips
+    val cameraStatus by viewModel.cameraGrant.status.collectAsState()
+    val micStatus by viewModel.microphoneGrant.status.collectAsState()
+    val notifStatus by viewModel.notificationGrant.status.collectAsState()
+    val galleryStatus by viewModel.galleryGrant.status.collectAsState()
+    val locationStatus by viewModel.locationGrant.status.collectAsState()
+    val motionStatus by viewModel.motionGrant.status.collectAsState()
+    val calendarStatus by viewModel.calendarGrant.status.collectAsState()
 
     // Handle grant dialogs using grant-compose
     GrantDialog(handler = viewModel.cameraGrant)
     GrantDialog(handler = viewModel.microphoneGrant)
-    GrantDialog(handler = viewModel.locationGrant)
-    GrantDialog(handler = viewModel.storageGrant)
+    GrantGroupDialog(handler = viewModel.locationAndStorageGroup)
     GrantDialog(handler = viewModel.notificationGrant)
     GrantDialog(handler = viewModel.locationAlwaysGrant)
     // v1.1.0 new permissions
@@ -48,7 +59,9 @@ fun GrantDemoScreen(
     GrantDialog(handler = viewModel.contactsWriteGrant)
     GrantDialog(handler = viewModel.bluetoothAdvertiseGrant)
     GrantDialog(handler = viewModel.readCalendarGrant)
-
+    // v1.2.0 new
+    GrantDialog(handler = viewModel.motionGrant)
+    GrantDialog(handler = viewModel.calendarGrant)
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -56,6 +69,13 @@ fun GrantDemoScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
+        // OS Version Banner — auto-populates from OsInfo
+        OsVersionBanner(
+            platform = OsInfo.platform,
+            osVersion = OsInfo.osVersion,
+            apiLevel = OsInfo.apiLevel
+        )
+
         // Header
         Text(
             text = "Grant Demo",
@@ -78,19 +98,21 @@ fun GrantDemoScreen(
                     "Use case: Video recording that needs both camera and audio.",
             buttonText = "Request Camera → Microphone",
             onClick = { viewModel.requestSequentialGrants() },
-            result = sequentialResult
+            result = sequentialResult,
+            statusChips = listOf("Camera" to cameraStatus, "Mic" to micStatus)
         )
 
         HorizontalDivider()
 
-        // Scenario 2: Parallel Grants
+        // Scenario 2: Atomic Group Grants
         DemoSection(
-            title = "2. Parallel Grants",
-            description = "Request Location and Storage simultaneously.\n\n" +
-                    "Use case: Photo app that saves geotagged images.",
-            buttonText = "Request Location + Storage",
+            title = "2. Atomic Group Grants",
+            description = "Request Location and Storage simultaneously using GrantGroupHandler.\n\n" +
+                    "OS groups these dialogs if supported. Callback only fires when ALL are granted.",
+            buttonText = "Request Group (Location + Storage)",
             onClick = { viewModel.requestParallelGrants() },
-            result = parallelResult
+            result = parallelResult,
+            statusChips = listOf("Location" to locationStatus)
         )
 
         HorizontalDivider()
@@ -155,14 +177,14 @@ fun GrantDemoScreen(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Example: Contacts\nAccesses sensitive user data",
+                        text = "Example: Gallery\nCan support PARTIAL_GRANTED on Android 14+ and iOS",
                         style = MaterialTheme.typography.bodySmall
                     )
                     Button(
-                        onClick = { viewModel.requestDangerousGrant() },
+                        onClick = { viewModel.requestGalleryGrant() },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Request Contacts Grant")
+                        Text("Request Gallery Grant")
                     }
                 }
             }
@@ -203,18 +225,13 @@ fun GrantDemoScreen(
 
             // Result display for grant types
             if (grantTypeResult.isNotEmpty()) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                ResultCard(
+                    result = grantTypeResult,
+                    statusChips = listOf(
+                        "Notification" to notifStatus,
+                        "Gallery" to galleryStatus
                     )
-                ) {
-                    Text(
-                        text = grantTypeResult,
-                        modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
+                )
             }
         }
 
@@ -323,18 +340,85 @@ fun GrantDemoScreen(
             }
 
             if (v11Result.isNotEmpty()) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                ResultCard(result = v11Result)
+            }
+        }
+
+        HorizontalDivider()
+
+        // ==========================================
+        // Scenario 5: v1.2.0 — OS-Specific Advanced
+        // Automates the manual verification checklist:
+        // - Android API 21: STORAGE legacy
+        // - Android API 33: NOTIFICATION, granular GALLERY
+        // - Android API 35: GALLERY partial access
+        // - iOS Simulator: all permissions requestable
+        // - iOS 17+: Calendar writeOnly → PARTIAL_GRANTED
+        // ==========================================
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Text(
+                text = "5. v1.2.0 — OS-Version Advanced",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "Tests OS-specific permission behaviors automatically detected for your device.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            // Current OS context banner
+            OsVersionBanner(
+                platform = OsInfo.platform,
+                osVersion = OsInfo.osVersion,
+                apiLevel = OsInfo.apiLevel
+            )
+
+            // 5a: MOTION
+            AdvancedPermissionCard(
+                title = "MOTION — Activity Recognition",
+                platformNote = OsInfo.motionBehaviorNote(),
+                buttonText = "Request MOTION",
+                currentStatus = motionStatus,
+                onClick = { viewModel.requestMotionGrant() }
+            )
+
+            // 5b: CALENDAR full + iOS 17+ writeOnly
+            AdvancedPermissionCard(
+                title = "CALENDAR — Full Access (iOS 17+ aware)",
+                platformNote = "iOS 17+: Full Access vs Add Only → PARTIAL_GRANTED\nAndroid: READ_CALENDAR + WRITE_CALENDAR",
+                buttonText = "Request CALENDAR",
+                currentStatus = calendarStatus,
+                onClick = { viewModel.requestCalendarFullGrant() }
+            )
+
+            // 5c: GALLERY partial
+            AdvancedPermissionCard(
+                title = "GALLERY — Partial Access Detection",
+                platformNote = OsInfo.galleryBehaviorNote(),
+                buttonText = "Request GALLERY",
+                currentStatus = galleryStatus,
+                onClick = { viewModel.requestGalleryPartialGrant() }
+            )
+
+            // 5d: NOTIFICATION with API awareness
+            AdvancedPermissionCard(
+                title = "NOTIFICATION — API 33+ Awareness",
+                platformNote = OsInfo.notificationBehaviorNote(),
+                buttonText = "Request NOTIFICATION",
+                currentStatus = notifStatus,
+                onClick = { viewModel.requestNotificationScenario5() }
+            )
+
+            if (scenario5Result.isNotEmpty()) {
+                ResultCard(
+                    result = scenario5Result,
+                    statusChips = listOf(
+                        "Motion" to motionStatus,
+                        "Calendar" to calendarStatus,
+                        "Gallery" to galleryStatus
                     )
-                ) {
-                    Text(
-                        text = v11Result,
-                        modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
+                )
             }
         }
 
@@ -359,6 +443,7 @@ private fun DemoSection(
     buttonText: String,
     onClick: () -> Unit,
     result: String,
+    statusChips: List<Pair<String, GrantStatus?>> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -377,6 +462,22 @@ private fun DemoSection(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
+        if (statusChips.isNotEmpty()) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                statusChips.forEach { (label, status) ->
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    StatusChip(status = status)
+                }
+            }
+        }
+
         Button(
             onClick = onClick,
             modifier = Modifier.fillMaxWidth()
@@ -385,18 +486,77 @@ private fun DemoSection(
         }
 
         if (result.isNotEmpty()) {
-            Card(
+            ResultCard(result = result)
+        }
+    }
+}
+
+@Composable
+private fun ResultCard(
+    result: String,
+    statusChips: List<Pair<String, GrantStatus?>> = emptyList(),
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(text = result, style = MaterialTheme.typography.bodyMedium)
+            if (statusChips.isNotEmpty()) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    statusChips.forEach { (label, status) ->
+                        Text(
+                            text = "$label:",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        StatusChip(status = status)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AdvancedPermissionCard(
+    title: String,
+    platformNote: String,
+    buttonText: String,
+    currentStatus: GrantStatus?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(modifier = modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = result,
-                    modifier = Modifier.padding(16.dp),
-                    style = MaterialTheme.typography.bodyMedium
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
                 )
+                StatusChip(status = currentStatus)
             }
+            Text(
+                text = platformNote,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Button(
+                onClick = onClick,
+                modifier = Modifier.fillMaxWidth()
+            ) { Text(buttonText) }
         }
     }
 }

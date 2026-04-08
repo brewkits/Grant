@@ -1,12 +1,23 @@
-# Grant — KMP Permission Library for Android & iOS
+<div align="center">
+<img src="assets/logo.png" width="96" alt="Grant logo" />
+
+# Grant
+
+### Modern, type-safe permission handling for Kotlin Multiplatform.
 
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.1.0-blue.svg?logo=kotlin)](http://kotlinlang.org)
-[![Compose](https://img.shields.io/badge/Compose-1.7.1-green)](https://www.jetbrains.com/lp/compose-multiplatform/)
+[![Compose](https://img.shields.io/badge/Compose-1.9.3-green)](https://www.jetbrains.com/lp/compose-multiplatform/)
 [![Maven Central](https://img.shields.io/maven-central/v/dev.brewkits/grant-core)](https://central.sonatype.com/artifact/dev.brewkits/grant-core)
 [![License](https://img.shields.io/badge/License-Apache%202.0-orange.svg)](https://opensource.org/licenses/Apache-2.0)
 [![GitHub Stars](https://img.shields.io/github/stars/brewkits/Grant?style=social)](https://github.com/brewkits/Grant/stargazers)
 
-**A Modern Permission Library for Kotlin Multiplatform**
+**🛡️ Atomic Groups · 🧟 Process-Death Safe · 🍎 iOS Native Parity · 📐 Partial Granted**
+
+[**Quick Start**](#-quick-start) · [**Installation**](#-installation) · [**Custom Permissions**](#-custom-permissions-rawpermission) · [**Design Rationale**](#-design-rationale)
+
+</div>
+
+---
 
 Grant simplifies permission handling across Android and iOS with a clean, type-safe API. No Fragment/Activity required, no binding boilerplate, and built-in support for service checking (GPS, Bluetooth, etc.).
 
@@ -16,10 +27,12 @@ Grant simplifies permission handling across Android and iOS with a clean, type-s
 - Android process death recovery without timeout
 - Extensible design supporting custom permissions via RawPermission
 - Built-in service status checking (Location, Bluetooth)
+- Atomic Group Requests for optimized system dialog UX
+- Partial Granted detection (Android 14+ "Select Photos")
 
 ---
 
-## Quick Start
+## 🚀 Quick Start
 
 ```kotlin
 // 1️⃣ In your ViewModel
@@ -155,8 +168,8 @@ kotlin {
 
         // Add Grant dependencies to mobileMain
         mobileMain.dependencies {
-            implementation("dev.brewkits:grant-core:1.1.0")
-            implementation("dev.brewkits:grant-compose:1.1.0") // Optional
+            implementation("dev.brewkits:grant-core:1.2.0")
+            implementation("dev.brewkits:grant-compose:1.2.0") // Optional
         }
 
         // Your JS/JVM code remains in commonMain without Grant
@@ -263,7 +276,7 @@ This helps you detect when users grant permission but forget to enable the requi
 
 ---
 
-## Installation
+## 📦 Installation
 
 ### Gradle (Kotlin DSL)
 
@@ -279,8 +292,8 @@ dependencyResolutionManagement {
 kotlin {
     sourceSets {
         commonMain.dependencies {
-            implementation("dev.brewkits:grant-core:1.1.0")
-            implementation("dev.brewkits:grant-compose:1.1.0") // Optional
+            implementation("dev.brewkits:grant-core:1.2.0")
+            implementation("dev.brewkits:grant-compose:1.2.0") // Optional
         }
     }
 }
@@ -344,7 +357,7 @@ See [Quick Start Guide](docs/getting-started/quick-start.md) for complete setup.
 
 ---
 
-## Supported Permissions
+## 📖 Supported Permissions
 
 | Permission | Android | iOS | Notes |
 |------------|---------|-----|-------|
@@ -368,7 +381,7 @@ See [Quick Start Guide](docs/getting-started/quick-start.md) for complete setup.
 
 ---
 
-## Custom Permissions
+## 🔧 Custom Permissions
 
 Grant supports custom permissions through the `RawPermission` API. This allows you to use new OS permissions or platform-specific features without waiting for library updates.
 
@@ -517,7 +530,7 @@ data class RawPermission(
 - **Android**: [Dead Click Fix](docs/FIX_DEAD_CLICK_ANDROID.md) - Fixing Android 12+ dead clicks
 - **iOS**: [Info.plist Setup](docs/platform-specific/ios/info-plist.md) ⚠️ **Critical** • [Simulator Limitations](docs/ios/SIMULATOR_LIMITATIONS.md) • [Info.plist Localization](docs/ios/INFO_PLIST_LOCALIZATION.md)
 
-### Advanced Topics
+### 🧪 Advanced Topics
 - [Testing Guide](docs/TESTING.md) - Unit testing with FakeGrantManager
 - [Best Practices](docs/BEST_PRACTICES.md) - Production-ready patterns
 - [Compose Integration](docs/grant-compose/COMPOSE_SUPPORT_RELEASE_NOTES.md) - Using grant-compose module
@@ -567,13 +580,13 @@ GrantLogger.logHandler = { level, tag, message ->
 
 ---
 
-## Contributing
+## 🤝 Contributing
 
 We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ---
 
-## License
+## ⚖️ License
 
 ```
 Copyright 2026 BrewKits

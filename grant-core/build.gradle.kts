@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "dev.brewkits"
-version = "1.1.0"
+version = "1.2.0"
 
 kotlin {
     androidTarget {
@@ -66,6 +66,17 @@ kotlin {
             implementation(libs.androidx.test.junit)
             implementation(libs.kotlinx.coroutines.test)
         }
+
+        // JVM-based Android unit tests (no device/emulator required)
+        // Tests permission mapping logic, API version branching, and status reporting
+        val androidUnitTest by getting {
+            dependencies {
+                implementation(libs.kotlin.test)
+                implementation(libs.kotlinx.coroutines.test)
+                implementation(libs.mockk)
+                implementation(libs.robolectric)
+            }
+        }
     }
 }
 
@@ -75,6 +86,7 @@ android {
 
     defaultConfig {
         minSdk = libs.versions.android.minSdk.get().toInt()
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     compileOptions {
@@ -94,7 +106,7 @@ publishing {
     publications.configureEach {
         (this as? MavenPublication)?.let {
             groupId = "dev.brewkits"
-            version = "1.1.0"
+            version = "1.2.0"
 
             pom {
                 name.set("KMP Grant")

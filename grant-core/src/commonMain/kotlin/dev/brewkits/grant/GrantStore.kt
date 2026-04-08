@@ -118,3 +118,42 @@ interface GrantStore {
      */
     fun markRawPermissionRequested(identifier: String)
 }
+
+// ====================================================================
+// FIX M1: Unified GrantPermission extension API
+//
+// Previously callers had to branch: `if (grant is AppGrant) ... else if (grant is RawPermission)...`
+// These extensions provide a single call surface for both types.
+// Backwards-compatible extension functions — no changes to existing implementations.
+// ====================================================================
+
+/**
+ * Check whether any [GrantPermission] has been requested before.
+ * Dispatches to [GrantStore.isRequestedBefore] (AppGrant) or
+ * [GrantStore.isRawPermissionRequested] (RawPermission).
+ */
+fun GrantStore.isRequestedBefore(grant: GrantPermission): Boolean = when (grant) {
+    is AppGrant     -> isRequestedBefore(grant)
+    is RawPermission -> isRawPermissionRequested(grant.identifier)
+    else             -> false
+}
+
+/**
+ * Mark any [GrantPermission] as "has been requested".
+ * Dispatches to [GrantStore.setRequested] (AppGrant) or
+ * [GrantStore.markRawPermissionRequested] (RawPermission).
+ */
+fun GrantStore.setRequested(grant: GrantPermission) = when (grant) {
+    is AppGrant      -> setRequested(grant)
+    is RawPermission -> markRawPermissionRequested(grant.identifier)
+    else             -> Unit
+}
+
+/**
+ * Get cached status for any [GrantPermission].
+ * Only [AppGrant] values are cached; [RawPermission] always returns null.
+ */
+fun GrantStore.getStatus(grant: GrantPermission): GrantStatus? = when (grant) {
+    is AppGrant -> getStatus(grant)
+    else        -> null
+}

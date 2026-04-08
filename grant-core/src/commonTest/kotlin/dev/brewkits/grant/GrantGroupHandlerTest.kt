@@ -112,6 +112,28 @@ class GrantGroupHandlerTest {
         assertFalse(state.isVisible, "No dialog should be shown")
     }
 
+    @Test
+    fun `should work with RawPermission in group`() = runTest {
+        val customPermission = RawPermission(
+            identifier = "CUSTOM",
+            androidPermissions = listOf("android.permission.CUSTOM"),
+            iosUsageKey = null
+        )
+        
+        mockGrantManager.setStatus(AppGrant.CAMERA, GrantStatus.GRANTED)
+        mockGrantManager.setStatus(customPermission, GrantStatus.GRANTED)
+
+        val grants = listOf(AppGrant.CAMERA, customPermission)
+        val handler = GrantGroupHandler(mockGrantManager, grants, testScope)
+        testScheduler.advanceUntilIdle()
+
+        var callbackInvoked = false
+        handler.request { callbackInvoked = true }
+        testScheduler.advanceUntilIdle()
+
+        assertTrue(callbackInvoked, "Callback should be invoked for RawPermission group")
+    }
+
     // ==================== Sequential Grant Requests ====================
 
     @Test
@@ -135,7 +157,7 @@ class GrantGroupHandlerTest {
     }
 
     @Test
-    fun `request should update granted set after each successful grant`() = runTest {
+    fun `request should update granted set after group request`() = runTest {
         mockGrantManager.setStatus(AppGrant.CAMERA, GrantStatus.NOT_DETERMINED)
         mockGrantManager.setStatus(AppGrant.MICROPHONE, GrantStatus.NOT_DETERMINED)
         mockGrantManager.setRequestResult(AppGrant.CAMERA, GrantStatus.GRANTED)
@@ -145,23 +167,14 @@ class GrantGroupHandlerTest {
         val handler = GrantGroupHandler(mockGrantManager, grants, testScope)
         testScheduler.advanceUntilIdle()
 
-        handler.state.test {
-            skipItems(1) // Skip initial state
+        handler.request { }
+        testScheduler.advanceUntilIdle()
 
-            handler.request { }
-            testScheduler.advanceUntilIdle()
-
-            // Camera granted
-            val state1 = awaitItem()
-            assertTrue(state1.grantedGrants.contains(AppGrant.CAMERA))
-            assertEquals(1, state1.grantedGrants.size)
-
-            // Microphone granted
-            val state2 = awaitItem()
-            assertTrue(state2.grantedGrants.contains(AppGrant.CAMERA))
-            assertTrue(state2.grantedGrants.contains(AppGrant.MICROPHONE))
-            assertEquals(2, state2.grantedGrants.size)
-        }
+        // Granted set should be updated with all granted permissions at once
+        val state = handler.state.value
+        assertTrue(state.grantedGrants.contains(AppGrant.CAMERA))
+        assertTrue(state.grantedGrants.contains(AppGrant.MICROPHONE))
+        assertEquals(2, state.grantedGrants.size)
     }
 
     // ==================== Failure Scenarios ====================
@@ -170,6 +183,8 @@ class GrantGroupHandlerTest {
     fun `request should stop on first denial and show rationale`() = runTest {
         mockGrantManager.setStatus(AppGrant.CAMERA, GrantStatus.DENIED)
         mockGrantManager.setStatus(AppGrant.MICROPHONE, GrantStatus.NOT_DETERMINED)
+        mockGrantManager.setRequestResult(AppGrant.CAMERA, GrantStatus.DENIED)
+        mockGrantManager.setRequestResult(AppGrant.MICROPHONE, GrantStatus.GRANTED)
 
         val grants = listOf(AppGrant.CAMERA, AppGrant.MICROPHONE)
         val handler = GrantGroupHandler(mockGrantManager, grants, testScope)
@@ -183,16 +198,16 @@ class GrantGroupHandlerTest {
         }
         testScheduler.advanceUntilIdle()
 
-        // Should show rationale for CAMERA
-        handler.state.test {
-            val state = awaitItem()
-            assertTrue(state.isVisible, "Dialog should be visible")
-            assertTrue(state.showRationale, "Should show rationale")
-            assertEquals(AppGrant.CAMERA, state.currentGrant)
-            assertEquals("Camera is required", state.rationaleMessage)
-        }
+        // Should show rationale for CAMERA (the first denied one)
+        val state = handler.state.value
+        assertTrue(state.isVisible, "Dialog should be visible")
+        assertTrue(state.showRationale, "Should show rationale")
+        assertEquals(AppGrant.CAMERA, state.currentGrant)
+        assertEquals("Camera is required", state.rationaleMessage)
 
-        assertFalse(mockGrantManager.isRequestCalled(AppGrant.MICROPHONE), "Should not request Microphone")
+        // With atomic group requests, ALL denied permissions are requested from OS at once
+        assertTrue(mockGrantManager.isRequestCalled(AppGrant.CAMERA), "Should request Camera")
+        assertTrue(mockGrantManager.isRequestCalled(AppGrant.MICROPHONE), "Should request Microphone")
         assertFalse(callbackInvoked, "Callback should NOT be invoked")
     }
 
@@ -200,6 +215,8 @@ class GrantGroupHandlerTest {
     fun `request should stop on first permanent denial and show settings guide`() = runTest {
         mockGrantManager.setStatus(AppGrant.CAMERA, GrantStatus.DENIED_ALWAYS)
         mockGrantManager.setStatus(AppGrant.MICROPHONE, GrantStatus.NOT_DETERMINED)
+        mockGrantManager.setRequestResult(AppGrant.CAMERA, GrantStatus.DENIED_ALWAYS)
+        mockGrantManager.setRequestResult(AppGrant.MICROPHONE, GrantStatus.GRANTED)
 
         val grants = listOf(AppGrant.CAMERA, AppGrant.MICROPHONE)
         val handler = GrantGroupHandler(mockGrantManager, grants, testScope)
@@ -214,15 +231,14 @@ class GrantGroupHandlerTest {
         testScheduler.advanceUntilIdle()
 
         // Should show settings guide for CAMERA
-        handler.state.test {
-            val state = awaitItem()
-            assertTrue(state.isVisible, "Dialog should be visible")
-            assertTrue(state.showSettingsGuide, "Should show settings guide")
-            assertEquals(AppGrant.CAMERA, state.currentGrant)
-            assertEquals("Enable Camera in Settings", state.settingsMessage)
-        }
+        val state = handler.state.value
+        assertTrue(state.isVisible, "Dialog should be visible")
+        assertTrue(state.showSettingsGuide, "Should show settings guide")
+        assertEquals(AppGrant.CAMERA, state.currentGrant)
+        assertEquals("Enable Camera in Settings", state.settingsMessage)
 
-        assertFalse(mockGrantManager.isRequestCalled(AppGrant.MICROPHONE), "Should not request Microphone")
+        assertTrue(mockGrantManager.isRequestCalled(AppGrant.CAMERA), "Should request Camera")
+        assertTrue(mockGrantManager.isRequestCalled(AppGrant.MICROPHONE), "Should request Microphone")
         assertFalse(callbackInvoked, "Callback should NOT be invoked")
     }
 
@@ -251,7 +267,7 @@ class GrantGroupHandlerTest {
     fun `onRationaleConfirmed should request current grant and continue flow if granted`() = runTest {
         mockGrantManager.setStatus(AppGrant.CAMERA, GrantStatus.DENIED)
         mockGrantManager.setStatus(AppGrant.MICROPHONE, GrantStatus.NOT_DETERMINED)
-        mockGrantManager.setRequestResult(AppGrant.CAMERA, GrantStatus.GRANTED)
+        mockGrantManager.setRequestResult(AppGrant.CAMERA, GrantStatus.DENIED)
         mockGrantManager.setRequestResult(AppGrant.MICROPHONE, GrantStatus.GRANTED)
 
         val grants = listOf(AppGrant.CAMERA, AppGrant.MICROPHONE)
@@ -265,20 +281,20 @@ class GrantGroupHandlerTest {
         // Rationale shown for Camera - verify it's shown
         assertTrue(handler.state.value.showRationale, "Rationale should be shown for Camera")
 
+        mockGrantManager.setRequestResult(AppGrant.CAMERA, GrantStatus.GRANTED)
         handler.onRationaleConfirmed()
         testScheduler.advanceUntilIdle()
 
-        // onRationaleConfirmed only handles current grant - doesn't continue sequential flow
         assertTrue(mockGrantManager.isRequestCalled(AppGrant.CAMERA), "Should request Camera")
-        // Microphone is NOT requested automatically - user must call request() again
-        assertFalse(mockGrantManager.isRequestCalled(AppGrant.MICROPHONE), "Should NOT auto-request Microphone")
-        assertFalse(callbackInvoked, "Callback should NOT be invoked - flow stopped at Camera")
+        // With atomic requests, it continues flow and invokes callback if all others are granted
+        assertTrue(callbackInvoked, "Callback SHOULD be invoked because all grants are now granted")
     }
 
     @Test
     fun `onRationaleConfirmed should show settings if grant denied again`() = runTest {
         mockGrantManager.setStatus(AppGrant.CAMERA, GrantStatus.DENIED)
-        mockGrantManager.setRequestResult(AppGrant.CAMERA, GrantStatus.DENIED_ALWAYS)
+        // First request returns DENIED, triggering rationale
+        mockGrantManager.setRequestResult(AppGrant.CAMERA, GrantStatus.DENIED)
 
         val grants = listOf(AppGrant.CAMERA)
         val handler = GrantGroupHandler(mockGrantManager, grants, testScope)
@@ -289,23 +305,23 @@ class GrantGroupHandlerTest {
         ) { }
         testScheduler.advanceUntilIdle()
 
-        handler.state.test {
-            skipItems(1) // Skip rationale
+        // Second request returns DENIED_ALWAYS, triggering settings
+        mockGrantManager.setRequestResult(AppGrant.CAMERA, GrantStatus.DENIED_ALWAYS)
+        handler.onRationaleConfirmed()
+        testScheduler.advanceUntilIdle()
 
-            handler.onRationaleConfirmed()
-            testScheduler.advanceUntilIdle()
-
-            val state = awaitItem()
-            assertTrue(state.showSettingsGuide, "Should show settings guide")
-            assertEquals("Enable in Settings", state.settingsMessage)
-        }
+        val state = handler.state.value
+        assertTrue(state.showSettingsGuide, "Should show settings guide")
+        assertEquals("Enable in Settings", state.settingsMessage)
     }
+
 
     // ==================== Settings Flow ====================
 
     @Test
     fun `onSettingsConfirmed should open settings and reset state`() = runTest {
         mockGrantManager.setStatus(AppGrant.CAMERA, GrantStatus.DENIED_ALWAYS)
+        mockGrantManager.setRequestResult(AppGrant.CAMERA, GrantStatus.DENIED_ALWAYS)
 
         val grants = listOf(AppGrant.CAMERA)
         val handler = GrantGroupHandler(mockGrantManager, grants, testScope)
@@ -331,6 +347,7 @@ class GrantGroupHandlerTest {
     @Test
     fun `onDismiss should hide dialog and reset current grant`() = runTest {
         mockGrantManager.setStatus(AppGrant.CAMERA, GrantStatus.DENIED)
+        mockGrantManager.setRequestResult(AppGrant.CAMERA, GrantStatus.DENIED)
 
         val grants = listOf(AppGrant.CAMERA)
         val handler = GrantGroupHandler(mockGrantManager, grants, testScope)
@@ -410,6 +427,8 @@ class GrantGroupHandlerTest {
     fun `request should use custom rationale messages per grant`() = runTest {
         mockGrantManager.setStatus(AppGrant.CAMERA, GrantStatus.DENIED)
         mockGrantManager.setStatus(AppGrant.MICROPHONE, GrantStatus.DENIED)
+        mockGrantManager.setRequestResult(AppGrant.CAMERA, GrantStatus.DENIED)
+        mockGrantManager.setRequestResult(AppGrant.MICROPHONE, GrantStatus.DENIED)
 
         val grants = listOf(AppGrant.CAMERA, AppGrant.MICROPHONE)
         val handler = GrantGroupHandler(mockGrantManager, grants, testScope)
@@ -434,6 +453,7 @@ class GrantGroupHandlerTest {
     @Test
     fun `request should use custom settings messages per grant`() = runTest {
         mockGrantManager.setStatus(AppGrant.CAMERA, GrantStatus.DENIED_ALWAYS)
+        mockGrantManager.setRequestResult(AppGrant.CAMERA, GrantStatus.DENIED_ALWAYS)
 
         val grants = listOf(AppGrant.CAMERA)
         val handler = GrantGroupHandler(mockGrantManager, grants, testScope)
@@ -472,12 +492,13 @@ class GrantGroupHandlerTest {
     }
 
     @Test
-    fun `three grants with middle one denied should stop and not request third`() = runTest {
+    fun `three grants with middle one denied should show rationale for first denied`() = runTest {
         mockGrantManager.setStatus(AppGrant.CAMERA, GrantStatus.NOT_DETERMINED)
         mockGrantManager.setStatus(AppGrant.MICROPHONE, GrantStatus.NOT_DETERMINED)
         mockGrantManager.setStatus(AppGrant.LOCATION, GrantStatus.NOT_DETERMINED)
         mockGrantManager.setRequestResult(AppGrant.CAMERA, GrantStatus.GRANTED)
         mockGrantManager.setRequestResult(AppGrant.MICROPHONE, GrantStatus.DENIED)
+        mockGrantManager.setRequestResult(AppGrant.LOCATION, GrantStatus.DENIED)
 
         val grants = listOf(AppGrant.CAMERA, AppGrant.MICROPHONE, AppGrant.LOCATION)
         val handler = GrantGroupHandler(mockGrantManager, grants, testScope)
@@ -489,7 +510,11 @@ class GrantGroupHandlerTest {
 
         assertTrue(mockGrantManager.isRequestCalled(AppGrant.CAMERA), "Should request Camera")
         assertTrue(mockGrantManager.isRequestCalled(AppGrant.MICROPHONE), "Should request Microphone")
-        assertFalse(mockGrantManager.isRequestCalled(AppGrant.LOCATION), "Should NOT request Location")
+        assertTrue(mockGrantManager.isRequestCalled(AppGrant.LOCATION), "Should request Location")
         assertFalse(callbackInvoked, "Callback should NOT be invoked")
+        
+        val state = handler.state.value
+        assertEquals(AppGrant.MICROPHONE, state.currentGrant, "Should show rationale for first denied grant")
+        assertTrue(state.showRationale, "Should show rationale")
     }
 }

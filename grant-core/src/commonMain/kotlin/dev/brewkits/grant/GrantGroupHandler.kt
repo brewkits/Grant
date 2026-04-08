@@ -12,12 +12,12 @@ import kotlinx.coroutines.launch
  */
 data class GrantGroupUiState(
     val isVisible: Boolean = false,
-    val currentGrant: AppGrant? = null,
+    val currentGrant: GrantPermission? = null,
     val showRationale: Boolean = false,
     val showSettingsGuide: Boolean = false,
     val rationaleMessage: String? = null,
     val settingsMessage: String? = null,
-    val grantedGrants: Set<AppGrant> = emptySet(),
+    val grantedGrants: Set<GrantPermission> = emptySet(),
     val totalGrants: Int = 0
 )
 
@@ -67,7 +67,7 @@ data class GrantGroupUiState(
  */
 class GrantGroupHandler(
     private val grantManager: GrantManager,
-    private val grants: List<AppGrant>,
+    private val grants: List<GrantPermission>,
     scope: CoroutineScope
 ) {
     private val scope: CoroutineScope
@@ -85,12 +85,12 @@ class GrantGroupHandler(
     private val _state = MutableStateFlow(GrantGroupUiState(totalGrants = grants.size))
     val state: StateFlow<GrantGroupUiState> = _state.asStateFlow()
 
-    private val _statuses = MutableStateFlow<Map<AppGrant, GrantStatus>>(emptyMap())
-    val statuses: StateFlow<Map<AppGrant, GrantStatus>> = _statuses.asStateFlow()
+    private val _statuses = MutableStateFlow<Map<GrantPermission, GrantStatus>>(emptyMap())
+    val statuses: StateFlow<Map<GrantPermission, GrantStatus>> = _statuses.asStateFlow()
 
     private var onAllGrantedCallback: (() -> Unit)? = null
-    private var currentRationaleMessages: Map<AppGrant, String> = emptyMap()
-    private var currentSettingsMessages: Map<AppGrant, String> = emptyMap()
+    private var currentRationaleMessages: Map<GrantPermission, String> = emptyMap()
+    private var currentSettingsMessages: Map<GrantPermission, String> = emptyMap()
 
     init {
         refreshAllStatuses()
@@ -102,8 +102,8 @@ class GrantGroupHandler(
      */
     fun refreshAllStatuses() {
         scope.launch {
-            val statusMap = mutableMapOf<AppGrant, GrantStatus>()
-            val grantedSet = mutableSetOf<AppGrant>()
+            val statusMap = mutableMapOf<GrantPermission, GrantStatus>()
+            val grantedSet = mutableSetOf<GrantPermission>()
 
             for (grant in grants) {
                 val status = grantManager.checkStatus(grant)
@@ -121,16 +121,16 @@ class GrantGroupHandler(
     /**
      * Request all grants in the group.
      *
-     * Grants are requested sequentially for better UX.
-     * If user denies one grant, the flow stops and shows appropriate dialog.
+     * Grants are requested as a group for better UX (on platforms that support it).
      *
-     * @param rationaleMessages Custom messages per grant for rationale dialog
-     * @param settingsMessages Custom messages per grant for settings dialog
-     * @param onAllGranted Callback that executes ONLY when all grants are granted
+     * @param rationaleMessages Custom messages per grant for rationale dialog.
+     *                           The message for each denied grant will be shown in its rationale dialog.
+     * @param settingsMessages   Custom messages per grant for settings dialog
+     * @param onAllGranted       Callback that executes ONLY when all grants are granted
      */
     fun request(
-        rationaleMessages: Map<AppGrant, String> = emptyMap(),
-        settingsMessages: Map<AppGrant, String> = emptyMap(),
+        rationaleMessages: Map<GrantPermission, String> = emptyMap(),
+        settingsMessages: Map<GrantPermission, String> = emptyMap(),
         onAllGranted: () -> Unit
     ) {
         this.onAllGrantedCallback = onAllGranted
@@ -138,42 +138,51 @@ class GrantGroupHandler(
         this.currentSettingsMessages = settingsMessages
 
         scope.launch {
-            val deniedGrants = mutableListOf<AppGrant>()
-
-            // Check which grants need to be requested
+            // 1. Initial check: What is already granted?
+            val deniedGrants = mutableListOf<GrantPermission>()
+            val currentStatuses = mutableMapOf<GrantPermission, GrantStatus>()
+            
             for (grant in grants) {
                 val status = grantManager.checkStatus(grant)
-                _statuses.value += (grant to status)
-
-                if (status != GrantStatus.GRANTED) {
+                currentStatuses[grant] = status
+                if (status != GrantStatus.GRANTED && status != GrantStatus.PARTIAL_GRANTED) {
                     deniedGrants.add(grant)
                 }
             }
-
+            
+            _statuses.update { it + currentStatuses }
+            
             if (deniedGrants.isEmpty()) {
-                // All already granted!
+                // Everything already good!
+                resetState()
                 _state.update { it.copy(grantedGrants = grants.toSet()) }
-                onAllGranted()
+                val callback = onAllGrantedCallback
+                onAllGrantedCallback = null
+                callback?.invoke()
                 return@launch
             }
 
-            // Request each denied grant sequentially
-            for (grant in deniedGrants) {
-                val granted = requestSingleGrant(grant)
-
-                if (granted) {
-                    // Update granted set
-                    _state.update {
-                        it.copy(grantedGrants = it.grantedGrants + grant)
-                    }
-                } else {
-                    // User denied, stop the flow
-                    return@launch
-                }
+            // 2. Request all denied grants at once
+            // This allows Android to show a single system dialog flow
+            val results = grantManager.request(deniedGrants)
+            _statuses.update { it + results }
+            
+            // 3. Evaluate results
+            val newlyGranted = results.filter { it.value == GrantStatus.GRANTED || it.value == GrantStatus.PARTIAL_GRANTED }.keys
+            _state.update { it.copy(grantedGrants = it.grantedGrants + newlyGranted) }
+            
+            val stillDenied = results.filter { it.value != GrantStatus.GRANTED && it.value != GrantStatus.PARTIAL_GRANTED }
+            
+            if (stillDenied.isEmpty()) {
+                resetState()
+                val callback = onAllGrantedCallback
+                onAllGrantedCallback = null
+                callback?.invoke()
+            } else {
+                // Show dialog for the first denied permission
+                val firstDenied = stillDenied.keys.first()
+                handleStatus(firstDenied, stillDenied[firstDenied]!!)
             }
-
-            // All granted!
-            onAllGranted()
         }
     }
 
@@ -185,9 +194,31 @@ class GrantGroupHandler(
             val currentPerm = _state.value.currentGrant ?: return@launch
 
             val newStatus = grantManager.request(currentPerm)
-            _statuses.value = _statuses.value + (currentPerm to newStatus)
+            _statuses.update { it + (currentPerm to newStatus) }
 
-            handleStatus(currentPerm, newStatus)
+            if (newStatus == GrantStatus.GRANTED || newStatus == GrantStatus.PARTIAL_GRANTED) {
+                // Update granted set
+                _state.update { it.copy(grantedGrants = it.grantedGrants + currentPerm) }
+                
+                // Re-evaluate if there are any remaining denied permissions in the group
+                val stillDenied = _statuses.value.filter { 
+                    grants.contains(it.key) && it.value != GrantStatus.GRANTED && it.value != GrantStatus.PARTIAL_GRANTED 
+                }
+                
+                if (stillDenied.isEmpty()) {
+                    resetState()
+                    val callback = onAllGrantedCallback
+                    onAllGrantedCallback = null
+                    callback?.invoke()
+                } else {
+                    // Show dialog for the next denied permission
+                    val nextDenied = stillDenied.keys.first()
+                    handleStatus(nextDenied, stillDenied[nextDenied]!!)
+                }
+            } else {
+                // Still denied, handle the new status (might be DENIED_ALWAYS now)
+                handleStatus(currentPerm, newStatus)
+            }
         }
     }
 
@@ -196,6 +227,7 @@ class GrantGroupHandler(
      */
     fun onSettingsConfirmed() {
         resetState()
+        onAllGrantedCallback = null
         grantManager.openSettings()
     }
 
@@ -204,61 +236,54 @@ class GrantGroupHandler(
      */
     fun onDismiss() {
         resetState()
+        onAllGrantedCallback = null
     }
 
     // --- Internal Logic ---
 
-    private suspend fun requestSingleGrant(grant: AppGrant): Boolean {
-        val currentStatus = grantManager.checkStatus(grant)
-        _statuses.value += (grant to currentStatus)
-
-        return when (currentStatus) {
-            GrantStatus.GRANTED -> true
-            GrantStatus.NOT_DETERMINED -> {
-                // First time - request immediately
-                val result = grantManager.request(grant)
-                _statuses.value += (grant to result)
-                handleStatus(grant, result)
-                result == GrantStatus.GRANTED
-            }
-            GrantStatus.DENIED,
-            GrantStatus.DENIED_ALWAYS -> {
-                // Show appropriate dialog
-                handleStatus(grant, currentStatus)
-                false
-            }
-        }
-    }
-
-    private fun handleStatus(grant: AppGrant, status: GrantStatus): Boolean {
+    private fun handleStatus(grant: GrantPermission, status: GrantStatus): Boolean {
         return when (status) {
-            GrantStatus.GRANTED -> true
+            GrantStatus.GRANTED, GrantStatus.PARTIAL_GRANTED -> true
+
             GrantStatus.NOT_DETERMINED -> {
-                // This shouldn't happen as we handle it above
-                false
-            }
-            GrantStatus.DENIED -> {
-                // Show rationale
+                // This can happen if request() returned NOT_DETERMINED
+                // (e.g. Motion dummy-query race on iOS, or system dialog dismissed
+                // without interaction). Treat as DENIED so we surface rationale next time.
                 _state.update {
                     it.copy(
-                        isVisible = true,
-                        currentGrant = grant,
-                        showRationale = true,
+                        isVisible        = true,
+                        currentGrant     = grant,
+                        showRationale    = true,
                         showSettingsGuide = false,
                         rationaleMessage = currentRationaleMessages[grant]
                     )
                 }
                 false
             }
+
+            GrantStatus.DENIED -> {
+                // Show rationale
+                _state.update {
+                    it.copy(
+                        isVisible        = true,
+                        currentGrant     = grant,
+                        showRationale    = true,
+                        showSettingsGuide = false,
+                        rationaleMessage = currentRationaleMessages[grant]
+                    )
+                }
+                false
+            }
+
             GrantStatus.DENIED_ALWAYS -> {
                 // Show settings guide
                 _state.update {
                     it.copy(
-                        isVisible = true,
-                        currentGrant = grant,
-                        showRationale = false,
+                        isVisible        = true,
+                        currentGrant     = grant,
+                        showRationale    = false,
                         showSettingsGuide = true,
-                        settingsMessage = currentSettingsMessages[grant]
+                        settingsMessage  = currentSettingsMessages[grant]
                     )
                 }
                 false

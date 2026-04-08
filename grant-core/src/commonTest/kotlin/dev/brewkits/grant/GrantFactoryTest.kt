@@ -1,6 +1,6 @@
 package dev.brewkits.grant
 
-import dev.brewkits.grant.impl.MyGrantManager
+import dev.brewkits.grant.impl.DefaultGrantManager
 import kotlin.test.Test
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
@@ -23,16 +23,15 @@ class GrantFactoryTest {
     }
 
     @Test
-    fun testFactoryReturnsMyGrantManagerImplementation() {
+    fun testFactoryReturnsDefaultGrantManagerImplementation() {
         val manager = try {
             GrantFactory.create()
         } catch (e: IllegalArgumentException) {
             // Expected on Android when no context provided
-            // This is acceptable for common tests
             return
         }
 
-        assertIs<MyGrantManager>(manager, "Factory should return MyGrantManager implementation")
+        assertIs<DefaultGrantManager>(manager, "Factory should return DefaultGrantManager implementation")
     }
 
     @Test

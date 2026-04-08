@@ -33,6 +33,9 @@
         Note: App developers can override these rules in their app's manifest
         if they need different backup behavior.
     -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+
     <application
         android:fullBackupContent="@xml/backup_rules"
         android:dataExtractionRules="@xml/data_extraction_rules">
@@ -41,7 +44,6 @@
             android:theme="@style/Theme.Transparent"
             android:excludeFromRecents="true"
             android:exported="false"
-            android:launchMode="singleTop"
             android:noHistory="true"
             android:taskAffinity=""
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"

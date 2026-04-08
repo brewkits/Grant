@@ -6,6 +6,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * UI State for grant dialogs.
@@ -129,67 +131,64 @@ data class GrantUiState(
 class GrantHandler(
     private val grantManager: GrantManager,
     private val grant: GrantPermission,
-    scope: CoroutineScope,
+    private val scope: CoroutineScope,
     private val savedStateDelegate: SavedStateDelegate = NoOpSavedStateDelegate()
 ) {
     private companion object {
-        // Keys for SavedStateDelegate
-        const val KEY_IS_VISIBLE = "grant_handler_is_visible"
+        const val KEY_IS_VISIBLE     = "grant_handler_is_visible"
         const val KEY_SHOW_RATIONALE = "grant_handler_show_rationale"
-        const val KEY_SHOW_SETTINGS = "grant_handler_show_settings"
+        const val KEY_SHOW_SETTINGS  = "grant_handler_show_settings"
     }
-    private val scope: CoroutineScope
 
-    init {
-        // Store the scope (validation happens implicitly when first coroutine is launched)
-        this.scope = scope
-    }
-    private val _state = MutableStateFlow(GrantUiState())
-
-    /**
-     * UI state flow that UI layer observes to show dialogs
-     */
+    private val _state  = MutableStateFlow(GrantUiState())
     val state: StateFlow<GrantUiState> = _state.asStateFlow()
 
     private val _status = MutableStateFlow(GrantStatus.NOT_DETERMINED)
-
-    /**
-     * Current grant status
-     */
     val status: StateFlow<GrantStatus> = _status.asStateFlow()
 
+    /**
+     * FIX H3: Volatile ensures cross-thread visibility of the callback reference.
+     * On JVM: maps to java.lang.volatile field.
+     * On Kotlin/Native: ensures memory model visibility across threads.
+     */
+    @kotlin.concurrent.Volatile
     private var onGrantedCallback: (() -> Unit)? = null
 
     /**
-     * Tracks if we've shown the rationale dialog to the user.
-     * This helps us decide whether to show Settings guide immediately.
+     * FIX H3: Volatile for the same cross-thread visibility reason.
      *
+     * Tracks if we've shown the rationale dialog to the user.
      * Platform differences:
-     * - Android: User goes through rationale flow before permanent denial
-     *            If rationale was shown → Help with Settings guide
-     * - iOS: No rationale flow (first denial = permanent)
-     *        Only show Settings guide on second click
+     * - Android: user goes through rationale → permanent denial
+     * - iOS: first denial = permanent (no soft deny / no rationale)
      */
+    @kotlin.concurrent.Volatile
     private var hasShownRationaleDialog = false
 
-    init {
-        // Restore state from savedStateDelegate (process death recovery)
-        val wasVisible = savedStateDelegate.restoreState(KEY_IS_VISIBLE)?.toBoolean() ?: false
-        val wasRationale = savedStateDelegate.restoreState(KEY_SHOW_RATIONALE)?.toBoolean() ?: false
-        val wasSettings = savedStateDelegate.restoreState(KEY_SHOW_SETTINGS)?.toBoolean() ?: false
+    /**
+     * FIX M6: Prevents double-tap / concurrent request race.
+     * Only one request flows at a time per handler instance.
+     * A new `request()` call while one is in-flight simply updates
+     * the callback reference and skips re-launching the coroutine.
+     */
+    private val requestMutex = Mutex()
 
+    init {
+        // FIX L2: Merged two init blocks into one.
+        // Restore visible dialog state from savedStateDelegate (process death recovery)
+        val wasVisible   = savedStateDelegate.restoreState(KEY_IS_VISIBLE)?.toBoolean() ?: false
+        val wasRationale = savedStateDelegate.restoreState(KEY_SHOW_RATIONALE)?.toBoolean() ?: false
+        val wasSettings  = savedStateDelegate.restoreState(KEY_SHOW_SETTINGS)?.toBoolean() ?: false
         if (wasVisible) {
-            // Directly update _state without saving back to delegate (we're restoring from it)
             _state.update {
                 it.copy(
-                    isVisible = true,
-                    showRationale = wasRationale,
+                    isVisible        = true,
+                    showRationale    = wasRationale,
                     showSettingsGuide = wasSettings
                 )
             }
         }
-
-        // Initialize status on creation
+        // Initialize status on creation (non-blocking background check)
         refreshStatus()
     }
 
@@ -242,17 +241,42 @@ class GrantHandler(
      *   handler.request { activity.startCamera() } // ❌ Activity reference
      *   ```
      */
+    /**
+     * Main entry point for requesting grant.
+     *
+     * FIX M6 (double-tap guard): If a request is already in-flight, the new
+     * `onGranted` callback replaces the previous one but no new coroutine is
+     * launched, preventing parallel state machine executions.
+     *
+     * This function orchestrates the entire flow:
+     * 1. Check current status
+     * 2. If NOT_DETERMINED → Request immediately
+     * 3. If DENIED → Show rationale dialog
+     * 4. If DENIED_ALWAYS → Show settings guide
+     * 5. If GRANTED → Execute callback
+     *
+     * @param rationaleMessage Custom message for rationale dialog (optional)
+     * @param settingsMessage  Custom message for settings dialog (optional)
+     * @param onGranted        Callback executed ONLY when grant is GRANTED/PARTIAL_GRANTED.
+     *                         Callback is cleared after execution to prevent memory leaks.
+     */
     fun request(
         rationaleMessage: String? = null,
         settingsMessage: String? = null,
         onGranted: () -> Unit
     ) {
+        // FIX H3: volatile write — visible to coroutine dispatcher immediately
         this.onGrantedCallback = onGranted
 
+        // FIX M6: Skip if a request coroutine is already running
+        if (requestMutex.isLocked) return
+
         scope.launch {
-            val currentStatus = grantManager.checkStatus(grant)
-            _status.value = currentStatus
-            handleStatus(currentStatus, rationaleMessage, settingsMessage)
+            requestMutex.withLock {
+                val currentStatus = grantManager.checkStatus(grant)
+                _status.value = currentStatus
+                handleStatus(currentStatus, rationaleMessage, settingsMessage)
+            }
         }
     }
 
@@ -398,7 +422,7 @@ class GrantHandler(
         isFirstRequest: Boolean = false
     ) {
         when (status) {
-            GrantStatus.GRANTED -> {
+            GrantStatus.GRANTED, GrantStatus.PARTIAL_GRANTED -> {
                 resetState()
                 hasShownRationaleDialog = false  // Reset flag when granted
                 // Invoke callback and immediately clear to prevent memory leak
@@ -493,13 +517,20 @@ class GrantHandler(
      * This ensures state is restored after process death.
      */
     private fun updateState(block: (GrantUiState) -> GrantUiState) {
+        val oldState = _state.value
         _state.update(block)
+        val newState = _state.value
 
-        // Save to delegate for process death recovery
-        val current = _state.value
-        savedStateDelegate.saveState(KEY_IS_VISIBLE, current.isVisible.toString())
-        savedStateDelegate.saveState(KEY_SHOW_RATIONALE, current.showRationale.toString())
-        savedStateDelegate.saveState(KEY_SHOW_SETTINGS, current.showSettingsGuide.toString())
+        // Optimization: Only save to delegate if visible state changed
+        // We only care about persisting visibility and dialog types for process death
+        if (oldState.isVisible != newState.isVisible ||
+            oldState.showRationale != newState.showRationale ||
+            oldState.showSettingsGuide != newState.showSettingsGuide
+        ) {
+            savedStateDelegate.saveState(KEY_IS_VISIBLE, newState.isVisible.toString())
+            savedStateDelegate.saveState(KEY_SHOW_RATIONALE, newState.showRationale.toString())
+            savedStateDelegate.saveState(KEY_SHOW_SETTINGS, newState.showSettingsGuide.toString())
+        }
     }
 
     /**
@@ -517,7 +548,7 @@ class GrantHandler(
         isFirstRequest: Boolean = false
     ) {
         when (status) {
-            GrantStatus.GRANTED -> {
+            GrantStatus.GRANTED, GrantStatus.PARTIAL_GRANTED -> {
                 // Invoke callback and immediately clear to prevent memory leak
                 onGrantedCallback?.invoke()
                 onGrantedCallback = null
