@@ -51,15 +51,19 @@ actual class PlatformGrantDelegate(
 
     actual suspend fun checkStatus(grant: GrantPermission): GrantStatus {
         val identifier = grant.identifier
-        statusCacheMap[identifier]?.let { (cachedStatus, timestamp) ->
-            if (System.currentTimeMillis() - timestamp < STATUS_CACHE_TTL_MS) {
-                return cachedStatus
+        
+        // Use lock for status check to ensure atomicity with store access
+        return getMutexFor(identifier).withLock {
+            statusCacheMap[identifier]?.let { (cachedStatus, timestamp) ->
+                if (System.currentTimeMillis() - timestamp < STATUS_CACHE_TTL_MS) {
+                    return@withLock cachedStatus
+                }
             }
-        }
 
-        val status = checkStatusInternal(grant)
-        statusCacheMap[identifier] = status to System.currentTimeMillis()
-        return status
+            val status = checkStatusInternal(grant)
+            statusCacheMap[identifier] = status to System.currentTimeMillis()
+            status
+        }
     }
 
     private suspend fun checkStatusInternal(grant: GrantPermission): GrantStatus {
