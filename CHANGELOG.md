@@ -6,6 +6,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [Unreleased] — iOS Production Hardening
+
+### 🍎 iOS Full Native Implementation (Breaking Audit Finding Fixed)
+
+Previously, several iOS permission types returned `DENIED` by default (no native dialog shown). This release bridges the implementation gap completely, making iOS on **par with Android** for all 17 permission types.
+
+#### ✅ Newly Implemented (Full Native Request + Status Check)
+
+| Permission | Framework | API Method |
+| :--- | :--- | :--- |
+| **CAMERA** | AVFoundation | `AVCaptureDevice.requestAccessForMediaType(AVMediaTypeVideo)` |
+| **MICROPHONE** | AVFoundation | `AVCaptureDevice.requestAccessForMediaType(AVMediaTypeAudio)` |
+| **GALLERY / GALLERY_IMAGES_ONLY / GALLERY_VIDEO_ONLY / STORAGE** | Photos | `PHPhotoLibrary.requestAuthorization` — maps `LIMITED` → `PARTIAL_GRANTED` |
+| **LOCATION** | CoreLocation | `CLLocationManager` delegate (WhenInUse) |
+| **LOCATION_ALWAYS** | CoreLocation | `CLLocationManager` delegate (Always) + maps `WhenInUse` → `PARTIAL_GRANTED` |
+| **NOTIFICATION** | UserNotifications | `UNUserNotificationCenter.requestAuthorization(options:)` |
+| **CONTACTS / READ_CONTACTS** | Contacts | `CNContactStore.requestAccessForEntityType` |
+| **CALENDAR / READ_CALENDAR** | EventKit | `EKEventStore.requestAccessToEntityType` with iOS 17+ `fullAccess`/`writeOnly` mapping |
+| **MOTION** | CoreMotion | Dummy Query pattern (`queryActivityStartingFromDate`) — industry standard (same as MOKO + Flutter) |
+| **BLUETOOTH / BLUETOOTH_ADVERTISE** | CoreBluetooth | `CBCentralManager` delegate (pre-existing, now properly wired) |
+
+#### ✨ Design Decisions
+
+- **Motion Dummy Query**: iOS has no dedicated `requestAuthorization()` for CoreMotion. The Dummy Query on `NSDate.now` triggers the system dialog, returns immediately, and checks `CMMotionActivityManager.authorizationStatus()`. This is the same approach used by MOKO-permissions and Flutter permission_handler.
+- **Calendar iOS 17+**: `EKAuthorizationStatus.writeOnly` (raw value 4) is now mapped to `PARTIAL_GRANTED`. `fullAccess` (raw value 3) maps to `GRANTED`. Compatible with iOS < 17 via the legacy `requestAccessToEntityType` callback.
+- **Info.plist Validation**: Every permission request validates the presence of its required `Info.plist` key before calling native APIs, preventing `SIGABRT` crashes with a clear log message.
+- **Thread Safety**: All native callback completions are dispatched to the main thread via `mainContinuation`.
+- **Simulator Awareness**: Motion returns `GRANTED` on iOS Simulator (hardware not available), same as Bluetooth.
+
+---
+
 ## [1.2.0] - 2026-04-08
 
 ### 🚀 Architectural Overhaul & Stability
