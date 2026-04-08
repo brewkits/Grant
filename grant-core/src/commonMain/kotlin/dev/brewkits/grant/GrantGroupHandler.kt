@@ -123,9 +123,10 @@ class GrantGroupHandler(
      *
      * Grants are requested as a group for better UX (on platforms that support it).
      *
-     * @param rationaleMessages Custom messages per grant for rationale dialog (currently not used in group flow)
-     * @param settingsMessages Custom messages per grant for settings dialog
-     * @param onAllGranted Callback that executes ONLY when all grants are granted
+     * @param rationaleMessages Custom messages per grant for rationale dialog.
+     *                           The message for each denied grant will be shown in its rationale dialog.
+     * @param settingsMessages   Custom messages per grant for settings dialog
+     * @param onAllGranted       Callback that executes ONLY when all grants are granted
      */
     fun request(
         rationaleMessages: Map<GrantPermission, String> = emptyMap(),
@@ -243,32 +244,46 @@ class GrantGroupHandler(
     private fun handleStatus(grant: GrantPermission, status: GrantStatus): Boolean {
         return when (status) {
             GrantStatus.GRANTED, GrantStatus.PARTIAL_GRANTED -> true
+
             GrantStatus.NOT_DETERMINED -> {
-                // This shouldn't happen as we handle it above
-                false
-            }
-            GrantStatus.DENIED -> {
-                // Show rationale
+                // FIX M3: This can happen if request() returned NOT_DETERMINED
+                // (e.g. Motion dummy-query race on iOS, or system dialog dismissed
+                // without interaction). Treat as DENIED so we surface rationale next time.
                 _state.update {
                     it.copy(
-                        isVisible = true,
-                        currentGrant = grant,
-                        showRationale = true,
+                        isVisible        = true,
+                        currentGrant     = grant,
+                        showRationale    = true,
                         showSettingsGuide = false,
                         rationaleMessage = currentRationaleMessages[grant]
                     )
                 }
                 false
             }
+
+            GrantStatus.DENIED -> {
+                // Show rationale
+                _state.update {
+                    it.copy(
+                        isVisible        = true,
+                        currentGrant     = grant,
+                        showRationale    = true,
+                        showSettingsGuide = false,
+                        rationaleMessage = currentRationaleMessages[grant]
+                    )
+                }
+                false
+            }
+
             GrantStatus.DENIED_ALWAYS -> {
                 // Show settings guide
                 _state.update {
                     it.copy(
-                        isVisible = true,
-                        currentGrant = grant,
-                        showRationale = false,
+                        isVisible        = true,
+                        currentGrant     = grant,
+                        showRationale    = false,
                         showSettingsGuide = true,
-                        settingsMessage = currentSettingsMessages[grant]
+                        settingsMessage  = currentSettingsMessages[grant]
                     )
                 }
                 false

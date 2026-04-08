@@ -10,7 +10,8 @@ import dev.brewkits.grant.GrantStatus
  * Supports per-permission status and request result overrides,
  * enabling precise control over each grant's lifecycle in tests.
  */
-class FakeGrantManager : GrantManager {
+/** FIX L9: Explicitly `internal` — test-only utility, must not leak to production consumers. */
+internal class FakeGrantManager : GrantManager {
 
     // --- Per-permission overrides (highest priority) ---
     private val statusMap = mutableMapOf<GrantPermission, GrantStatus>()

@@ -230,7 +230,9 @@ class GrantRequestActivity : ComponentActivity() {
                 putExtra(EXTRA_GRANTS, androidGrants.toTypedArray())
                 putExtra(EXTRA_REQUEST_ID, requestId)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                // NOTE: FLAG_ACTIVITY_CLEAR_TOP intentionally omitted.
+                // It could destroy the host app's foreground Activity when
+                // launched from a Service or Application context.
                 addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
             }
             context.startActivity(intent)

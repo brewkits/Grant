@@ -5,55 +5,61 @@ import dev.brewkits.grant.GrantPermission
 import dev.brewkits.grant.GrantStatus
 
 /**
- * Production-ready custom grant implementation with platform-specific code.
+ * Default production implementation of [GrantManager].
  *
- * This is a fully independent implementation providing complete control
- * over grant handling while maintaining clean architecture.
+ * Delegates all platform-specific permission operations to [PlatformGrantDelegate],
+ * which provides native iOS (CoreLocation, AVFoundation, etc.) and Android
+ * (Activity Result API, ContextCompat.checkSelfPermission, etc.) implementations.
  *
- * **Features**:
- * - Complete async grant requests on both Android and iOS
- * - API version-aware handling (Android 12+ location, Bluetooth grants, etc.)
- * - Multi-grant support for complex scenarios
- * - Lifecycle safety on Android
- * - Main thread safety on iOS
- * - Grant state override for special cases
+ * **Architecture (expect/actual pattern)**:
+ * - `commonMain`: This class + [PlatformGrantDelegate] expect declaration
+ * - `androidMain`: [PlatformGrantDelegate] actual — full Android implementation
+ * - `iosMain`: [PlatformGrantDelegate] actual — full iOS implementation
  *
- * **Architecture**:
- * - commonMain: Interface definition via expect/actual pattern
- * - androidMain: Full Android implementation with Activity Result API
- * - iosMain: Full iOS implementation with framework delegates (CoreLocation, etc.)
+ * **FIX L1**: Renamed from `MyGrantManager` (placeholder name) to
+ * `DefaultGrantManager` to reflect its role as the production-ready default.
+ * `MyGrantManager` is kept as a typealias for backwards compatibility.
  */
-class MyGrantManager(
+class DefaultGrantManager(
     private val platformDelegate: PlatformGrantDelegate
 ) : GrantManager {
 
-    override suspend fun checkStatus(grant: GrantPermission): GrantStatus {
-        return platformDelegate.checkStatus(grant)
-    }
+    override suspend fun checkStatus(grant: GrantPermission): GrantStatus =
+        platformDelegate.checkStatus(grant)
 
-    override suspend fun request(grant: GrantPermission): GrantStatus {
-        return platformDelegate.request(grant)
-    }
+    override suspend fun request(grant: GrantPermission): GrantStatus =
+        platformDelegate.request(grant)
 
-    override suspend fun request(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus> {
-        return platformDelegate.request(grants)
-    }
+    override suspend fun request(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus> =
+        platformDelegate.request(grants)
 
-    override fun openSettings() {
+    override fun openSettings() =
         platformDelegate.openSettings()
-    }
 }
+
+/**
+ * Backwards-compatibility alias. Prefer [DefaultGrantManager] for new code.
+ *
+ * FIX L1: `MyGrantManager` was a placeholder name that leaked implementation
+ * details. This alias preserves binary compatibility for existing integrations.
+ */
+@Deprecated(
+    message = "Use DefaultGrantManager. MyGrantManager is a placeholder name and will be removed in v2.0.",
+    replaceWith = ReplaceWith("DefaultGrantManager", "dev.brewkits.grant.impl.DefaultGrantManager"),
+    level = DeprecationLevel.WARNING
+)
+typealias MyGrantManager = DefaultGrantManager
 
 /**
  * Platform-specific delegate for grant operations.
  *
  * **Permission Types:**
- * - AppGrant: Built-in permissions (CAMERA, LOCATION, etc.)
- * - RawPermission: Custom platform-specific permissions
+ * - [AppGrant]: Built-in permissions (CAMERA, LOCATION, etc.)
+ * - [RawPermission]: Custom platform-specific permissions
  *
  * **Implementations:**
- * - Android: Use ActivityCompat, ContextCompat
- * - iOS: Use AVFoundation, CoreLocation, etc.
+ * - Android (`androidMain`): Uses ActivityCompat, ContextCompat, Activity Result API
+ * - iOS (`iosMain`): Uses AVFoundation, CoreLocation, CoreBluetooth, EventKit, etc.
  */
 expect class PlatformGrantDelegate {
     suspend fun checkStatus(grant: GrantPermission): GrantStatus

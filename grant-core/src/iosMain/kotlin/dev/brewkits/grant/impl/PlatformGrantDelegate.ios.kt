@@ -33,7 +33,6 @@ import platform.Contacts.CNContactStore
 import platform.Contacts.CNEntityType
 import platform.CoreLocation.CLAuthorizationStatus
 import platform.CoreLocation.CLLocationManager
-import platform.CoreLocation.kCLAuthorizationStatusAuthorized
 import platform.CoreLocation.kCLAuthorizationStatusAuthorizedAlways
 import platform.CoreLocation.kCLAuthorizationStatusAuthorizedWhenInUse
 import platform.CoreLocation.kCLAuthorizationStatusDenied
@@ -55,6 +54,7 @@ import platform.Foundation.NSBundle
 import platform.Foundation.NSDate
 import platform.Foundation.NSOperationQueue
 import platform.Foundation.NSProcessInfo
+import platform.Photos.PHAccessLevelReadWrite
 import platform.Photos.PHAuthorizationStatusAuthorized
 import platform.Photos.PHAuthorizationStatusDenied
 import platform.Photos.PHAuthorizationStatusLimited
@@ -83,16 +83,18 @@ private const val TAG = "iOSGrantDelegate"
  * Provides native iOS permission handling for all 17 supported grant types.
  * Each permission type uses the appropriate Apple framework API:
  * - Camera/Microphone: AVFoundation
- * - Gallery/Storage: Photos Framework
+ * - Gallery/Storage: Photos Framework (PHPhotoLibrary)
  * - Location: CoreLocation (delegate-based)
  * - Notification: UserNotifications
  * - Contacts: Contacts Framework
- * - Calendar: EventKit
+ * - Calendar: EventKit (iOS 17+ writeOnly aware)
  * - Motion: CoreMotion (dummy query pattern)
  * - Bluetooth: CoreBluetooth (delegate-based)
  *
- * **Thread Safety**: All iOS framework calls are dispatched to the main thread
- * via [runOnMain] or [mainContinuation].
+ * **Thread Safety**:
+ * - `mutexMap` is protected by `mapsMutex` (C1 fix)
+ * - `statusCacheMap` uses per-entry locking via `mapsMutex` (C2 fix)
+ * - All iOS framework calls dispatch to main thread via [runOnMain] / [mainContinuation]
  *
  * **Info.plist Validation**: Validates required usage description keys before
  * calling native APIs to prevent SIGABRT crashes.
@@ -100,14 +102,33 @@ private const val TAG = "iOSGrantDelegate"
 actual class PlatformGrantDelegate(
     private val store: GrantStore
 ) {
-    // --- Concurrency ---
-    private val mutexMap = mutableMapOf<String, Mutex>()
-    private fun getMutexFor(identifier: String): Mutex = mutexMap.getOrPut(identifier) { Mutex() }
+    // ====================================================================
+    // FIX C1 + C2: Thread-safe maps using a dedicated protecting Mutex.
+    //
+    // Previously `mutableMapOf()` was used directly — not thread-safe on
+    // Kotlin/Native when accessed from multiple coroutines on different
+    // threads. All map mutations now go through `mapsMutex.withLock`.
+    // ====================================================================
 
-    // --- Status Cache (Monotonic Time) ---
+    /** Protects all map structures (mutexMapInternal, statusCacheMap). */
+    private val mapsMutex = Mutex()
+    private val mutexMapInternal = mutableMapOf<String, Mutex>()
     private val statusCacheMap = mutableMapOf<String, Pair<GrantStatus, Long>>()
-    private companion object { const val STATUS_CACHE_TTL_MS = 1000L }
-    private fun getMonotonicTimeMillis(): Long = (NSProcessInfo.processInfo.systemUptime * 1000).toLong()
+
+    private companion object {
+        /** Status cache TTL (1 second). Prevents redundant OS calls within the same interaction. */
+        const val STATUS_CACHE_TTL_MS = 1000L
+    }
+
+    // FIX C1: getMutexFor is now suspend and acquires mapsMutex before touching the internal map.
+    private suspend fun getMutexFor(identifier: String): Mutex {
+        return mapsMutex.withLock {
+            mutexMapInternal.getOrPut(identifier) { Mutex() }
+        }
+    }
+
+    private fun getMonotonicTimeMillis(): Long =
+        (NSProcessInfo.processInfo.systemUptime * 1000).toLong()
 
     // --- Delegates for async framework callbacks ---
     private val locationDelegate by lazy { LocationManagerDelegate() }
@@ -119,11 +140,16 @@ actual class PlatformGrantDelegate(
 
     actual suspend fun checkStatus(grant: GrantPermission): GrantStatus {
         val identifier = grant.identifier
-        statusCacheMap[identifier]?.let { (cachedStatus, timestamp) ->
-            if (getMonotonicTimeMillis() - timestamp < STATUS_CACHE_TTL_MS) return cachedStatus
+        // FIX C2: Protect statusCacheMap reads/writes through mapsMutex.
+        mapsMutex.withLock {
+            statusCacheMap[identifier]?.let { (cachedStatus, timestamp) ->
+                if (getMonotonicTimeMillis() - timestamp < STATUS_CACHE_TTL_MS) return cachedStatus
+            }
         }
         val status = checkStatusInternal(grant)
-        statusCacheMap[identifier] = status to getMonotonicTimeMillis()
+        mapsMutex.withLock {
+            statusCacheMap[identifier] = status to getMonotonicTimeMillis()
+        }
         return status
     }
 
@@ -137,70 +163,89 @@ actual class PlatformGrantDelegate(
         return results
     }
 
+    /**
+     * FIX L4: Proper fallback when Settings URL scheme is unavailable
+     * (App Extensions, App Clips). Logs a warning instead of silently failing.
+     */
     actual fun openSettings() {
         val url = NSURL.URLWithString(UIApplicationOpenSettingsURLString)
-        if (url != null) {
-            UIApplication.sharedApplication.openURL(
-                url,
-                options = emptyMap<Any?, Any>(),
-                completionHandler = null
-            )
+        if (url == null) {
+            GrantLogger.w(TAG, "UIApplicationOpenSettingsURLString could not be resolved. Settings cannot be opened.")
+            return
         }
+        UIApplication.sharedApplication.openURL(
+            url,
+            options = emptyMap<Any?, Any>(),
+            completionHandler = { success ->
+                if (!success) {
+                    GrantLogger.w(TAG, "openURL to Settings returned false — Settings may not be accessible in this context.")
+                }
+            }
+        )
     }
 
     // ====================================================================
     // STATUS CHECKS
     // ====================================================================
 
-    private suspend fun checkStatusInternal(grant: GrantPermission): GrantStatus = runOnMain {
+    /**
+     * FIX M2: NOTIFICATION check uses suspendCancellableCoroutine internally
+     * and dispatches its own callback onto the main queue — wrapping it in
+     * `runOnMain` caused nested dispatch_async which can deadlock when already
+     * on the main thread. NOTIFICATION is therefore called outside the runOnMain block.
+     */
+    private suspend fun checkStatusInternal(grant: GrantPermission): GrantStatus {
         if (grant is RawPermission) {
-            // For RawPermission on iOS, validate Info.plist key
             val iosKey = grant.iosUsageKey
             if (iosKey != null && !hasInfoPlistKey(iosKey)) {
-                GrantLogger.e(TAG, "Missing '$iosKey' in Info.plist for RawPermission '${grant.identifier}'")
-                return@runOnMain GrantStatus.DENIED_ALWAYS
+                return GrantStatus.DENIED_ALWAYS
             }
-            return@runOnMain GrantStatus.NOT_DETERMINED
+            return GrantStatus.NOT_DETERMINED
         }
 
-        when (grant as AppGrant) {
-            AppGrant.CAMERA -> checkAVStatus(AVMediaTypeVideo!!, "NSCameraUsageDescription")
-            AppGrant.MICROPHONE -> checkAVStatus(AVMediaTypeAudio!!, "NSMicrophoneUsageDescription")
+        // NOTIFICATION requires its own async path (avoid nested runOnMain)
+        if ((grant as AppGrant) == AppGrant.NOTIFICATION) {
+            return checkNotificationStatus()
+        }
 
-            AppGrant.GALLERY,
-            AppGrant.STORAGE,
-            AppGrant.GALLERY_IMAGES_ONLY,
-            AppGrant.GALLERY_VIDEO_ONLY -> checkPhotoStatus()
+        return runOnMain {
+            when (grant) {
+                AppGrant.CAMERA     -> checkAVStatus(AVMediaTypeVideo!!, "NSCameraUsageDescription")
+                AppGrant.MICROPHONE -> checkAVStatus(AVMediaTypeAudio!!, "NSMicrophoneUsageDescription")
 
-            AppGrant.LOCATION -> checkLocationStatus(forAlways = false)
-            AppGrant.LOCATION_ALWAYS -> checkLocationStatus(forAlways = true)
+                AppGrant.GALLERY,
+                AppGrant.STORAGE,
+                AppGrant.GALLERY_IMAGES_ONLY,
+                AppGrant.GALLERY_VIDEO_ONLY -> checkPhotoStatus()
 
-            AppGrant.NOTIFICATION -> checkNotificationStatus()
+                AppGrant.LOCATION       -> checkLocationStatus(forAlways = false)
+                AppGrant.LOCATION_ALWAYS -> checkLocationStatus(forAlways = true)
 
-            AppGrant.CONTACTS,
-            AppGrant.READ_CONTACTS -> checkContactsStatus()
+                AppGrant.NOTIFICATION -> checkNotificationStatus() // unreachable here; handled above
 
-            AppGrant.CALENDAR,
-            AppGrant.READ_CALENDAR -> checkCalendarStatus()
+                AppGrant.CONTACTS,
+                AppGrant.READ_CONTACTS -> checkContactsStatus()
 
-            AppGrant.MOTION -> checkMotionStatus()
+                AppGrant.CALENDAR,
+                AppGrant.READ_CALENDAR -> checkCalendarStatus()
 
-            AppGrant.BLUETOOTH,
-            AppGrant.BLUETOOTH_ADVERTISE -> checkBluetoothStatus()
+                AppGrant.MOTION -> checkMotionStatus()
 
-            AppGrant.SCHEDULE_EXACT_ALARM -> GrantStatus.GRANTED // iOS always allows alarms
+                AppGrant.BLUETOOTH,
+                AppGrant.BLUETOOTH_ADVERTISE -> checkBluetoothStatus()
+
+                AppGrant.SCHEDULE_EXACT_ALARM -> GrantStatus.GRANTED // iOS always allows alarms
+            }
         }
     }
 
     // --- AVFoundation (Camera / Microphone) ---
     private fun checkAVStatus(mediaType: String, plistKey: String): GrantStatus {
-        if (!hasInfoPlistKey(plistKey)) {
-            GrantLogger.e(TAG, "Missing '$plistKey' in Info.plist. Returning DENIED_ALWAYS.")
-            return GrantStatus.DENIED_ALWAYS
-        }
+        if (!hasInfoPlistKey(plistKey)) return GrantStatus.DENIED_ALWAYS
         return when (AVCaptureDevice.authorizationStatusForMediaType(mediaType)) {
-            AVAuthorizationStatusAuthorized -> GrantStatus.GRANTED
-            AVAuthorizationStatusDenied, AVAuthorizationStatusRestricted -> GrantStatus.DENIED_ALWAYS
+            AVAuthorizationStatusAuthorized   -> GrantStatus.GRANTED
+            AVAuthorizationStatusDenied,
+            AVAuthorizationStatusRestricted   -> GrantStatus.DENIED_ALWAYS
             AVAuthorizationStatusNotDetermined -> GrantStatus.NOT_DETERMINED
             else -> GrantStatus.NOT_DETERMINED
         }
@@ -208,14 +253,12 @@ actual class PlatformGrantDelegate(
 
     // --- Photos ---
     internal fun checkPhotoStatus(): GrantStatus {
-        if (!hasInfoPlistKey("NSPhotoLibraryUsageDescription")) {
-            GrantLogger.e(TAG, "Missing 'NSPhotoLibraryUsageDescription' in Info.plist.")
-            return GrantStatus.DENIED_ALWAYS
-        }
+        if (!hasInfoPlistKey("NSPhotoLibraryUsageDescription")) return GrantStatus.DENIED_ALWAYS
         return when (PHPhotoLibrary.authorizationStatus()) {
-            PHAuthorizationStatusAuthorized -> GrantStatus.GRANTED
-            PHAuthorizationStatusLimited -> GrantStatus.PARTIAL_GRANTED
-            PHAuthorizationStatusDenied, PHAuthorizationStatusRestricted -> GrantStatus.DENIED_ALWAYS
+            PHAuthorizationStatusAuthorized   -> GrantStatus.GRANTED
+            PHAuthorizationStatusLimited      -> GrantStatus.PARTIAL_GRANTED
+            PHAuthorizationStatusDenied,
+            PHAuthorizationStatusRestricted   -> GrantStatus.DENIED_ALWAYS
             PHAuthorizationStatusNotDetermined -> GrantStatus.NOT_DETERMINED
             else -> GrantStatus.NOT_DETERMINED
         }
@@ -224,19 +267,16 @@ actual class PlatformGrantDelegate(
     // --- Location ---
     private fun checkLocationStatus(forAlways: Boolean): GrantStatus {
         val requiredKey = if (forAlways) "NSLocationAlwaysAndWhenInUseUsageDescription"
-            else "NSLocationWhenInUseUsageDescription"
-        if (!hasInfoPlistKey(requiredKey)) {
-            GrantLogger.e(TAG, "Missing '$requiredKey' in Info.plist.")
-            return GrantStatus.DENIED_ALWAYS
-        }
+                          else "NSLocationWhenInUseUsageDescription"
+        if (!hasInfoPlistKey(requiredKey)) return GrantStatus.DENIED_ALWAYS
 
-        val status = CLLocationManager.authorizationStatus()
-        return when (status) {
-            kCLAuthorizationStatusAuthorizedAlways -> GrantStatus.GRANTED
+        return when (CLLocationManager.authorizationStatus()) {
+            kCLAuthorizationStatusAuthorizedAlways   -> GrantStatus.GRANTED
             kCLAuthorizationStatusAuthorizedWhenInUse -> {
                 if (forAlways) GrantStatus.PARTIAL_GRANTED else GrantStatus.GRANTED
             }
-            kCLAuthorizationStatusDenied, kCLAuthorizationStatusRestricted -> GrantStatus.DENIED_ALWAYS
+            kCLAuthorizationStatusDenied,
+            kCLAuthorizationStatusRestricted  -> GrantStatus.DENIED_ALWAYS
             kCLAuthorizationStatusNotDetermined -> GrantStatus.NOT_DETERMINED
             else -> GrantStatus.NOT_DETERMINED
         }
@@ -247,10 +287,10 @@ actual class PlatformGrantDelegate(
         return suspendCancellableCoroutine { cont ->
             UNUserNotificationCenter.currentNotificationCenter()
                 .getNotificationSettingsWithCompletionHandler { settings ->
-                    val status = settings?.authorizationStatus
-                    val result = when (status) {
-                        UNAuthorizationStatusAuthorized, UNAuthorizationStatusProvisional -> GrantStatus.GRANTED
-                        UNAuthorizationStatusDenied -> GrantStatus.DENIED_ALWAYS
+                    val result = when (settings?.authorizationStatus) {
+                        UNAuthorizationStatusAuthorized,
+                        UNAuthorizationStatusProvisional -> GrantStatus.GRANTED
+                        UNAuthorizationStatusDenied      -> GrantStatus.DENIED_ALWAYS
                         UNAuthorizationStatusNotDetermined -> GrantStatus.NOT_DETERMINED
                         else -> GrantStatus.NOT_DETERMINED
                     }
@@ -261,70 +301,68 @@ actual class PlatformGrantDelegate(
 
     // --- Contacts ---
     private fun checkContactsStatus(): GrantStatus {
-        if (!hasInfoPlistKey("NSContactsUsageDescription")) {
-            GrantLogger.e(TAG, "Missing 'NSContactsUsageDescription' in Info.plist.")
-            return GrantStatus.DENIED_ALWAYS
-        }
+        if (!hasInfoPlistKey("NSContactsUsageDescription")) return GrantStatus.DENIED_ALWAYS
         return when (CNContactStore.authorizationStatusForEntityType(CNEntityType.CNEntityTypeContacts)) {
-            CNAuthorizationStatusAuthorized -> GrantStatus.GRANTED
-            CNAuthorizationStatusDenied, CNAuthorizationStatusRestricted -> GrantStatus.DENIED_ALWAYS
+            CNAuthorizationStatusAuthorized   -> GrantStatus.GRANTED
+            CNAuthorizationStatusDenied,
+            CNAuthorizationStatusRestricted   -> GrantStatus.DENIED_ALWAYS
             CNAuthorizationStatusNotDetermined -> GrantStatus.NOT_DETERMINED
             else -> GrantStatus.NOT_DETERMINED
         }
     }
 
     // --- Calendar ---
-    private fun checkCalendarStatus(): GrantStatus {
+    /**
+     * FIX L3: Store raw status in a single val before branching — prevents
+     * calling `authorizationStatusForEntityType` twice (race-prone + wasteful).
+     *
+     * iOS 17+ mapping:
+     * - EKAuthorizationStatusFullAccess (raw = 3) → GRANTED
+     * - EKAuthorizationStatusWriteOnly  (raw = 4) → PARTIAL_GRANTED
+     */
+    internal fun checkCalendarStatus(): GrantStatus {
         if (!hasInfoPlistKey("NSCalendarsUsageDescription") &&
             !hasInfoPlistKey("NSCalendarsFullAccessUsageDescription")) {
-            GrantLogger.e(TAG, "Missing calendar usage description in Info.plist.")
             return GrantStatus.DENIED_ALWAYS
         }
-        return when (EKEventStore.authorizationStatusForEntityType(EKEntityType.EKEntityTypeEvent)) {
-            EKAuthorizationStatusAuthorized -> GrantStatus.GRANTED
-            EKAuthorizationStatusDenied, EKAuthorizationStatusRestricted -> GrantStatus.DENIED_ALWAYS
+        val rawStatus: EKAuthorizationStatus =
+            EKEventStore.authorizationStatusForEntityType(EKEntityType.EKEntityTypeEvent)
+        return when (rawStatus) {
+            EKAuthorizationStatusAuthorized   -> GrantStatus.GRANTED  // iOS < 17
+            EKAuthorizationStatusDenied,
+            EKAuthorizationStatusRestricted   -> GrantStatus.DENIED_ALWAYS
             EKAuthorizationStatusNotDetermined -> GrantStatus.NOT_DETERMINED
-            else -> {
-                // iOS 17+: .fullAccess maps to GRANTED, .writeOnly maps to PARTIAL_GRANTED
-                // The raw Long value for these new statuses:
-                // EKAuthorizationStatusFullAccess = 3, EKAuthorizationStatusWriteOnly = 4
-                val rawStatus = EKEventStore.authorizationStatusForEntityType(EKEntityType.EKEntityTypeEvent)
-                when (rawStatus) {
-                    3L -> GrantStatus.GRANTED           // fullAccess
-                    4L -> GrantStatus.PARTIAL_GRANTED    // writeOnly
-                    else -> GrantStatus.NOT_DETERMINED
-                }
+            else -> when (rawStatus) {
+                // iOS 17+: EKAuthorizationStatusFullAccess = 3, EKAuthorizationStatusWriteOnly = 4
+                3L -> GrantStatus.GRANTED
+                4L -> GrantStatus.PARTIAL_GRANTED
+                else -> GrantStatus.NOT_DETERMINED
             }
         }
     }
 
     // --- Motion ---
     private fun checkMotionStatus(): GrantStatus {
-        if (!hasInfoPlistKey("NSMotionUsageDescription")) {
-            GrantLogger.e(TAG, "Missing 'NSMotionUsageDescription' in Info.plist.")
-            return GrantStatus.DENIED_ALWAYS
-        }
+        if (!hasInfoPlistKey("NSMotionUsageDescription")) return GrantStatus.DENIED_ALWAYS
         if (SimulatorDetector.isSimulator) {
-            GrantLogger.i(TAG, "Simulator detected — returning GRANTED for Motion.")
+            GrantLogger.i(TAG, "Simulator detected — returning GRANTED for Motion checkStatus.")
             return GrantStatus.GRANTED
         }
         if (!CMMotionActivityManager.isActivityAvailable()) {
-            GrantLogger.w(TAG, "Motion activity is not available on this device.")
+            GrantLogger.w(TAG, "Motion activity hardware not available on this device.")
             return GrantStatus.DENIED_ALWAYS
         }
         return when (CMMotionActivityManager.authorizationStatus()) {
-            CMAuthorizationStatusAuthorized -> GrantStatus.GRANTED
-            CMAuthorizationStatusDenied -> GrantStatus.DENIED_ALWAYS
-            CMAuthorizationStatusRestricted -> GrantStatus.DENIED_ALWAYS
+            CMAuthorizationStatusAuthorized   -> GrantStatus.GRANTED
+            CMAuthorizationStatusDenied,
+            CMAuthorizationStatusRestricted   -> GrantStatus.DENIED_ALWAYS
             CMAuthorizationStatusNotDetermined -> GrantStatus.NOT_DETERMINED
             else -> GrantStatus.NOT_DETERMINED
         }
     }
 
     // --- Bluetooth ---
-    private fun checkBluetoothStatus(): GrantStatus {
-        return bluetoothDelegate.checkStatus()
-    }
+    private fun checkBluetoothStatus(): GrantStatus = bluetoothDelegate.checkStatus()
 
     // ====================================================================
     // REQUEST LOGIC
@@ -332,7 +370,7 @@ actual class PlatformGrantDelegate(
 
     private suspend fun requestInternal(grant: GrantPermission): GrantStatus {
         // Invalidate cache before request
-        statusCacheMap.remove(grant.identifier)
+        mapsMutex.withLock { statusCacheMap.remove(grant.identifier) }
 
         val currentStatus = checkStatus(grant)
         if (currentStatus == GrantStatus.GRANTED || currentStatus == GrantStatus.PARTIAL_GRANTED) {
@@ -349,7 +387,7 @@ actual class PlatformGrantDelegate(
         }
 
         val result = when (grant as AppGrant) {
-            AppGrant.CAMERA -> requestAVAccess(AVMediaTypeVideo!!, "NSCameraUsageDescription")
+            AppGrant.CAMERA     -> requestAVAccess(AVMediaTypeVideo!!, "NSCameraUsageDescription")
             AppGrant.MICROPHONE -> requestAVAccess(AVMediaTypeAudio!!, "NSMicrophoneUsageDescription")
 
             AppGrant.GALLERY,
@@ -357,7 +395,7 @@ actual class PlatformGrantDelegate(
             AppGrant.GALLERY_IMAGES_ONLY,
             AppGrant.GALLERY_VIDEO_ONLY -> requestPhotoAccess()
 
-            AppGrant.LOCATION -> requestLocationAccess(forAlways = false)
+            AppGrant.LOCATION       -> requestLocationAccess(forAlways = false)
             AppGrant.LOCATION_ALWAYS -> requestLocationAccess(forAlways = true)
 
             AppGrant.NOTIFICATION -> requestNotificationAccess()
@@ -376,17 +414,14 @@ actual class PlatformGrantDelegate(
             AppGrant.SCHEDULE_EXACT_ALARM -> GrantStatus.GRANTED
         }
 
-        // Invalidate cache after request
-        statusCacheMap.remove(grant.identifier)
+        // Invalidate cache after request so next checkStatus reads fresh from OS
+        mapsMutex.withLock { statusCacheMap.remove(grant.identifier) }
         return result
     }
 
     // --- AVFoundation Request (Camera / Microphone) ---
     private suspend fun requestAVAccess(mediaType: String, plistKey: String): GrantStatus {
-        if (!hasInfoPlistKey(plistKey)) {
-            GrantLogger.e(TAG, "Missing '$plistKey' in Info.plist. Cannot request.")
-            return GrantStatus.DENIED_ALWAYS
-        }
+        if (!hasInfoPlistKey(plistKey)) return GrantStatus.DENIED_ALWAYS
         return suspendCancellableCoroutine { cont ->
             AVCaptureDevice.requestAccessForMediaType(mediaType) { granted ->
                 mainContinuation<Boolean> { g ->
@@ -396,20 +431,48 @@ actual class PlatformGrantDelegate(
         }
     }
 
-    // --- Photos Request ---
+    /**
+     * FIX M4: Use non-deprecated `requestAuthorizationForAccessLevel(_:handler:)` on iOS 14+.
+     * Falls back to legacy `requestAuthorization(_:)` on iOS < 14.
+     *
+     * iOS 14+: PHAccessLevel.readWrite requests full read+write access.
+     * PHAuthorizationStatusLimited → PARTIAL_GRANTED (user selected specific photos).
+     */
     private suspend fun requestPhotoAccess(): GrantStatus {
-        if (!hasInfoPlistKey("NSPhotoLibraryUsageDescription")) {
-            return GrantStatus.DENIED_ALWAYS
-        }
+        if (!hasInfoPlistKey("NSPhotoLibraryUsageDescription")) return GrantStatus.DENIED_ALWAYS
+        // Check iOS 14+ for the non-deprecated PHPhotoLibrary access-level API.
+        // NSProcessInfo.operatingSystemVersionString returns e.g. "Version 17.0 (Build 21A342)"
+        val versionStr = NSProcessInfo.processInfo.operatingSystemVersionString
+        val majorVersion = versionStr.substringAfter("Version ")
+            .substringBefore(".").trim().toIntOrNull() ?: 0
+        val isIos14OrNewer = majorVersion >= 14
         return suspendCancellableCoroutine { cont ->
-            PHPhotoLibrary.requestAuthorization { status ->
-                val result = when (status) {
-                    PHAuthorizationStatusAuthorized -> GrantStatus.GRANTED
-                    PHAuthorizationStatusLimited -> GrantStatus.PARTIAL_GRANTED
-                    PHAuthorizationStatusDenied, PHAuthorizationStatusRestricted -> GrantStatus.DENIED_ALWAYS
-                    else -> GrantStatus.DENIED
+            if (isIos14OrNewer) {
+                // iOS 14+: use access-level API (non-deprecated)
+                PHPhotoLibrary.requestAuthorizationForAccessLevel(PHAccessLevelReadWrite) { status ->
+                    val result = when (status) {
+                        PHAuthorizationStatusAuthorized    -> GrantStatus.GRANTED
+                        PHAuthorizationStatusLimited       -> GrantStatus.PARTIAL_GRANTED
+                        PHAuthorizationStatusDenied,
+                        PHAuthorizationStatusRestricted    -> GrantStatus.DENIED_ALWAYS
+                        PHAuthorizationStatusNotDetermined -> GrantStatus.DENIED
+                        else -> GrantStatus.DENIED
+                    }
+                    mainContinuation<GrantStatus> { s -> cont.resume(s) }.invoke(result)
                 }
-                mainContinuation<GrantStatus> { s -> cont.resume(s) }.invoke(result)
+            } else {
+                // iOS < 14: legacy API
+                @Suppress("DEPRECATION")
+                PHPhotoLibrary.requestAuthorization { status ->
+                    val result = when (status) {
+                        PHAuthorizationStatusAuthorized    -> GrantStatus.GRANTED
+                        PHAuthorizationStatusLimited       -> GrantStatus.PARTIAL_GRANTED
+                        PHAuthorizationStatusDenied,
+                        PHAuthorizationStatusRestricted    -> GrantStatus.DENIED_ALWAYS
+                        else -> GrantStatus.DENIED
+                    }
+                    mainContinuation<GrantStatus> { s -> cont.resume(s) }.invoke(result)
+                }
             }
         }
     }
@@ -417,10 +480,8 @@ actual class PlatformGrantDelegate(
     // --- Location Request (delegate-based) ---
     private suspend fun requestLocationAccess(forAlways: Boolean): GrantStatus {
         val requiredKey = if (forAlways) "NSLocationAlwaysAndWhenInUseUsageDescription"
-            else "NSLocationWhenInUseUsageDescription"
-        if (!hasInfoPlistKey(requiredKey)) {
-            return GrantStatus.DENIED_ALWAYS
-        }
+                          else "NSLocationWhenInUseUsageDescription"
+        if (!hasInfoPlistKey(requiredKey)) return GrantStatus.DENIED_ALWAYS
 
         val clStatus: CLAuthorizationStatus = if (forAlways) {
             locationDelegate.requestAlwaysAuthorization()
@@ -429,11 +490,12 @@ actual class PlatformGrantDelegate(
         }
 
         return when (clStatus) {
-            kCLAuthorizationStatusAuthorizedAlways -> GrantStatus.GRANTED
+            kCLAuthorizationStatusAuthorizedAlways    -> GrantStatus.GRANTED
             kCLAuthorizationStatusAuthorizedWhenInUse -> {
                 if (forAlways) GrantStatus.PARTIAL_GRANTED else GrantStatus.GRANTED
             }
-            kCLAuthorizationStatusDenied, kCLAuthorizationStatusRestricted -> GrantStatus.DENIED_ALWAYS
+            kCLAuthorizationStatusDenied,
+            kCLAuthorizationStatusRestricted -> GrantStatus.DENIED_ALWAYS
             else -> GrantStatus.DENIED
         }
     }
@@ -456,9 +518,7 @@ actual class PlatformGrantDelegate(
 
     // --- Contacts Request ---
     private suspend fun requestContactsAccess(): GrantStatus {
-        if (!hasInfoPlistKey("NSContactsUsageDescription")) {
-            return GrantStatus.DENIED_ALWAYS
-        }
+        if (!hasInfoPlistKey("NSContactsUsageDescription")) return GrantStatus.DENIED_ALWAYS
         return suspendCancellableCoroutine { cont ->
             CNContactStore().requestAccessForEntityType(CNEntityType.CNEntityTypeContacts) { granted, error ->
                 if (error != null) {
@@ -471,7 +531,14 @@ actual class PlatformGrantDelegate(
         }
     }
 
-    // --- Calendar Request (iOS 17+ aware) ---
+    /**
+     * FIX H1: Calendar request on iOS 17+ — `requestAccessToEntityType` callback
+     * returns `granted=false` for BOTH "Don't Allow" AND "Add Events Only" (writeOnly).
+     *
+     * Fix: Ignore the `granted` boolean entirely. After the system dialog completes,
+     * re-read the actual authorization status via `checkCalendarStatus()`, which
+     * correctly maps raw value 4 (writeOnly) → PARTIAL_GRANTED.
+     */
     private suspend fun requestCalendarAccess(): GrantStatus {
         if (!hasInfoPlistKey("NSCalendarsUsageDescription") &&
             !hasInfoPlistKey("NSCalendarsFullAccessUsageDescription")) {
@@ -479,46 +546,54 @@ actual class PlatformGrantDelegate(
         }
         return suspendCancellableCoroutine { cont ->
             val eventStore = EKEventStore()
-            // Use legacy API which works on all iOS versions
-            // On iOS 17+, this still works if NSCalendarsFullAccessUsageDescription is present
-            eventStore.requestAccessToEntityType(EKEntityType.EKEntityTypeEvent) { granted, error ->
+            eventStore.requestAccessToEntityType(EKEntityType.EKEntityTypeEvent) { _, error ->
                 if (error != null) {
                     GrantLogger.e(TAG, "Calendar request error: ${error.localizedDescription}")
                 }
-                val result = if (granted) GrantStatus.GRANTED else GrantStatus.DENIED_ALWAYS
+                // FIX: Re-read actual status instead of trusting `granted` boolean.
+                // On iOS 17+, granted=false for writeOnly (Add Events Only) — must check raw value.
+                val result = checkCalendarStatus()
                 mainContinuation<GrantStatus> { s -> cont.resume(s) }.invoke(result)
             }
         }
     }
 
-    // --- Motion Request (Dummy Query — Industry Standard) ---
+    /**
+     * FIX M7: Add `invokeOnCancellation` to release `activityManager` reference
+     * if the calling coroutine is cancelled before the query callback fires.
+     * This prevents the query from calling into a dangling continuation.
+     */
     private suspend fun requestMotionAccess(): GrantStatus {
-        if (!hasInfoPlistKey("NSMotionUsageDescription")) {
-            return GrantStatus.DENIED_ALWAYS
-        }
+        if (!hasInfoPlistKey("NSMotionUsageDescription")) return GrantStatus.DENIED_ALWAYS
         if (SimulatorDetector.isSimulator) {
             GrantLogger.i(TAG, "Simulator detected — returning GRANTED for Motion request.")
             return GrantStatus.GRANTED
         }
-        if (!CMMotionActivityManager.isActivityAvailable()) {
-            return GrantStatus.DENIED_ALWAYS
-        }
+        if (!CMMotionActivityManager.isActivityAvailable()) return GrantStatus.DENIED_ALWAYS
 
-        // Dummy Query pattern — triggers the system permission dialog
-        // Same approach used by MOKO-permissions and Flutter permission_handler
+        // Dummy Query pattern — triggers the system permission dialog.
+        // Same approach used by MOKO-permissions and Flutter permission_handler.
         return suspendCancellableCoroutine { cont ->
             val activityManager = CMMotionActivityManager()
             val now = NSDate()
+
+            cont.invokeOnCancellation {
+                // FIX M7: Stop the manager so the query callback won't fire after cancellation
+                activityManager.stopActivityUpdates()
+                GrantLogger.i(TAG, "Motion dummy query cancelled — activityManager stopped.")
+            }
+
             activityManager.queryActivityStartingFromDate(
                 start = now,
                 toDate = now,
                 toQueue = NSOperationQueue.mainQueue
-            ) { _, error ->
+            ) { _, _ ->
                 val status = CMMotionActivityManager.authorizationStatus()
                 val result = when (status) {
-                    CMAuthorizationStatusAuthorized -> GrantStatus.GRANTED
-                    CMAuthorizationStatusDenied -> GrantStatus.DENIED_ALWAYS
-                    CMAuthorizationStatusRestricted -> GrantStatus.DENIED_ALWAYS
+                    CMAuthorizationStatusAuthorized    -> GrantStatus.GRANTED
+                    CMAuthorizationStatusDenied,
+                    CMAuthorizationStatusRestricted    -> GrantStatus.DENIED_ALWAYS
+                    CMAuthorizationStatusNotDetermined -> GrantStatus.DENIED
                     else -> GrantStatus.DENIED
                 }
                 mainContinuation<GrantStatus> { s -> cont.resume(s) }.invoke(result)
@@ -547,6 +622,9 @@ actual class PlatformGrantDelegate(
     // ====================================================================
 
     /**
+     * FIX L8: Single logging point — callers no longer log their own error messages,
+     * keeping `hasInfoPlistKey` as the sole, consistent logger for missing plist keys.
+     *
      * Validates that a required Info.plist key is present.
      * Missing keys cause SIGABRT crashes when calling native APIs.
      */

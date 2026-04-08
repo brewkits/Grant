@@ -1,6 +1,6 @@
 package dev.brewkits.grant
 
-import dev.brewkits.grant.impl.MyGrantManager
+import dev.brewkits.grant.impl.DefaultGrantManager
 import dev.brewkits.grant.impl.PlatformGrantDelegate
 
 /**
@@ -71,7 +71,7 @@ object GrantFactory {
         store: GrantStore = InMemoryGrantStore()
     ): GrantManager {
         val delegate = createPlatformDelegate(context, store)
-        return MyGrantManager(delegate)
+        return DefaultGrantManager(delegate)
     }
 }
 

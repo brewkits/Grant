@@ -13,10 +13,25 @@ import kotlin.coroutines.resume
  * iOS location grants require a CLLocationManager and delegate to handle
  * asynchronous authorization changes. This class wraps that complexity into
  * a clean suspend function API.
+ *
+ * **FIX C3 — Double-resume prevention:**
+ * On iOS 14+, both `locationManagerDidChangeAuthorization` (new) and
+ * `locationManager(_:didChangeAuthorizationStatus:)` (legacy) are called.
+ * The legacy callback was NOT deprecated at runtime, so both fire on iOS 14+.
+ *
+ * Fix: `continuation` is set to `null` BEFORE calling `.resume()`.
+ * The second callback then sees `continuation == null` and returns early,
+ * preventing the "resumed continuation twice" crash (EXC_BAD_ACCESS /
+ * IllegalStateException on Kotlin/Native).
  */
 internal class LocationManagerDelegate : NSObject(), CLLocationManagerDelegateProtocol {
 
     private val locationManager = CLLocationManager()
+
+    /**
+     * Active continuation — nulled out BEFORE resume to prevent double-resume.
+     * Pattern: val cont = continuation; continuation = null; cont?.resume(...)
+     */
     private var continuation: Continuation<CLAuthorizationStatus>? = null
 
     init {
@@ -26,22 +41,19 @@ internal class LocationManagerDelegate : NSObject(), CLLocationManagerDelegatePr
     /**
      * Requests "when in use" (foreground) location authorization.
      * Maps to iOS NSLocationWhenInUseUsageDescription.
-     *
-     * @return The resulting authorization status
      */
     suspend fun requestWhenInUseAuthorization(): CLAuthorizationStatus {
         return suspendCancellableCoroutine { cont ->
             continuation = cont
 
-            // Check if already determined
+            // If already determined, resume immediately without showing dialog
             val currentStatus = locationManager.authorizationStatus()
             if (currentStatus != kCLAuthorizationStatusNotDetermined) {
-                cont.resume(currentStatus)
                 continuation = null
+                cont.resume(currentStatus)
                 return@suspendCancellableCoroutine
             }
 
-            // Request authorization - delegate callback will resume continuation
             locationManager.requestWhenInUseAuthorization()
 
             cont.invokeOnCancellation {
@@ -52,32 +64,28 @@ internal class LocationManagerDelegate : NSObject(), CLLocationManagerDelegatePr
 
     /**
      * Requests "always" (background + foreground) location authorization.
-     * Maps to iOS NSLocationAlwaysUsageDescription.
+     * Maps to iOS NSLocationAlwaysAndWhenInUseUsageDescription.
      *
      * Note: On iOS 11+, you must first request WhenInUse before Always.
      * This function handles that automatically.
-     *
-     * @return The resulting authorization status
      */
     suspend fun requestAlwaysAuthorization(): CLAuthorizationStatus {
         return suspendCancellableCoroutine { cont ->
             continuation = cont
 
-            // Check if already determined
             val currentStatus = locationManager.authorizationStatus()
             if (currentStatus == kCLAuthorizationStatusAuthorizedAlways) {
-                cont.resume(currentStatus)
                 continuation = null
+                cont.resume(currentStatus)
                 return@suspendCancellableCoroutine
             }
 
-            // iOS 11+ requirement: Request WhenInUse first if not already granted
+            // iOS 11+ requirement: request WhenInUse first if not already granted
             if (currentStatus == kCLAuthorizationStatusNotDetermined ||
                 currentStatus == kCLAuthorizationStatusDenied) {
                 locationManager.requestWhenInUseAuthorization()
             }
 
-            // Then request Always authorization
             locationManager.requestAlwaysAuthorization()
 
             cont.invokeOnCancellation {
@@ -87,33 +95,38 @@ internal class LocationManagerDelegate : NSObject(), CLLocationManagerDelegatePr
     }
 
     /**
-     * CLLocationManagerDelegate callback when authorization status changes.
-     * This is called after user responds to the grant dialog.
+     * iOS 14+ callback: `locationManagerDidChangeAuthorization`.
+     *
+     * FIX C3: Capture and null `continuation` BEFORE calling resume.
+     * This means if the legacy callback fires afterwards on iOS 14+,
+     * it sees `continuation == null` and is a safe no-op.
      */
     override fun locationManagerDidChangeAuthorization(manager: CLLocationManager) {
         val status = manager.authorizationStatus()
-
-        // Resume the waiting coroutine with the new status
+        // FIX C3: null continuation FIRST to block the legacy callback
         val cont = continuation
+        continuation = null
         if (cont != null) {
-            mainContinuation<CLAuthorizationStatus> { s ->
-                cont.resume(s)
-            }.invoke(status)
-            continuation = null
+            mainContinuation<CLAuthorizationStatus> { s -> cont.resume(s) }.invoke(status)
         }
     }
 
     /**
-     * Legacy callback for iOS < 14 compatibility.
+     * Legacy callback for iOS < 14.
+     * On iOS 14+, this fires AFTER `locationManagerDidChangeAuthorization`.
+     *
+     * FIX C3: Guard on `continuation == null` (already consumed above) → safe no-op.
      */
     @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
-    override fun locationManager(manager: CLLocationManager, didChangeAuthorizationStatus: CLAuthorizationStatus) {
-        val cont = continuation
-        if (cont != null) {
-            mainContinuation<CLAuthorizationStatus> { status ->
-                cont.resume(status)
-            }.invoke(didChangeAuthorizationStatus)
-            continuation = null
-        }
+    override fun locationManager(
+        manager: CLLocationManager,
+        didChangeAuthorizationStatus: CLAuthorizationStatus
+    ) {
+        // FIX C3: If already consumed by the iOS 14+ callback above → skip
+        val cont = continuation ?: return
+        continuation = null
+        mainContinuation<CLAuthorizationStatus> { status ->
+            cont.resume(status)
+        }.invoke(didChangeAuthorizationStatus)
     }
 }

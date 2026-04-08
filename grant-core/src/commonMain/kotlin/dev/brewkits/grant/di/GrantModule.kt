@@ -4,7 +4,7 @@ import dev.brewkits.grant.GrantAndServiceChecker
 import dev.brewkits.grant.GrantManager
 import dev.brewkits.grant.ServiceManager
 import dev.brewkits.grant.ServiceFactory
-import dev.brewkits.grant.impl.MyGrantManager
+import dev.brewkits.grant.impl.DefaultGrantManager
 import dev.brewkits.grant.impl.PlatformGrantDelegate
 import org.koin.core.module.Module
 import org.koin.dsl.module
@@ -33,7 +33,7 @@ import org.koin.dsl.module
 val grantModule = module {
     // Grant Manager
     single<GrantManager> {
-        MyGrantManager(
+        DefaultGrantManager(
             platformDelegate = get() // Provided by platform-specific module
         )
     }

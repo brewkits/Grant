@@ -16,28 +16,24 @@ import platform.Foundation.NSSelectorFromString
 
 /**
  * Bluetooth request timeout in milliseconds.
- *
- * **Why 10 seconds?**
- * - iOS typically responds within 1-2 seconds for permission dialogs
- * - 10 seconds allows for:
- *   - Slow devices or system lag
- *   - User reading the permission prompt
- *   - System animations/transitions
- * - Prevents indefinite hangs if system fails to respond
- *
- * **What happens on timeout?**
- * - Throws BluetoothTimeoutException (recoverable)
- * - User can retry the request
- * - Logs warning for debugging
+ * iOS typically responds within 1–2 seconds. 10 seconds allows for slow
+ * devices, user reading the dialog, and system animations.
  */
 private const val BLUETOOTH_REQUEST_TIMEOUT_MS = 10_000L
 
 /**
  * Delegate for handling iOS CoreBluetooth grant requests.
  *
- * iOS Bluetooth grants are checked through CBCentralManager state.
- * Creating a CBCentralManager automatically triggers the grant dialog
- * if authorization hasn't been determined yet.
+ * **FIX H4 — Ephemeral CBCentralManager on checkStatus:**
+ * Previously, `checkStatus()` created a new `CBCentralManager(delegate:queue:)`
+ * on every call. This is problematic because:
+ * 1. Initialises the BT stack unnecessarily on every status check.
+ * 2. On iOS 13.0, creating a CBCentralManager (even with delegate=null) may
+ *    trigger an unexpected permission prompt.
+ * 3. The ephemeral instance is not released safely due to Kotlin/Native ARC timing.
+ *
+ * Fix: `checkStatus()` now uses `CBManager.authorization()` directly (iOS 13.1+)
+ * for a lightweight, side-effect-free status read. No CBCentralManager needed.
  */
 @OptIn(ExperimentalForeignApi::class)
 internal class BluetoothManagerDelegate : NSObject(), CBCentralManagerDelegateProtocol {
@@ -46,64 +42,50 @@ internal class BluetoothManagerDelegate : NSObject(), CBCentralManagerDelegatePr
     private var continuation: Continuation<GrantStatus>? = null
 
     /**
-     * Checks current Bluetooth authorization status without requesting.
-     * Creates a temporary CBCentralManager to read the status.
+     * FIX H4: Check authorization status WITHOUT creating a CBCentralManager.
      *
-     * @return Current grant status
+     * `CBManager.authorization()` (iOS 13.1+) reads the app's BT authorization
+     * state directly from the system without triggering stack initialization
+     * or any side effects.
+     *
+     * On iOS Simulator, returns GRANTED for testing purposes.
      */
     fun checkStatus(): GrantStatus {
-        // iOS Simulator doesn't support Bluetooth hardware
-        // Return GRANTED to allow testing without blocking
         if (SimulatorDetector.isSimulator) {
             GrantLogger.i(
                 "BluetoothDelegate",
-                "Running on ${SimulatorDetector.simulatorType} - Bluetooth not supported, returning GRANTED for testing"
+                "Running on ${SimulatorDetector.simulatorType} — Bluetooth not available on simulator, returning GRANTED for testing."
             )
             return GrantStatus.GRANTED
         }
 
-        // Instantiate an ephemeral manager solely to poll the current initialization state
-        val tempManager = CBCentralManager(delegate = null, queue = null)
-
-        val authorization = if (tempManager.respondsToSelector(
-                NSSelectorFromString("authorization")
-            )) {
-            // iOS 13.1+
-            CBManager.authorization()
-        } else {
-            // iOS 13.0: infer from state
-            if (tempManager.state == CBManagerStatePoweredOn) {
-                CBManagerAuthorizationAllowedAlways
-            } else {
-                CBManagerAuthorizationNotDetermined
-            }
+        // FIX H4: Use CBManager.authorization() without any CBCentralManager instantiation.
+        // Available on iOS 13.1+. Covers 99%+ of active devices as of 2025.
+        val authorization = CBManager.authorization()
+        return when (authorization) {
+            CBManagerAuthorizationAllowedAlways  -> GrantStatus.GRANTED
+            CBManagerAuthorizationDenied         -> GrantStatus.DENIED_ALWAYS
+            CBManagerAuthorizationRestricted     -> GrantStatus.DENIED_ALWAYS
+            CBManagerAuthorizationNotDetermined  -> GrantStatus.NOT_DETERMINED
+            else                                 -> GrantStatus.NOT_DETERMINED
         }
-
-        return mapBluetoothStateToStatus(tempManager.state, authorization)
     }
 
     /**
-     * Requests Bluetooth grant by creating a CBCentralManager.
-     * The OS will automatically show grant dialog on first access.
+     * Requests Bluetooth access by creating a CBCentralManager.
+     * The OS automatically shows the permission dialog on first access.
      *
-     * **Timeout Behavior:**
-     * - Uses [BLUETOOTH_REQUEST_TIMEOUT_MS] (10 seconds) timeout
-     * - iOS typically responds within 1-2 seconds
-     * - Timeout allows for slow systems while preventing indefinite hangs
-     * - On timeout, throws BluetoothTimeoutException (recoverable - user can retry)
+     * Uses [BLUETOOTH_REQUEST_TIMEOUT_MS] (10 s) timeout to prevent hangs.
      *
-     * @return The resulting grant status
-     * @throws BluetoothTimeoutException if request times out after 10 seconds
+     * @throws BluetoothTimeoutException        if dialog never responds
      * @throws BluetoothInitializationException if CBCentralManager creation fails
-     * @throws BluetoothPoweredOffException if Bluetooth is powered off
+     * @throws BluetoothPoweredOffException     if Bluetooth is powered off
      */
     suspend fun requestBluetoothAccess(): GrantStatus {
-        // iOS Simulator doesn't support Bluetooth hardware
-        // Return GRANTED immediately to allow testing
         if (SimulatorDetector.isSimulator) {
             GrantLogger.i(
                 "BluetoothDelegate",
-                "Running on ${SimulatorDetector.simulatorType} - Returning GRANTED for testing (Bluetooth not supported on simulator)"
+                "Running on ${SimulatorDetector.simulatorType} — returning GRANTED for testing."
             )
             return GrantStatus.GRANTED
         }
@@ -114,14 +96,12 @@ internal class BluetoothManagerDelegate : NSObject(), CBCentralManagerDelegatePr
                     continuation = cont
 
                     try {
-                        // Create CBCentralManager - this triggers grant request
-                        // Queue = null means use main queue
+                        // Creating CBCentralManager triggers the BT permission dialog
                         centralManager = CBCentralManager(
                             delegate = this@BluetoothManagerDelegate,
                             queue = null
                         )
-
-                        GrantLogger.i("BluetoothDelegate", "CBCentralManager created, waiting for state update")
+                        GrantLogger.i("BluetoothDelegate", "CBCentralManager created, waiting for state update.")
                     } catch (e: Exception) {
                         GrantLogger.e("BluetoothDelegate", "Failed to create CBCentralManager", e)
                         cont.resumeWithException(
@@ -130,7 +110,7 @@ internal class BluetoothManagerDelegate : NSObject(), CBCentralManagerDelegatePr
                     }
 
                     cont.invokeOnCancellation {
-                        GrantLogger.i("BluetoothDelegate", "Bluetooth request cancelled")
+                        GrantLogger.i("BluetoothDelegate", "Bluetooth request cancelled.")
                         continuation = null
                         centralManager = null
                     }
@@ -139,78 +119,52 @@ internal class BluetoothManagerDelegate : NSObject(), CBCentralManagerDelegatePr
         } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
             GrantLogger.w(
                 "BluetoothDelegate",
-                "Bluetooth request timed out after ${BLUETOOTH_REQUEST_TIMEOUT_MS}ms. " +
-                "This is recoverable - user can retry the request."
+                "Bluetooth request timed out after ${BLUETOOTH_REQUEST_TIMEOUT_MS}ms. User can retry."
             )
             continuation = null
             centralManager = null
             throw BluetoothTimeoutException(
-                "Bluetooth permission request timed out after ${BLUETOOTH_REQUEST_TIMEOUT_MS}ms. " +
-                "This may indicate system lag or user delay. Please retry."
+                "Bluetooth permission request timed out after ${BLUETOOTH_REQUEST_TIMEOUT_MS}ms."
             )
         }
     }
 
     /**
      * CBCentralManagerDelegate callback when Bluetooth state changes.
-     * This includes both grant changes and Bluetooth on/off state.
      */
     override fun centralManagerDidUpdateState(central: CBCentralManager) {
-        val state = central.state
-        val authorization = if (central.respondsToSelector(
-                NSSelectorFromString("authorization")
-            )) {
-            // iOS 13.1+
-            CBManager.authorization()
-        } else {
-            // iOS 13.0: authorization not available, infer from state
-            if (state == CBManagerStatePoweredOn) {
-                CBManagerAuthorizationAllowedAlways
-            } else {
-                CBManagerAuthorizationNotDetermined
-            }
-        }
-
-        val status = mapBluetoothStateToStatus(state, authorization)
+        val state         = central.state
+        val authorization = CBManager.authorization()  // same lightweight read as checkStatus()
+        val status = mapAuthorizationToStatus(state, authorization)
 
         val cont = continuation
         if (cont != null) {
+            continuation = null
             mainContinuation<GrantStatus> { s ->
                 if (s == GrantStatus.DENIED_ALWAYS && state == CBManagerStatePoweredOff) {
-                    // Special case: Bluetooth is turned off
-                    cont.resumeWithException(
-                        BluetoothPoweredOffException("Bluetooth is turned off")
-                    )
+                    cont.resumeWithException(BluetoothPoweredOffException("Bluetooth is turned off"))
                 } else {
                     cont.resume(s)
                 }
             }.invoke(status)
-            continuation = null
         }
     }
 
-    /**
-     * Maps iOS Bluetooth state and authorization to our GrantStatus.
-     */
-    private fun mapBluetoothStateToStatus(
+    private fun mapAuthorizationToStatus(
         state: CBManagerState,
         authorization: CBManagerAuthorization
     ): GrantStatus {
-        // First check authorization
         return when (authorization) {
-            CBManagerAuthorizationAllowedAlways -> {
-                // Authorization granted, but check if Bluetooth is on
-                when (state) {
-                    CBManagerStatePoweredOn -> GrantStatus.GRANTED
-                    CBManagerStatePoweredOff -> GrantStatus.DENIED_ALWAYS // BT off
-                    CBManagerStateResetting -> GrantStatus.DENIED // Transient system state, treat as denied
-                    CBManagerStateUnsupported -> GrantStatus.DENIED_ALWAYS // No BT hardware
-                    CBManagerStateUnauthorized -> GrantStatus.DENIED_ALWAYS // Shouldn't happen
-                    CBManagerStateUnknown -> GrantStatus.NOT_DETERMINED
-                    else -> GrantStatus.NOT_DETERMINED
-                }
+            CBManagerAuthorizationAllowedAlways -> when (state) {
+                CBManagerStatePoweredOn    -> GrantStatus.GRANTED
+                CBManagerStatePoweredOff   -> GrantStatus.DENIED_ALWAYS  // BT hardware off
+                CBManagerStateResetting    -> GrantStatus.DENIED          // Transient — treat as soft denied
+                CBManagerStateUnsupported  -> GrantStatus.DENIED_ALWAYS   // No BT hardware
+                CBManagerStateUnauthorized -> GrantStatus.DENIED_ALWAYS   // Should not happen here
+                CBManagerStateUnknown      -> GrantStatus.NOT_DETERMINED
+                else                       -> GrantStatus.NOT_DETERMINED
             }
-            CBManagerAuthorizationDenied -> GrantStatus.DENIED_ALWAYS
+            CBManagerAuthorizationDenied     -> GrantStatus.DENIED_ALWAYS
             CBManagerAuthorizationRestricted -> GrantStatus.DENIED_ALWAYS
             CBManagerAuthorizationNotDetermined -> GrantStatus.NOT_DETERMINED
             else -> GrantStatus.NOT_DETERMINED
@@ -218,20 +172,11 @@ internal class BluetoothManagerDelegate : NSObject(), CBCentralManagerDelegatePr
     }
 }
 
-/**
- * Exception thrown when Bluetooth grant is granted but Bluetooth is powered off.
- * This is a recoverable error - user needs to enable Bluetooth in Settings.
- */
+/** Thrown when Bluetooth is authorized but the radio is powered off. Recoverable. */
 internal class BluetoothPoweredOffException(message: String) : Exception(message)
 
-/**
- * Exception thrown when Bluetooth permission request times out.
- * This is a temporary error - user can retry.
- */
+/** Thrown when the permission request times out waiting for user interaction. Recoverable. */
 internal class BluetoothTimeoutException(message: String) : Exception(message)
 
-/**
- * Exception thrown when CBCentralManager initialization fails.
- * This is a temporary error - may be due to system state.
- */
+/** Thrown when CBCentralManager initialization fails unexpectedly. */
 internal class BluetoothInitializationException(message: String) : Exception(message)

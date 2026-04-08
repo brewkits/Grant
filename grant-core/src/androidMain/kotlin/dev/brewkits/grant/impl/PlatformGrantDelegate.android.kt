@@ -133,16 +133,29 @@ actual class PlatformGrantDelegate(
         if (grants.size == 1) return mapOf(grants.first() to request(grants.first()))
 
         val sortedGrants = grants.distinctBy { it.identifier }.sortedBy { it.identifier }
-        return lockAll(sortedGrants) {
+        return lockAllIterative(sortedGrants) {
             requestMultipleInternal(grants)
         }
     }
 
-    private suspend fun <T> lockAll(grants: List<GrantPermission>, index: Int = 0, block: suspend () -> T): T {
-        if (index >= grants.size) return block()
-        return getMutexFor(grants[index].identifier).withLock {
-            lockAll(grants, index + 1, block)
+    /**
+     * FIX M5: Convert recursive lockAll() to iterative via fold.
+     *
+     * Previous recursive implementation had O(n) stack depth, risking
+     * StackOverflow for large permission lists. The folding approach locks
+     * each mutex in sorted order (deadlock-free) without growing the stack.
+     *
+     * Locks are acquired in sorted identifier order (same as `sortedGrants`)
+     * to guarantee a consistent locking order and prevent deadlocks if two
+     * concurrent request() calls races on overlapping permission sets.
+     */
+    private suspend fun <T> lockAllIterative(grants: List<GrantPermission>, block: suspend () -> T): T {
+        // Build a suspend chain: grant_n.mutex { grant_(n-1).mutex { ... block() } }
+        // using fold so the call stack stays O(1).
+        val chain: suspend () -> T = grants.fold(block) { inner, grant ->
+            suspend { getMutexFor(grant.identifier).withLock { inner() } }
         }
+        return chain()
     }
 
     private suspend fun requestInternal(grant: GrantPermission): GrantStatus {
