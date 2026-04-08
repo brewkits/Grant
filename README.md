@@ -1,19 +1,13 @@
 <div align="center">
-<img src="assets/logo.png" width="96" alt="Grant logo" />
 
-# Grant
+<img src="assets/logo.svg" height="108" alt="Grant" />
 
-### Modern, type-safe permission handling for Kotlin Multiplatform.
+[![Maven Central](https://img.shields.io/maven-central/v/dev.brewkits/grant-core?color=7F52FF&label=Maven%20Central)](https://central.sonatype.com/artifact/dev.brewkits/grant-core)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.1.0-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org)
+[![CI](https://github.com/brewkits/Grant/actions/workflows/build.yml/badge.svg)](https://github.com/brewkits/Grant/actions/workflows/build.yml)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue)](LICENSE)
 
-[![Kotlin](https://img.shields.io/badge/Kotlin-2.1.0-blue.svg?logo=kotlin)](http://kotlinlang.org)
-[![Compose](https://img.shields.io/badge/Compose-1.9.3-green)](https://www.jetbrains.com/lp/compose-multiplatform/)
-[![Maven Central](https://img.shields.io/maven-central/v/dev.brewkits/grant-core)](https://central.sonatype.com/artifact/dev.brewkits/grant-core)
-[![License](https://img.shields.io/badge/License-Apache%202.0-orange.svg)](https://opensource.org/licenses/Apache-2.0)
-[![GitHub Stars](https://img.shields.io/github/stars/brewkits/Grant?style=social)](https://github.com/brewkits/Grant/stargazers)
-
-**🛡️ Atomic Groups · 🧟 Process-Death Safe · 🍎 iOS Native Parity · 📐 Partial Granted**
-
-[**Quick Start**](#-quick-start) · [**Installation**](#-installation) · [**Custom Permissions**](#-custom-permissions-rawpermission) · [**Design Rationale**](#-design-rationale)
+**Type-safe permission handling for Kotlin Multiplatform — the parts Android and iOS both make hard.**
 
 </div>
 
@@ -606,14 +600,35 @@ limitations under the License.
 
 ---
 
-## Support
+## Requirements
 
-- **Website:** [brewkits.dev](https://brewkits.dev)
-- **Issues:** [GitHub Issues](https://github.com/brewkits/Grant/issues)
-- **Email:** datacenter111@gmail.com
+| | |
+|---|---|
+| Kotlin | 2.1.0+ |
+| Android | API 24+ |
+| iOS | 13.0+ |
+| Gradle | 8.0+ |
 
 ---
 
-**License:** Apache 2.0 • **Author:** Nguyễn Tuấn Việt • [BrewKits](https://brewkits.dev)
+## Contributing
 
-[⬆️ Back to Top](#grant-)
+```bash
+./gradlew :grant-core:allTests   # all platforms must pass before opening a PR
+```
+
+Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/).
+
+---
+
+## License
+
+Apache 2.0. See [LICENSE](LICENSE).
+
+---
+
+<div align="center">
+
+[GitHub](https://github.com/brewkits/Grant) · [Maven Central](https://central.sonatype.com/artifact/dev.brewkits/grant-core) · [Issues](https://github.com/brewkits/Grant/issues)
+
+</div>
