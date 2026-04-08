@@ -139,7 +139,7 @@ actual class PlatformGrantDelegate(
     }
 
     /**
-     * FIX M5: Convert recursive lockAll() to iterative via fold.
+     * Convert recursive lockAll() to iterative via fold.
      *
      * Previous recursive implementation had O(n) stack depth, risking
      * StackOverflow for large permission lists. The folding approach locks

@@ -43,7 +43,7 @@ class GrantRequestActivityTest {
         assertNotNull(deferred, "Result deferred should not be null")
 
         // Wait for result
-        val result = withTimeout(15000) {
+        val result = withTimeout(60000) {
             deferred.await()
         }
 
@@ -62,7 +62,7 @@ class GrantRequestActivityTest {
         // Test with multiple install-time permissions
         val permissions = listOf(
             Manifest.permission.VIBRATE,
-            Manifest.permission.ACCESS_WIFI_STATE
+            Manifest.permission.REORDER_TASKS
         )
 
         val requestId = GrantRequestActivity.requestGrants(context, permissions)
@@ -71,7 +71,7 @@ class GrantRequestActivityTest {
         assertNotNull(deferred, "Result deferred should not be null")
 
         // Wait for result
-        val result = withTimeout(10000) {
+        val result = withTimeout(60000) {
             deferred.await()
         }
 

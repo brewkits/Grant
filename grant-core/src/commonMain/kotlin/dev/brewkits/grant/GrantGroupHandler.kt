@@ -246,7 +246,7 @@ class GrantGroupHandler(
             GrantStatus.GRANTED, GrantStatus.PARTIAL_GRANTED -> true
 
             GrantStatus.NOT_DETERMINED -> {
-                // FIX M3: This can happen if request() returned NOT_DETERMINED
+                // This can happen if request() returned NOT_DETERMINED
                 // (e.g. Motion dummy-query race on iOS, or system dialog dismissed
                 // without interaction). Treat as DENIED so we surface rationale next time.
                 _state.update {
