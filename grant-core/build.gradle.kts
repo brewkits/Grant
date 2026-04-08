@@ -66,6 +66,15 @@ kotlin {
             implementation(libs.androidx.test.junit)
             implementation(libs.kotlinx.coroutines.test)
         }
+
+        // JVM-based Android unit tests (no device/emulator required)
+        // Tests permission mapping logic, API version branching, and status reporting
+        val androidUnitTest by getting {
+            dependencies {
+                implementation(libs.kotlin.test)
+                implementation(libs.kotlinx.coroutines.test)
+            }
+        }
     }
 }
 

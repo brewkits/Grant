@@ -3,6 +3,7 @@ package dev.brewkits.grant.demo
 import dev.brewkits.grant.AppGrant
 import dev.brewkits.grant.GrantHandler
 import dev.brewkits.grant.GrantManager
+import dev.brewkits.grant.GrantStatus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -412,6 +413,88 @@ class GrantDemoViewModel(
             _grantTypeResult.update {
                 it + "\n\n📍 Now tracking your location in the background..."
             }
+        }
+    }
+
+    // ==============================================
+    // SCENARIO 5: ADVANCED / OS-VERSION-SPECIFIC
+    // Motion (Dummy Query), Calendar (iOS 17+ writeOnly),
+    // Gallery partial (Android 14+ SELECT_PHOTOS)
+    // ==============================================
+
+    private val _scenario5Result = MutableStateFlow("")
+    val scenario5Result: StateFlow<String> = _scenario5Result.asStateFlow()
+
+    /**
+     * Scenario 5a: Motion — Dummy Query pattern on iOS.
+     * Android: ACTIVITY_RECOGNITION (API 29+) or GMS fallback (< API 29)
+     */
+    fun requestMotionGrant() {
+        _scenario5Result.value = "Requesting MOTION...\n${OsInfo.motionBehaviorNote()}"
+        motionGrant.request(
+            rationaleMessage = "Motion access is needed to detect your physical activity (walking, running, cycling).",
+            settingsMessage = "Motion permission denied. Enable it in Settings > Privacy > Motion & Fitness"
+        ) {
+            val status = motionGrant.status.value
+            _scenario5Result.value = when (status) {
+                GrantStatus.GRANTED -> "✓ MOTION GRANTED\n${OsInfo.motionBehaviorNote()}\n\n🏃 Activity tracking active!"
+                GrantStatus.DENIED_ALWAYS -> "⛔ MOTION BLOCKED\nUser must enable in Settings > Privacy > Motion & Fitness"
+                else -> "✕ MOTION DENIED (status: $status)"
+            }
+        }
+    }
+
+    /**
+     * Scenario 5b: Calendar full access (CALENDAR read+write).
+     * iOS 17+: returns PARTIAL_GRANTED if user grants write-only access.
+     */
+    fun requestCalendarFullGrant() {
+        _scenario5Result.value = "Requesting CALENDAR (full access)...\n• iOS 17+: System shows Full Access vs Add Only\n• Write-Only → PARTIAL_GRANTED"
+        calendarGrant.request(
+            rationaleMessage = "Calendar access is needed to create and manage your event reminders.",
+            settingsMessage = "Calendar access denied. Enable it in Settings > Privacy > Calendars"
+        ) {
+            val status = calendarGrant.status.value
+            _scenario5Result.value = when (status) {
+                GrantStatus.GRANTED -> "✓ CALENDAR GRANTED (Full Access)\n\n📅 Can read and write all events"
+                GrantStatus.PARTIAL_GRANTED -> "◑ CALENDAR PARTIAL (Write-Only on iOS 17+)\n\n📅 Can add events, cannot read existing ones"
+                GrantStatus.DENIED_ALWAYS -> "⛔ CALENDAR BLOCKED\nEnable in Settings > Privacy > Calendars"
+                else -> "✕ CALENDAR DENIED (status: $status)"
+            }
+        }
+    }
+
+    /**
+     * Scenario 5c: Gallery with explicit PARTIAL_GRANTED handling.
+     * Android 14+: Shows "Select Photos" option → PARTIAL_GRANTED
+     * iOS: "Limited Library" → PARTIAL_GRANTED
+     */
+    fun requestGalleryPartialGrant() {
+        _scenario5Result.value = "Requesting GALLERY...\n${OsInfo.galleryBehaviorNote()}"
+        galleryGrant.request(
+            rationaleMessage = "Photo library access is needed to let you pick and share photos.",
+            settingsMessage = "Gallery access denied. Enable it in Settings > Privacy > Photos"
+        ) {
+            val status = galleryGrant.status.value
+            _scenario5Result.value = when (status) {
+                GrantStatus.GRANTED -> "✓ GALLERY GRANTED (Full Access)\n${OsInfo.galleryBehaviorNote()}\n\n🖼️ All photos accessible"
+                GrantStatus.PARTIAL_GRANTED -> "◑ GALLERY PARTIAL (Limited Access!)\n${OsInfo.galleryBehaviorNote()}\n\n🖼️ Only selected photos accessible"
+                GrantStatus.DENIED_ALWAYS -> "⛔ GALLERY BLOCKED\nEnable in Settings > Privacy > Photos"
+                else -> "✕ GALLERY DENIED (status: $status)"
+            }
+        }
+    }
+
+    /**
+     * Scenario 5d: Notification — shows the API 33+ requirement.
+     */
+    fun requestNotificationScenario5() {
+        _scenario5Result.value = "Requesting NOTIFICATION...\n${OsInfo.notificationBehaviorNote()}"
+        notificationGrant.request(
+            rationaleMessage = "Enable notifications to receive real-time updates and reminders.",
+            settingsMessage = "Notifications disabled. Enable in Settings > Notifications"
+        ) {
+            _scenario5Result.value = "✓ NOTIFICATION GRANTED\n${OsInfo.notificationBehaviorNote()}\n\n🔔 Push notifications enabled!"
         }
     }
 
