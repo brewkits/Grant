@@ -62,7 +62,7 @@ internal class BluetoothManagerDelegate : NSObject(), CBCentralManagerDelegatePr
             return GrantStatus.GRANTED
         }
 
-        // Create temporary manager to check state
+        // Instantiate an ephemeral manager solely to poll the current initialization state
         val tempManager = CBCentralManager(delegate = null, queue = null)
 
         val authorization = if (tempManager.respondsToSelector(
@@ -203,7 +203,7 @@ internal class BluetoothManagerDelegate : NSObject(), CBCentralManagerDelegatePr
                 when (state) {
                     CBManagerStatePoweredOn -> GrantStatus.GRANTED
                     CBManagerStatePoweredOff -> GrantStatus.DENIED_ALWAYS // BT off
-                    CBManagerStateResetting -> GrantStatus.DENIED // Temporary
+                    CBManagerStateResetting -> GrantStatus.DENIED // Transient system state, treat as denied
                     CBManagerStateUnsupported -> GrantStatus.DENIED_ALWAYS // No BT hardware
                     CBManagerStateUnauthorized -> GrantStatus.DENIED_ALWAYS // Shouldn't happen
                     CBManagerStateUnknown -> GrantStatus.NOT_DETERMINED

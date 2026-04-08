@@ -37,7 +37,7 @@ object ManifestValidator {
      * @return ValidationResult indicating if valid or which permissions are missing
      */
     fun validateGrant(context: Context, grant: AppGrant): ValidationResult {
-        // Create temporary delegate to access platform-specific mapping
+        // Instantiate ephemeral delegate to access platform-specific manifest mapping
         val delegate = dev.brewkits.grant.impl.PlatformGrantDelegate(context, dev.brewkits.grant.InMemoryGrantStore())
         val requiredPermissions = with(delegate) { grant.toAndroidGrants() }
         

@@ -26,7 +26,7 @@ class IosGrantDelegateTest {
 
     @Test
     fun `testAllGrantStatusesCoveredInIosDelegate`() {
-        // Đảm bảo không bỏ sót case nào trong PlatformGrantDelegate.ios.kt
+        // Ensure no cases are missed in PlatformGrantDelegate.ios.kt
         val statuses = listOf(
             GrantStatus.GRANTED,
             GrantStatus.PARTIAL_GRANTED,
