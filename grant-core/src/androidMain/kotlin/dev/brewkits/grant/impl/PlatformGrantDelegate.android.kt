@@ -12,6 +12,9 @@ import dev.brewkits.grant.GrantStatus
 import dev.brewkits.grant.GrantStore
 import dev.brewkits.grant.RawPermission
 import dev.brewkits.grant.utils.GrantLogger
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
@@ -245,7 +248,12 @@ actual class PlatformGrantDelegate(
             grants.forEach { statusCacheMap.remove(it.identifier) }
         }
 
-        return grants.associateWith { checkStatus(it) }
+        // Parallelize status checks for all grants in the group
+        return kotlinx.coroutines.coroutineScope {
+            grants.map { grant ->
+                async { grant to checkStatus(grant) }
+            }.awaitAll().toMap()
+        }
     }
 
     actual fun openSettings() {

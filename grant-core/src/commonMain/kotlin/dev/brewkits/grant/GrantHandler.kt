@@ -284,19 +284,24 @@ class GrantHandler(
      * Called when user confirms rationale dialog and wants to proceed
      */
     fun onRationaleConfirmed() {
+        // FIX M6: Guard against rapid taps/concurrent requests
+        if (requestMutex.isLocked) return
+
         scope.launch {
-            // Hide dialog first to prevent user confusion
-            resetState()
+            requestMutex.withLock {
+                // Hide dialog first to prevent user confusion
+                resetState()
 
-            val newStatus = grantManager.request(grant)
-            _status.value = newStatus
+                val newStatus = grantManager.request(grant)
+                _status.value = newStatus
 
-            // Force a refresh after the request to ensure UI is in sync
-            refreshStatus()
+                // Force a refresh after the request to ensure UI is in sync
+                _status.value = grantManager.checkStatus(grant)
 
-            // Mark as first request to prevent showing another dialog immediately
-            // User just saw system dialog - don't bombard with rationale again if denied
-            handleStatus(newStatus, null, null, isFirstRequest = true)
+                // Mark as first request to prevent showing another dialog immediately
+                // User just saw system dialog - don't bombard with rationale again if denied
+                handleStatus(newStatus, null, null, isFirstRequest = true)
+            }
         }
     }
 
