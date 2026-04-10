@@ -8,9 +8,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [1.2.1] - 2026-04-10
 
-### 🐛 Bug Fixes
+### 🛡️ Rock-Solid Stability & Safety
 - **CRITICAL: Android Re-entrant Deadlock**: Fixed a critical bug in `PlatformGrantDelegate` where `checkStatus` incorrectly used the same per-permission mutex as `request`, causing a deadlock on Android when requesting permissions.
-- **Cache Invalidation Parity**: Updated Android `request` implementation to invalidate status cache before and after requests, matching the stable iOS behavior and preventing stale status reports.
+- **Concurrency Guard**: Added `requestMutex` to `GrantHandler` and `GrantGroupHandler` to prevent race conditions and redundant system dialogs from rapid UI interactions (e.g., spam clicking).
+- **Callback Visibility**: Applied `@Volatile` to internal callbacks to ensure thread-safe visibility across different coroutine contexts.
+
+### ⚡ Performance & Parallelization
+- **Parallel Group Checks**: `GrantGroupHandler` now checks status for all permissions in parallel using `async/awaitAll`, significantly reducing latency in multi-permission flows.
+- **Atomic Multi-Request Result**: Optimized Android's multi-request logic to perform parallel status verification after the system dialog flow completes.
+- **Cache Invalidation Parity**: Unified cache invalidation logic across Android and iOS, ensuring status reads are always fresh after a request operation.
+
+### 🧪 Extreme Testing
+- **Stress Testing**: Added `ThreadingStressTest` with 1000+ concurrent operations to verify stability under extreme load.
+- **Deadlock Regression Tests**: Added automated tests to detect and prevent re-entrant locking issues.
+- **Hardware Verified**: This release has been verified on physical hardware (**Pixel 6 Pro**) and simulators for both platforms.
 
 ---
 
