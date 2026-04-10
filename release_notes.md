@@ -15,6 +15,9 @@
 - **Deadlock Regression Tests**: Added automated tests to detect and prevent re-entrant locking issues.
 - **Hardware Verified**: This release has been verified on physical hardware (**Pixel 6 Pro**) and simulators for both platforms.
 
+### 🤝 Special Thanks
+- Huge shout-out to [**rohan-paudel**](https://github.com/rohan-paudel) for their significant contributions to this release!
+
 ---
 
 ## [1.2.0] - 2026-04-08
