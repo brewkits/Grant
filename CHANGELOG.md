@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2.1] - 2026-04-10
+
+### 🐛 Bug Fixes
+- **CRITICAL: Android Re-entrant Deadlock**: Fixed a critical bug in `PlatformGrantDelegate` where `checkStatus` incorrectly used the same per-permission mutex as `request`, causing a deadlock on Android when requesting permissions.
+- **Cache Invalidation Parity**: Updated Android `request` implementation to invalidate status cache before and after requests, matching the stable iOS behavior and preventing stale status reports.
+
+---
+
 ## [1.2.0] - 2026-04-08
 
 ### 🚀 Architectural Overhaul & Stability

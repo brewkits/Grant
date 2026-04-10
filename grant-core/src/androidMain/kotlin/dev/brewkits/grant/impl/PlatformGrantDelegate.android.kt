@@ -22,14 +22,15 @@ actual class PlatformGrantDelegate(
     private val store: GrantStore
 ) {
     /**
-     * Map of grant identifiers to Mutexes.
-     * This allows requesting different permissions in parallel while still
-     * protecting each individual permission from concurrent requests.
+     * Protects all map structures (mutexMapInternal, statusCacheMap).
      */
-    private val mutexMap = ConcurrentHashMap<String, Mutex>()
+    private val mapsMutex = Mutex()
+    private val mutexMapInternal = ConcurrentHashMap<String, Mutex>()
 
-    private fun getMutexFor(identifier: String): Mutex {
-        return mutexMap.getOrPut(identifier) { Mutex() }
+    private suspend fun getMutexFor(identifier: String): Mutex {
+        return mapsMutex.withLock {
+            mutexMapInternal.getOrPut(identifier) { Mutex() }
+        }
     }
 
     // Notification status cache with timestamp (Android 12 and below)
@@ -52,18 +53,23 @@ actual class PlatformGrantDelegate(
     actual suspend fun checkStatus(grant: GrantPermission): GrantStatus {
         val identifier = grant.identifier
         
-        // Use lock for status check to ensure atomicity with store access
-        return getMutexFor(identifier).withLock {
+        // Protect statusCacheMap reads through mapsMutex (like iOS)
+        mapsMutex.withLock {
             statusCacheMap[identifier]?.let { (cachedStatus, timestamp) ->
                 if (System.currentTimeMillis() - timestamp < STATUS_CACHE_TTL_MS) {
                     return@withLock cachedStatus
                 }
             }
-
-            val status = checkStatusInternal(grant)
-            statusCacheMap[identifier] = status to System.currentTimeMillis()
-            status
         }
+
+        // Perform actual check WITHOUT holding the per-permission mutex to avoid deadlock
+        val status = checkStatusInternal(grant)
+        
+        // Protect statusCacheMap writes through mapsMutex
+        mapsMutex.withLock {
+            statusCacheMap[identifier] = status to System.currentTimeMillis()
+        }
+        return status
     }
 
     private suspend fun checkStatusInternal(grant: GrantPermission): GrantStatus {
@@ -159,6 +165,9 @@ actual class PlatformGrantDelegate(
     }
 
     private suspend fun requestInternal(grant: GrantPermission): GrantStatus {
+        // Invalidate cache before request
+        mapsMutex.withLock { statusCacheMap.remove(grant.identifier) }
+
         val currentStatus = checkStatus(grant)
         if (currentStatus == GrantStatus.GRANTED || currentStatus == GrantStatus.PARTIAL_GRANTED) return currentStatus
 
@@ -198,10 +207,18 @@ actual class PlatformGrantDelegate(
             if (finalStatus != GrantStatus.GRANTED) store.markRawPermissionRequested(grant.identifier)
         }
 
+        // Invalidate cache after request so next checkStatus reads fresh from OS
+        mapsMutex.withLock { statusCacheMap.remove(grant.identifier) }
+
         return finalStatus
     }
 
     private suspend fun requestMultipleInternal(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus> {
+        // Invalidate cache for all grants before request
+        mapsMutex.withLock {
+            grants.forEach { statusCacheMap.remove(it.identifier) }
+        }
+
         val allAndroidPermissions = mutableSetOf<String>()
         grants.forEach { grant ->
             when (grant) {
@@ -221,6 +238,11 @@ actual class PlatformGrantDelegate(
             }
         } catch (e: Exception) {
             GrantLogger.e("AndroidGrant", "Multi-request failed", e)
+        }
+
+        // Invalidate cache for all grants after request
+        mapsMutex.withLock {
+            grants.forEach { statusCacheMap.remove(it.identifier) }
         }
 
         return grants.associateWith { checkStatus(it) }

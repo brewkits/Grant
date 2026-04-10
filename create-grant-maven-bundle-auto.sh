@@ -6,7 +6,7 @@
 
 set -e
 
-VERSION="1.2.0"
+VERSION="1.2.1"
 GROUP_PATH="dev/brewkits"
 BUNDLE_NAME="grant-v${VERSION}-bundle.jar"
 OUTPUT_DIR="maven-central-artifacts/v${VERSION}"
