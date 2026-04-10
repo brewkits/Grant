@@ -2,9 +2,9 @@
 
 <img src="assets/logo.svg" height="128" alt="Grant Logo" />
 
-# 🏆 Grant: The Ultimate Permission Engine for KMP
+# Grant: Robust Permission Management for KMP
 
-**World-class, type-safe permission handling for Kotlin Multiplatform — solving the parts that Android and iOS both make hard.**
+**Production-ready, type-safe permission handling for Kotlin Multiplatform — handling the complex edge cases of Android and iOS flows.**
 
 [![Maven Central](https://img.shields.io/maven-central/v/dev.brewkits/grant-core?color=7F52FF&label=Maven%20Central&style=for-the-badge)](https://central.sonatype.com/artifact/dev.brewkits/grant-core)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.1.0-7F52FF?logo=kotlin&logoColor=white&style=for-the-badge)](https://kotlinlang.org)
