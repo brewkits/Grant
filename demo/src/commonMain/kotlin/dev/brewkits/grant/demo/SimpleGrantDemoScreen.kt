@@ -51,6 +51,8 @@ fun SimpleGrantDemoScreen(
     GrantDialog(handler = viewModel.locationAlwaysGrant)
     GrantDialog(handler = viewModel.bluetoothGrant)
     GrantDialog(handler = viewModel.galleryGrant)
+    GrantDialog(handler = viewModel.galleryImagesOnlyGrant)
+    GrantDialog(handler = viewModel.galleryVideoOnlyGrant)
     GrantDialog(handler = viewModel.motionGrant)
     GrantDialog(handler = viewModel.calendarGrant)
 
@@ -231,6 +233,26 @@ fun SimpleGrantDemoScreen(
             icon = "🖼️",
             grant = AppGrant.GALLERY,
             handler = viewModel.galleryGrant,
+            onSuccess = ::showSuccess
+        )
+
+        // Gallery Images Only
+        GrantCard(
+            title = "Gallery (Images Only)",
+            description = "Access only images",
+            icon = "🖼️",
+            grant = AppGrant.GALLERY_IMAGES_ONLY,
+            handler = viewModel.galleryImagesOnlyGrant,
+            onSuccess = ::showSuccess
+        )
+
+        // Gallery Video Only
+        GrantCard(
+            title = "Gallery (Video Only)",
+            description = "Access only videos",
+            icon = "🎥",
+            grant = AppGrant.GALLERY_VIDEO_ONLY,
+            handler = viewModel.galleryVideoOnlyGrant,
             onSuccess = ::showSuccess
         )
 

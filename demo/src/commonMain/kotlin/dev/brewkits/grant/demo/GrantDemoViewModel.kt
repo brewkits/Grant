@@ -32,6 +32,18 @@ class GrantDemoViewModel(
     // Request camera first, then microphone after
     // ==============================================
 
+    val galleryImagesOnlyGrant = GrantHandler(
+        grantManager = grantManager,
+        grant = AppGrant.GALLERY_IMAGES_ONLY,
+        scope = scope
+    )
+
+    val galleryVideoOnlyGrant = GrantHandler(
+        grantManager = grantManager,
+        grant = AppGrant.GALLERY_VIDEO_ONLY,
+        scope = scope
+    )
+
     /**
      * DANGEROUS grant - Camera access
      * Used for: Photo/video capture, QR scanning
@@ -319,6 +331,26 @@ class GrantDemoViewModel(
         }
     }
 
+    fun requestGalleryImagesOnlyGrant() {
+        _grantTypeResult.value = "Requesting GALLERY_IMAGES_ONLY..."
+        galleryImagesOnlyGrant.request(
+            rationaleMessage = "We need image-only access to let you pick a profile picture.",
+            settingsMessage = "Image access is disabled. Enable it in Settings."
+        ) {
+            _grantTypeResult.value = "✓ GALLERY_IMAGES_ONLY GRANTED/PARTIAL!\n\nAccessing images only... 🖼️"
+        }
+    }
+
+    fun requestGalleryVideoOnlyGrant() {
+        _grantTypeResult.value = "Requesting GALLERY_VIDEO_ONLY..."
+        galleryVideoOnlyGrant.request(
+            rationaleMessage = "We need video-only access to let you upload a video clip.",
+            settingsMessage = "Video access is disabled. Enable it in Settings."
+        ) {
+            _grantTypeResult.value = "✓ GALLERY_VIDEO_ONLY GRANTED/PARTIAL!\n\nAccessing videos only... 🎥"
+        }
+    }
+
     /**
      * Scenario 3c: Most Dangerous Grant Example
      *
@@ -522,6 +554,8 @@ class GrantDemoViewModel(
             storageGrant,
             locationAlwaysGrant,
             galleryGrant,
+            galleryImagesOnlyGrant,
+            galleryVideoOnlyGrant,
             notificationGrant,
             bluetoothGrant,
             bluetoothAdvertiseGrant,
