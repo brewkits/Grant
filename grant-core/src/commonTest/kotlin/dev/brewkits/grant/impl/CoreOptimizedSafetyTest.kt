@@ -3,14 +3,14 @@ package dev.brewkits.grant.impl
 import app.cash.turbine.test
 import dev.brewkits.grant.*
 import dev.brewkits.grant.fakes.FakeGrantManager
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.advanceUntilIdle
-import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.*
+import kotlinx.coroutines.test.*
 import kotlin.test.*
 
 /**
  * Optimized Safety and State Exhaustion tests for the Core logic.
+ * 
+ * Focuses on robust exception handling, concurrency safety, and state invariants.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class CoreOptimizedSafetyTest {
@@ -26,36 +26,22 @@ class CoreOptimizedSafetyTest {
     // 1. Exception Safety & Callback Cleanup
     // ====================================================================
 
-    @Test
-    fun `should clear callback and unlock mutex when GrantManager throws exception`() = runTest {
-        // We use a custom Job to catch the exception without failing runTest
-        mockGrantManager.shouldThrow = IllegalStateException("Simulated OS failure")
-        
-        // IMPORTANT: We don't use 'this' scope because we want to catch the failure manually
-        val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, this)
-        
-        var callbackInvoked = false
-        
-        // This will launch a coroutine that fails
-        handler.request { callbackInvoked = true }
-        
-        // Advance until the exception is thrown
-        // runTest will catch the unhandled exception from the child coroutine and fail
-        // UNLESS we handle it. But standard runTest propagates.
-        
-        // Alternative: Use a separate scope that we control
-        // For this specific test, let's just verify the lock is released AFTER a failure
-    }
-
     /**
-     * Refined test for lock release after failure.
+     * Verifies that if the underlying GrantManager throws an exception,
+     * the GrantHandler correctly unlocks its Mutex so subsequent requests
+     * aren't blocked forever.
      */
     @Test
     fun `mutex should be unlocked after a failure so next request can proceed`() = runTest {
-        var throwError = true
+        var shouldFail = true
+        val exceptionHandler = CoroutineExceptionHandler { _, _ -> /* Ignore expected test failure */ }
+        
+        // We use a custom scope with SupervisorJob and ExceptionHandler to isolate the failure
+        val supervisorScope = CoroutineScope(this.coroutineContext + SupervisorJob() + exceptionHandler)
+        
         val failingManager = object : GrantManager {
             override suspend fun checkStatus(grant: GrantPermission): GrantStatus {
-                if (throwError) throw IllegalStateException("Failure")
+                if (shouldFail) throw IllegalStateException("Simulated OS failure")
                 return GrantStatus.NOT_DETERMINED
             }
             override suspend fun request(grant: GrantPermission): GrantStatus = GrantStatus.GRANTED
@@ -63,23 +49,21 @@ class CoreOptimizedSafetyTest {
             override fun openSettings() {}
         }
         
-        val handler = GrantHandler(failingManager, AppGrant.CAMERA, this)
+        val handler = GrantHandler(failingManager, AppGrant.CAMERA, supervisorScope)
         
-        // 1. First request fails
-        try {
-            handler.request { }
-            advanceUntilIdle()
-        } catch (e: Exception) {
-            // Expected
-        }
+        // 1. First request fails inside the coroutine
+        handler.request { }
+        advanceUntilIdle()
         
-        // 2. Second request should succeed if mutex was unlocked
-        throwError = false
+        // 2. Second request should succeed if mutex was unlocked in the 'finally' block
+        shouldFail = false
         var callbackInvoked = false
         handler.request { callbackInvoked = true }
         advanceUntilIdle()
         
         assertTrue(callbackInvoked, "Mutex should be unlocked even after a previous exception")
+        
+        supervisorScope.cancel()
     }
 
     // ====================================================================
@@ -90,30 +74,34 @@ class CoreOptimizedSafetyTest {
     fun `state should never have both rationale and settings guide visible`() = runTest {
         val handler = GrantHandler(mockGrantManager, AppGrant.LOCATION, this)
         
+        // Use Turbine to audit state changes
         handler.state.test {
             // Initial state
             val initial = awaitItem()
             assertFalse(initial.showRationale && initial.showSettingsGuide)
 
-            // Denied flow
+            // Simulate a flow that moves through multiple states
             mockGrantManager.mockStatus = GrantStatus.DENIED
             mockGrantManager.mockRequestResult = GrantStatus.DENIED
-            handler.request { }
             
+            // First request (denied, usually no rationale shown yet on Android)
+            handler.request { }
             advanceUntilIdle()
             
-            // Collect emissions
-            val items = cancelAndConsumeRemainingEvents()
-            items.forEach { event ->
-                // Check if it's an item (not error/complete)
-                // In Turbine, we can just iterate.
-            }
-            
-            // The XOR check is best done on the latest state
+            // Second request (should show rationale)
+            mockGrantManager.mockStatus = GrantStatus.DENIED
+            handler.request { }
+            advanceUntilIdle()
+
+            // Get the current state
             val finalState = handler.state.value
             if (finalState.isVisible) {
-                assertTrue(finalState.showRationale xor finalState.showSettingsGuide)
+                // Logical XOR: only one dialog should be visible at a time
+                assertTrue(finalState.showRationale xor finalState.showSettingsGuide, 
+                    "Rationale and Settings Guide should never show simultaneously")
             }
+            
+            cancelAndIgnoreRemainingEvents()
         }
     }
 
@@ -133,42 +121,49 @@ class CoreOptimizedSafetyTest {
         // 1. First instance: show a dialog
         mockGrantManager.mockStatus = GrantStatus.DENIED_ALWAYS
         val handler1 = GrantHandler(mockGrantManager, AppGrant.CAMERA, this, fakeSavedState)
+        
+        // Trigger settings guide state
         handler1.request(settingsMessage = "GO TO SETTINGS") { }
         advanceUntilIdle()
         
         assertTrue(handler1.state.value.showSettingsGuide)
 
-        // 2. Simulate process death: recreate handler with same saved state
+        // 2. Simulate process death: recreate handler with same saved state storage
         val handler2 = GrantHandler(mockGrantManager, AppGrant.CAMERA, this, fakeSavedState)
         
         // 3. Verify state is restored
-        assertTrue(handler2.state.value.isVisible, "Visibility should be restored")
-        assertTrue(handler2.state.value.showSettingsGuide, "Settings guide should be restored")
+        assertTrue(handler2.state.value.isVisible, "Visibility should be restored from SavedState")
+        assertTrue(handler2.state.value.showSettingsGuide, "Settings guide state should be restored")
     }
 
     // ====================================================================
-    // 4. Cancellation Safety
+    // 4. Concurrency Safety
     // ====================================================================
 
     @Test
     fun `mutex should remain usable after dismissal`() = runTest {
         val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, this)
         
-        // Denied flow
+        // 1. Open a dialog (Rationale)
         mockGrantManager.mockStatus = GrantStatus.DENIED
-        handler.request { }
+        handler.request { } // Logic: First request denied doesn't show rationale
+        handler.request { } // Second request shows rationale
         advanceUntilIdle()
         
+        assertTrue(handler.state.value.showRationale)
+        
+        // 2. Dismiss it
         handler.onDismiss()
         advanceUntilIdle()
+        assertFalse(handler.state.value.isVisible)
         
-        // Final request should still work
+        // 3. Request again: should still work (mutex was unlocked)
         mockGrantManager.mockStatus = GrantStatus.GRANTED
         mockGrantManager.mockRequestResult = GrantStatus.GRANTED
-        var finalGranted = false
-        handler.request { finalGranted = true }
+        var granted = false
+        handler.request { granted = true }
         advanceUntilIdle()
         
-        assertTrue(finalGranted)
+        assertTrue(granted, "Handler should still function after a dismissal")
     }
 }
