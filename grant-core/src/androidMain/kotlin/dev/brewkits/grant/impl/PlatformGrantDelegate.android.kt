@@ -46,7 +46,7 @@ actual class PlatformGrantDelegate(
         const val TAG = "AndroidGrantDelegate"
         const val READ_MEDIA_VISUAL_USER_SELECTED = "android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
         const val NOTIFICATION_CACHE_TTL_MS = 200L
-        const val STATUS_CACHE_TTL_MS = 200L
+        const val STATUS_CACHE_TTL_MS = 0L
     }
 
     private fun isPartialGalleryAccessGranted(): Boolean {
@@ -97,7 +97,7 @@ actual class PlatformGrantDelegate(
                 androidPermissions.any { (context as android.app.Activity).shouldShowRequestPermissionRationale(it) }
             } else {
                 GrantLogger.w(TAG, "checkStatus() called with non-Activity Context (${context.javaClass.simpleName}). Cannot determine true Rationale state. Falling back to GrantStatus.DENIED to prevent locking the user out. To get exact DENIED_ALWAYS status, you must use an Activity Context.")
-                true // Fallback to DENIED instead of DENIED_ALWAYS if context is not an Activity
+                false // Fallback to DENIED_ALWAYS instead of DENIED if context is not an Activity
             }
             return if (anyCanShowRationale) GrantStatus.DENIED else GrantStatus.DENIED_ALWAYS
         }

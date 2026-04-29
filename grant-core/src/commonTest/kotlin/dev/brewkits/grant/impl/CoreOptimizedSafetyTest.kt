@@ -144,18 +144,28 @@ class CoreOptimizedSafetyTest {
     fun `mutex should remain usable after dismissal`() = runTest {
         val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, this)
         
-        // 1. Open a dialog (Rationale)
+        // 1. Open a dialog
         mockGrantManager.mockStatus = GrantStatus.DENIED
-        handler.request { } // Logic: First request denied doesn't show rationale
-        handler.request { } // Second request shows rationale
-        advanceUntilIdle()
         
-        assertTrue(handler.state.value.showRationale)
+        if (PlatformConfig.isRationaleSupported) {
+            // Android-like logic: First request denied doesn't show rationale
+            // Second request shows rationale
+            handler.request { } 
+            advanceUntilIdle()
+            handler.request { } 
+            advanceUntilIdle()
+            assertTrue(handler.state.value.showRationale, "Rationale should be visible on second request")
+        } else {
+            // iOS-like logic: Rationale not supported, transitions directly to Settings Guide
+            handler.request { }
+            advanceUntilIdle()
+            assertTrue(handler.state.value.showSettingsGuide, "Settings Guide should be visible after denial on iOS")
+        }
         
         // 2. Dismiss it
         handler.onDismiss()
         advanceUntilIdle()
-        assertFalse(handler.state.value.isVisible)
+        assertFalse(handler.state.value.isVisible, "Dialog should be hidden after dismissal")
         
         // 3. Request again: should still work (mutex was unlocked)
         mockGrantManager.mockStatus = GrantStatus.GRANTED

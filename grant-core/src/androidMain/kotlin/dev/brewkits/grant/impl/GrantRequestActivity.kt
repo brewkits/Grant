@@ -12,7 +12,7 @@ import androidx.lifecycle.LifecycleOwner
 import dev.brewkits.grant.utils.GrantLogger
 import kotlinx.coroutines.CompletableDeferred
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.UUID
 
 /**
  * Transparent Activity for handling runtime grant requests.
@@ -169,7 +169,7 @@ class GrantRequestActivity : ComponentActivity() {
          * Counter for generating unique request IDs.
          * More efficient than UUID for simple tracking.
          */
-        private val requestIdCounter = AtomicInteger(0)
+        
 
         /**
          * Map of request ID to result Deferred.
@@ -206,8 +206,17 @@ class GrantRequestActivity : ComponentActivity() {
          * @param androidGrants List of Android grant strings (e.g., [Manifest.permission.CAMERA])
          * @return Unique request ID to track this grant request
          */
+        
+        private fun isAppInForeground(context: Context): Boolean {
+            val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager ?: return false
+            val appProcessInfo = android.app.ActivityManager.RunningAppProcessInfo()
+            android.app.ActivityManager.getMyMemoryState(appProcessInfo)
+            return appProcessInfo.importance == android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND ||
+                   appProcessInfo.importance == android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_VISIBLE
+        }
+
         fun requestGrants(context: Context, androidGrants: List<String>): String {
-            val requestId = requestIdCounter.incrementAndGet().toString()
+            val requestId = UUID.randomUUID().toString()
 
             // Create Deferred for this request
             pendingResults[requestId] = CompletableDeferred()
