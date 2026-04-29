@@ -26,6 +26,7 @@ Grant is not just another permission library. It is a **production-hardened engi
 ## 🚀 Killer Features
 
 - **🎯 Pure Logic-First API** — Works anywhere: ViewModels, Repositories, or Composables. **No Activity or Fragment references required.**
+- **🍎 iOS Framework Isolation** — **NEW in v1.3.0** — Advanced architecture prevents linking unused sensitive frameworks (Location, Bluetooth, etc.), keeping your binary size small and App Store reviewers happy.
 - **🛡️ iOS Crash-Guard** — Automatically validates `Info.plist` keys before requesting, preventing the dreaded `SIGABRT` production crashes.
 - **🔄 Android Process-Death Resilience** — The only library that handles system-initiated process death gracefully with zero timeouts.
 - **⚡ iOS Deadlock Fix** — Built-in protection against the infamous Camera/Microphone first-request deadlock.
@@ -113,8 +114,8 @@ Add the ultimate permission engine to your `commonMain`:
 kotlin {
     sourceSets {
         commonMain.dependencies {
-            implementation("dev.brewkits:grant-core:1.2.1")
-            implementation("dev.brewkits:grant-compose:1.2.1") // Optional UI pack
+            implementation("dev.brewkits:grant-core:1.3.0")
+            implementation("dev.brewkits:grant-compose:1.3.0") // Optional UI pack
         }
     }
 }

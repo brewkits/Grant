@@ -43,9 +43,10 @@ actual class PlatformGrantDelegate(
     private val statusCacheMap = ConcurrentHashMap<String, Pair<GrantStatus, Long>>()
 
     private companion object {
+        const val TAG = "AndroidGrantDelegate"
         const val READ_MEDIA_VISUAL_USER_SELECTED = "android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
-        const val NOTIFICATION_CACHE_TTL_MS = 5000L
-        const val STATUS_CACHE_TTL_MS = 1000L
+        const val NOTIFICATION_CACHE_TTL_MS = 200L
+        const val STATUS_CACHE_TTL_MS = 200L
     }
 
     private fun isPartialGalleryAccessGranted(): Boolean {
@@ -92,8 +93,11 @@ actual class PlatformGrantDelegate(
             if (!store.isRawPermissionRequested(grant.identifier)) return GrantStatus.NOT_DETERMINED
 
             val isActivity = context is android.app.Activity
-            val anyCanShowRationale = androidPermissions.any { 
-                isActivity && (context as android.app.Activity).shouldShowRequestPermissionRationale(it) 
+            val anyCanShowRationale = if (isActivity) {
+                androidPermissions.any { (context as android.app.Activity).shouldShowRequestPermissionRationale(it) }
+            } else {
+                GrantLogger.w(TAG, "checkStatus() called with non-Activity Context (${context.javaClass.simpleName}). Cannot determine true Rationale state. Falling back to GrantStatus.DENIED to prevent locking the user out. To get exact DENIED_ALWAYS status, you must use an Activity Context.")
+                true // Fallback to DENIED instead of DENIED_ALWAYS if context is not an Activity
             }
             return if (anyCanShowRationale) GrantStatus.DENIED else GrantStatus.DENIED_ALWAYS
         }
@@ -171,8 +175,8 @@ actual class PlatformGrantDelegate(
         // Invalidate cache before request
         mapsMutex.withLock { statusCacheMap.remove(grant.identifier) }
 
-        val currentStatus = checkStatus(grant)
-        if (currentStatus == GrantStatus.GRANTED || currentStatus == GrantStatus.PARTIAL_GRANTED) return currentStatus
+        var currentStatus = checkStatus(grant)
+        if (currentStatus == GrantStatus.GRANTED) return currentStatus
 
         val androidPermissions = when (grant) {
             is RawPermission -> grant.androidPermissions
@@ -181,6 +185,10 @@ actual class PlatformGrantDelegate(
         }
 
         if (androidPermissions.isEmpty()) return GrantStatus.GRANTED
+
+        // Ensure we record that this was requested, even if app is killed during request
+        if (grant is AppGrant) store.setRequested(grant)
+        else if (grant is RawPermission) store.markRawPermissionRequested(grant.identifier)
 
         val requestId = GrantRequestActivity.requestGrants(context, androidPermissions)
         val deferred = GrantRequestActivity.getResultDeferred(requestId) ?: return GrantStatus.DENIED
@@ -193,25 +201,36 @@ actual class PlatformGrantDelegate(
             GrantRequestActivity.cleanup(requestId)
         }
 
-        val finalStatus = when (result) {
-            GrantRequestActivity.GrantResult.GRANTED -> GrantStatus.GRANTED
-            GrantRequestActivity.GrantResult.DENIED -> GrantStatus.DENIED
-            GrantRequestActivity.GrantResult.DENIED_PERMANENTLY -> GrantStatus.DENIED_ALWAYS
-            else -> GrantStatus.DENIED
+        // Invalidate cache immediately after system dialog returns
+        mapsMutex.withLock { statusCacheMap.remove(grant.identifier) }
+
+        // Re-evaluate actual status from OS instead of relying purely on activity result
+        var finalStatus = checkStatus(grant)
+
+        // Handle 2-step flow for LOCATION_ALWAYS
+        if (grant == AppGrant.LOCATION_ALWAYS && finalStatus == GrantStatus.PARTIAL_GRANTED) {
+            // Step 1 (Foreground) was granted. Immediately proceed to Step 2 (Background).
+            val backgroundPermissions = (grant as AppGrant).toAndroidGrants()
+            if (backgroundPermissions.isNotEmpty()) {
+                val bgRequestId = GrantRequestActivity.requestGrants(context, backgroundPermissions)
+                val bgDeferred = GrantRequestActivity.getResultDeferred(bgRequestId)
+                if (bgDeferred != null) {
+                    try {
+                        withTimeout(60_000) { bgDeferred.await() }
+                    } catch (_: Exception) {
+                    } finally {
+                        GrantRequestActivity.cleanup(bgRequestId)
+                    }
+                    mapsMutex.withLock { statusCacheMap.remove(grant.identifier) }
+                    finalStatus = checkStatus(grant)
+                }
+            }
         }
 
         if (grant is AppGrant) {
             if (finalStatus == GrantStatus.GRANTED) store.clear(grant)
-            else {
-                store.setRequested(grant)
-                store.setStatus(grant, finalStatus)
-            }
-        } else if (grant is RawPermission) {
-            if (finalStatus != GrantStatus.GRANTED) store.markRawPermissionRequested(grant.identifier)
+            else store.setStatus(grant, finalStatus)
         }
-
-        // Invalidate cache after request so next checkStatus reads fresh from OS
-        mapsMutex.withLock { statusCacheMap.remove(grant.identifier) }
 
         return finalStatus
     }

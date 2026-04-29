@@ -1,5 +1,7 @@
 package dev.brewkits.grant
 
+import dev.brewkits.grant.utils.withLock
+
 /**
  * In-memory implementation of [GrantStore] - the default and only implementation.
  *
@@ -68,38 +70,50 @@ class InMemoryGrantStore : GrantStore {
     // Cleared on app restart
     private val rawPermissionRequests = mutableSetOf<String>()
 
-    override fun getStatus(grant: AppGrant): GrantStatus? {
-        return statusCache[grant]
+    private val lock = dev.brewkits.grant.utils.PlatformLock()
+
+    override fun getStatus(grant: AppGrant): GrantStatus? = lock.withLock {
+        statusCache[grant]
     }
 
     override fun setStatus(grant: AppGrant, status: GrantStatus) {
-        statusCache[grant] = status
+        lock.withLock {
+            statusCache[grant] = status
+        }
     }
 
-    override fun isRequestedBefore(grant: AppGrant): Boolean {
-        return requestedCache.contains(grant)
+    override fun isRequestedBefore(grant: AppGrant): Boolean = lock.withLock {
+        requestedCache.contains(grant)
     }
 
     override fun setRequested(grant: AppGrant) {
-        requestedCache.add(grant)
+        lock.withLock {
+            requestedCache.add(grant)
+        }
     }
 
     override fun clear() {
-        statusCache.clear()
-        requestedCache.clear()
-        rawPermissionRequests.clear()
+        lock.withLock {
+            statusCache.clear()
+            requestedCache.clear()
+            rawPermissionRequests.clear()
+        }
     }
 
     override fun clear(grant: AppGrant) {
-        statusCache.remove(grant)
-        requestedCache.remove(grant)
+        lock.withLock {
+            statusCache.remove(grant)
+            requestedCache.remove(grant)
+        }
     }
 
-    override fun isRawPermissionRequested(identifier: String): Boolean {
-        return identifier in rawPermissionRequests
+    override fun isRawPermissionRequested(identifier: String): Boolean = lock.withLock {
+        identifier in rawPermissionRequests
     }
 
     override fun markRawPermissionRequested(identifier: String) {
-        rawPermissionRequests.add(identifier)
+        lock.withLock {
+            rawPermissionRequests.add(identifier)
+        }
     }
 }

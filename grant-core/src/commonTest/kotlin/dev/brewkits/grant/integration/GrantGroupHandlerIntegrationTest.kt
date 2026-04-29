@@ -316,8 +316,8 @@ class GrantGroupHandlerIntegrationTest {
 
     @Test
     fun `Settings flow - User enables only one permission`() = runTest {
-        mockGrantManager.setStatus(AppGrant.CAMERA, GrantStatus.DENIED_ALWAYS)
-        mockGrantManager.setStatus(AppGrant.MICROPHONE, GrantStatus.DENIED_ALWAYS)
+        mockGrantManager.configure(AppGrant.CAMERA, GrantStatus.DENIED_ALWAYS)
+        mockGrantManager.configure(AppGrant.MICROPHONE, GrantStatus.DENIED_ALWAYS)
 
         val handler = GrantGroupHandler(
             grantManager = mockGrantManager,

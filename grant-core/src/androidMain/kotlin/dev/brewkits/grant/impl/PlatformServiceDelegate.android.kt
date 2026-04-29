@@ -1,6 +1,7 @@
 package dev.brewkits.grant.impl
 
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothManager
 import android.content.Context
 import android.content.Intent
 import android.location.LocationManager
@@ -65,8 +66,13 @@ internal actual class PlatformServiceDelegate(
 
     private fun checkBluetoothService(): ServiceStatus {
         return try {
-            val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
-                ?: return ServiceStatus.NOT_AVAILABLE
+            val bluetoothManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                context.getSystemService(BluetoothManager::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+            }
+            val bluetoothAdapter = bluetoothManager?.adapter ?: return ServiceStatus.NOT_AVAILABLE
 
             if (bluetoothAdapter.isEnabled) {
                 ServiceStatus.ENABLED

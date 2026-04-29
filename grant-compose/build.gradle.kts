@@ -5,11 +5,12 @@ plugins {
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.kover)
     id("maven-publish")
 }
 
 group = "dev.brewkits"
-version = "1.2.1"
+version = "1.3.0"
 
 kotlin {
     androidTarget {
@@ -53,11 +54,32 @@ kotlin {
 
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            implementation(libs.kotlinx.coroutines.test)
+        }
+
+        val androidUnitTest by getting {
+            dependencies {
+                implementation(libs.androidx.test.junit)
+                implementation(libs.robolectric)
+                implementation("androidx.compose.ui:ui-test-junit4:1.7.1")
+                implementation("androidx.compose.ui:ui-test-manifest:1.7.1")
+            }
+        }
+    }
+}
+
+koverReport {
+    defaults {
+        verify {
+            rule {
+                minBound(80)
+            }
         }
     }
 }
 
 android {
+
     namespace = "dev.brewkits.grant.compose"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
@@ -75,14 +97,14 @@ publishing {
     repositories {
         maven {
             name = "MavenCentralLocal"
-            url = uri("${project.buildDir}/maven-central-staging")
+            url = uri(layout.buildDirectory.dir("maven-central-staging"))
         }
     }
 
     publications.configureEach {
         (this as? MavenPublication)?.let {
             groupId = "dev.brewkits"
-            version = "1.2.1"
+            version = "1.3.0"
 
             pom {
                 name.set("KMP Grant Compose")

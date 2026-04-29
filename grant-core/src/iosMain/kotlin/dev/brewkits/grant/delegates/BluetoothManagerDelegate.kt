@@ -51,7 +51,7 @@ internal class BluetoothManagerDelegate : NSObject(), CBCentralManagerDelegatePr
      * On iOS Simulator, returns GRANTED for testing purposes.
      */
     fun checkStatus(): GrantStatus {
-        if (SimulatorDetector.isSimulator) {
+        if (SimulatorDetector.isSimulator && SimulatorDetector.mockSimulatorGranted) {
             GrantLogger.i(
                 "BluetoothDelegate",
                 "Running on ${SimulatorDetector.simulatorType} — Bluetooth not available on simulator, returning GRANTED for testing."
@@ -82,7 +82,7 @@ internal class BluetoothManagerDelegate : NSObject(), CBCentralManagerDelegatePr
      * @throws BluetoothPoweredOffException     if Bluetooth is powered off
      */
     suspend fun requestBluetoothAccess(): GrantStatus {
-        if (SimulatorDetector.isSimulator) {
+        if (SimulatorDetector.isSimulator && SimulatorDetector.mockSimulatorGranted) {
             GrantLogger.i(
                 "BluetoothDelegate",
                 "Running on ${SimulatorDetector.simulatorType} — returning GRANTED for testing."
@@ -157,8 +157,8 @@ internal class BluetoothManagerDelegate : NSObject(), CBCentralManagerDelegatePr
         return when (authorization) {
             CBManagerAuthorizationAllowedAlways -> when (state) {
                 CBManagerStatePoweredOn    -> GrantStatus.GRANTED
-                CBManagerStatePoweredOff   -> GrantStatus.DENIED_ALWAYS  // BT hardware off
-                CBManagerStateResetting    -> GrantStatus.DENIED          // Transient — treat as soft denied
+                CBManagerStatePoweredOff   -> GrantStatus.GRANTED  // Permission is granted, hardware is off. Treat permission as GRANTED.
+                CBManagerStateResetting    -> GrantStatus.GRANTED  // Transient hardware state. Permission is GRANTED.
                 CBManagerStateUnsupported  -> GrantStatus.DENIED_ALWAYS   // No BT hardware
                 CBManagerStateUnauthorized -> GrantStatus.DENIED_ALWAYS   // Should not happen here
                 CBManagerStateUnknown      -> GrantStatus.NOT_DETERMINED

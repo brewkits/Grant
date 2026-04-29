@@ -3,11 +3,12 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
+    alias(libs.plugins.kover)
     id("maven-publish")
 }
 
 group = "dev.brewkits"
-version = "1.2.1"
+version = "1.3.0"
 
 kotlin {
     androidTarget {
@@ -32,6 +33,16 @@ kotlin {
         iosTarget.binaries.framework {
             baseName = "GrantCore"
             isStatic = true
+            // Fix Issue #25: Use weak-linked frameworks for sensitive permissions.
+            // This provides an additional layer of safety to prevent Apple from
+            // flagging unused frameworks during App Store static analysis scans.
+            linkerOpts("-weak_framework", "CoreLocation")
+            linkerOpts("-weak_framework", "CoreBluetooth")
+            linkerOpts("-weak_framework", "CoreMotion")
+            linkerOpts("-weak_framework", "EventKit")
+            linkerOpts("-weak_framework", "Contacts")
+            linkerOpts("-weak_framework", "Photos")
+            linkerOpts("-weak_framework", "AVFoundation")
         }
     }
 
@@ -39,7 +50,7 @@ kotlin {
         androidMain.dependencies {
             // Koin for Android (Optional DI support - can be excluded)
             // See docs/DEPENDENCY_MANAGEMENT.md for handling version conflicts
-            implementation(libs.koin.android)
+            compileOnly(libs.koin.android)
             // AndroidX Activity for grant requests
             implementation(libs.androidx.activity.compose)
         }
@@ -48,7 +59,7 @@ kotlin {
             // Koin core (Optional DI support - can be excluded)
             // Note: Koin is OPTIONAL. Use GrantFactory.create() for manual injection
             // See docs/DEPENDENCY_MANAGEMENT.md for more information
-            implementation(libs.koin.core)
+            compileOnly(libs.koin.core)
             // Coroutines
             implementation(libs.kotlinx.coroutines.core)
         }
@@ -57,6 +68,7 @@ kotlin {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.turbine)
+            implementation(libs.koin.test)
         }
 
         androidInstrumentedTest.dependencies {
@@ -75,6 +87,24 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.test)
                 implementation(libs.mockk)
                 implementation(libs.robolectric)
+                implementation(libs.androidx.test.core)
+            }
+        }
+    }
+}
+
+koverReport {
+    defaults {
+        verify {
+            rule {
+                minBound(82)
+            }
+        }
+    }
+    androidReports("debug") {
+        verify {
+            rule {
+                minBound(82)
             }
         }
     }
@@ -99,14 +129,14 @@ publishing {
     repositories {
         maven {
             name = "MavenCentralLocal"
-            url = uri("${project.buildDir}/maven-central-staging")
+            url = uri(layout.buildDirectory.dir("maven-central-staging"))
         }
     }
 
     publications.configureEach {
         (this as? MavenPublication)?.let {
             groupId = "dev.brewkits"
-            version = "1.2.1"
+            version = "1.3.0"
 
             pom {
                 name.set("KMP Grant")

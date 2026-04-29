@@ -13,6 +13,8 @@ class MultiGrantFakeManager : GrantManager {
     private val requestResults = mutableMapOf<GrantPermission, GrantStatus>()
     private val requestCalls = mutableSetOf<GrantPermission>()
     var openSettingsCalled = false
+    var delayMillis: Long = 0
+    var requestCount: Int = 0
 
     fun setStatus(grant: GrantPermission, status: GrantStatus) {
         statusMap[grant] = status
@@ -22,6 +24,11 @@ class MultiGrantFakeManager : GrantManager {
         requestResults[grant] = result
     }
 
+    fun configure(grant: GrantPermission, status: GrantStatus, requestResult: GrantStatus = status) {
+        statusMap[grant] = status
+        requestResults[grant] = requestResult
+    }
+
     fun isRequestCalled(grant: GrantPermission): Boolean = requestCalls.contains(grant)
 
     override suspend fun checkStatus(grant: GrantPermission): GrantStatus {
@@ -29,8 +36,14 @@ class MultiGrantFakeManager : GrantManager {
     }
 
     override suspend fun request(grant: GrantPermission): GrantStatus {
+        requestCount++
+        if (delayMillis > 0) {
+            kotlinx.coroutines.delay(delayMillis)
+        }
         requestCalls.add(grant)
-        return requestResults[grant] ?: GrantStatus.GRANTED
+        val result = requestResults[grant] ?: GrantStatus.GRANTED
+        statusMap[grant] = result
+        return result
     }
 
     override suspend fun request(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus> {

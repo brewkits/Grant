@@ -26,9 +26,10 @@ class GrantAndServiceChecker(
 ) {
     /**
      * Check if location is ready to use (both grant and GPS enabled).
+     * @param grant The specific location grant to check (defaults to LOCATION)
      */
-    suspend fun checkLocationReady(): LocationReadyStatus {
-        val grantStatus = grantManager.checkStatus(AppGrant.LOCATION)
+    suspend fun checkLocationReady(grant: AppGrant = AppGrant.LOCATION): LocationReadyStatus {
+        val grantStatus = grantManager.checkStatus(grant)
         val serviceStatus = serviceManager.checkServiceStatus(ServiceType.LOCATION_GPS)
 
         return when {
@@ -87,6 +88,31 @@ class GrantAndServiceChecker(
             serviceStatus = serviceStatus,
             isReady = grantStatus == GrantStatus.GRANTED && serviceStatus == ServiceStatus.ENABLED
         )
+    }
+
+    /**
+     * Convenience API to quickly check if a feature mapped to an AppGrant is fully ready 
+     * (permission granted AND hardware enabled if applicable).
+     * 
+     * Mappings:
+     * - LOCATION -> LOCATION_GPS
+     * - BLUETOOTH -> BLUETOOTH
+     * - Default -> Only checks permission status
+     */
+    suspend fun isReady(grant: AppGrant): Boolean {
+        val hasPermission = grantManager.checkStatus(grant) == GrantStatus.GRANTED
+        val serviceType = when (grant) {
+            AppGrant.LOCATION, AppGrant.LOCATION_ALWAYS -> ServiceType.LOCATION_GPS
+            AppGrant.BLUETOOTH -> ServiceType.BLUETOOTH
+            // Add other mappings if they correspond to specific hardware services
+            else -> null
+        }
+        
+        return if (serviceType != null) {
+            hasPermission && serviceManager.checkServiceStatus(serviceType) == ServiceStatus.ENABLED
+        } else {
+            hasPermission
+        }
     }
 }
 

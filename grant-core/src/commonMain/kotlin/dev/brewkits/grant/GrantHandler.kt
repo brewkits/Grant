@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 
 /**
  * UI State for grant dialogs.
@@ -146,35 +148,15 @@ class GrantHandler(
     private val _status = MutableStateFlow(GrantStatus.NOT_DETERMINED)
     val status: StateFlow<GrantStatus> = _status.asStateFlow()
 
-    /**
-     * FIX H3: Volatile ensures cross-thread visibility of the callback reference.
-     * On JVM: maps to java.lang.volatile field.
-     * On Kotlin/Native: ensures memory model visibility across threads.
-     */
     @kotlin.concurrent.Volatile
     private var onGrantedCallback: (() -> Unit)? = null
 
-    /**
-     * FIX H3: Volatile for the same cross-thread visibility reason.
-     *
-     * Tracks if we've shown the rationale dialog to the user.
-     * Platform differences:
-     * - Android: user goes through rationale → permanent denial
-     * - iOS: first denial = permanent (no soft deny / no rationale)
-     */
     @kotlin.concurrent.Volatile
     private var hasShownRationaleDialog = false
 
-    /**
-     * FIX M6: Prevents double-tap / concurrent request race.
-     * Only one request flows at a time per handler instance.
-     * A new `request()` call while one is in-flight simply updates
-     * the callback reference and skips re-launching the coroutine.
-     */
     private val requestMutex = Mutex()
 
     init {
-        // FIX L2: Merged two init blocks into one.
         // Restore visible dialog state from savedStateDelegate (process death recovery)
         val wasVisible   = savedStateDelegate.restoreState(KEY_IS_VISIBLE)?.toBoolean() ?: false
         val wasRationale = savedStateDelegate.restoreState(KEY_SHOW_RATIONALE)?.toBoolean() ?: false
@@ -203,50 +185,8 @@ class GrantHandler(
     }
 
     /**
-     * Main entry point for requesting grant.
-     *
-     * This function orchestrates the entire flow:
-     * 1. Check current status
-     * 2. If NOT_DETERMINED -> Request immediately
-     * 3. If DENIED -> Show rationale dialog
-     * 4. If DENIED_ALWAYS -> Show settings guide
-     * 5. If GRANTED -> Execute callback
-     *
-     * @param rationaleMessage Custom message for rationale dialog (optional)
-     * @param settingsMessage Custom message for settings dialog (optional)
-     * @param onGranted Callback that executes ONLY when grant is granted.
-     *                  **IMPORTANT**: Callback is cleared after execution to prevent memory leaks.
-     *
-     * **Example**:
-     * ```kotlin
-     * handler.request(
-     *     rationaleMessage = "We need camera to scan QR codes",
-     *     settingsMessage = "Camera is disabled. Enable it in Settings > Grants"
-     * ) {
-     *     println("Camera is ready!")
-     *     openCameraPreview()
-     * }
-     * ```
-     *
-     * **Callback Best Practices**:
-     * - Callback is automatically cleared after invocation to prevent memory leaks
-     * - Safe to capture ViewModel properties (they survive config changes)
-     * - Avoid capturing Activity/Fragment directly - use ViewModel events instead
-     * - Example (GOOD):
-     *   ```kotlin
-     *   handler.request { viewModel.navigateToCamera() } // ✅ ViewModel event
-     *   ```
-     * - Example (BAD):
-     *   ```kotlin
-     *   handler.request { activity.startCamera() } // ❌ Activity reference
-     *   ```
-     */
-    /**
-     * Main entry point for requesting grant.
-     *
-     * FIX M6 (double-tap guard): If a request is already in-flight, the new
-     * `onGranted` callback replaces the previous one but no new coroutine is
-     * launched, preventing parallel state machine executions.
+     * If a request is already in-flight, the new `onGranted` callback replaces the previous
+     * one but no new coroutine is launched, preventing parallel state machine executions.
      *
      * This function orchestrates the entire flow:
      * 1. Check current status
@@ -265,30 +205,34 @@ class GrantHandler(
         settingsMessage: String? = null,
         onGranted: () -> Unit
     ) {
-        // FIX H3: volatile write — visible to coroutine dispatcher immediately
+        // tryLock() is atomic — safe concurrent guard replacing the racy isLocked check.
+        if (!requestMutex.tryLock()) return
+        
         this.onGrantedCallback = onGranted
 
-        // FIX M6: Skip if a request coroutine is already running
-        if (requestMutex.isLocked) return
-
         scope.launch {
-            requestMutex.withLock {
+            try {
                 val currentStatus = grantManager.checkStatus(grant)
                 _status.value = currentStatus
                 handleStatus(currentStatus, rationaleMessage, settingsMessage)
+            } catch (e: Exception) {
+                // If an unexpected error occurs, clear the callback to prevent hanging references
+                onGrantedCallback = null
+                throw e 
+            } finally {
+                requestMutex.unlock()
             }
         }
     }
 
     /**
-     * Called when user confirms rationale dialog and wants to proceed
+     * Called when user confirms rationale dialog and wants to proceed.
      */
     fun onRationaleConfirmed() {
-        // FIX M6: Guard against rapid taps/concurrent requests
-        if (requestMutex.isLocked) return
+        if (!requestMutex.tryLock()) return
 
         scope.launch {
-            requestMutex.withLock {
+            try {
                 // Hide dialog first to prevent user confusion
                 resetState()
 
@@ -301,6 +245,8 @@ class GrantHandler(
                 // Mark as first request to prevent showing another dialog immediately
                 // User just saw system dialog - don't bombard with rationale again if denied
                 handleStatus(newStatus, null, null, isFirstRequest = true)
+            } finally {
+                requestMutex.unlock()
             }
         }
     }
@@ -403,18 +349,27 @@ class GrantHandler(
         onShowSettings: (message: String, onConfirm: () -> Unit, onDismiss: () -> Unit) -> Unit,
         onGranted: () -> Unit
     ) {
+        if (!requestMutex.tryLock()) return
         this.onGrantedCallback = onGranted
 
         scope.launch {
-            val currentStatus = grantManager.checkStatus(grant)
-            _status.value = currentStatus
-            handleStatusWithCustomUi(
-                status = currentStatus,
-                rationaleMessage = rationaleMessage,
-                settingsMessage = settingsMessage,
-                onShowRationale = onShowRationale,
-                onShowSettings = onShowSettings
-            )
+            try {
+                val currentStatus = grantManager.checkStatus(grant)
+                _status.value = currentStatus
+                handleStatusWithCustomUi(
+                    status = currentStatus,
+                    rationaleMessage = rationaleMessage,
+                    settingsMessage = settingsMessage,
+                    onShowRationale = onShowRationale,
+                    onShowSettings = onShowSettings
+                )
+            } finally {
+                // Prevent memory leak by clearing callback when flow finishes or scope is cancelled
+                onGrantedCallback = null
+                if (requestMutex.isLocked) {
+                    try { requestMutex.unlock() } catch (_: IllegalStateException) {}
+                }
+            }
         }
     }
 
@@ -454,6 +409,12 @@ class GrantHandler(
                 }
             }
             GrantStatus.DENIED -> {
+                // Skip rationale on platforms that don't support soft denial (e.g. iOS)
+                if (!PlatformConfig.isRationaleSupported) {
+                    handleStatus(GrantStatus.DENIED_ALWAYS, rationaleMessage, settingsMessage, isFirstRequest)
+                    return
+                }
+
                 // Soft denial - show rationale
                 // Skip dialog if this was just denied from first system dialog
                 // This prevents bombarding user with 2 dialogs in a row:
@@ -587,55 +548,49 @@ class GrantHandler(
             }
             GrantStatus.DENIED -> {
                 // Add first-request protection to prevent double dialogs
-                // If this is the first denial from system dialog, don't show rationale yet
                 if (!isFirstRequest) {
-                    // Soft denial - invoke rationale callback
                     val message = rationaleMessage ?: "This grant is required for this feature to work."
-
-                    val onConfirm: () -> Unit = {
-                        scope.launch {
-                            val newStatus = grantManager.request(grant)
-                            _status.value = newStatus
-                            refreshStatus()
-                            handleStatusWithCustomUi(
-                                status = newStatus,
-                                rationaleMessage = rationaleMessage,
-                                settingsMessage = settingsMessage,
-                                onShowRationale = onShowRationale,
-                                onShowSettings = onShowSettings,
-                                isFirstRequest = true  // Mark subsequent requests as first
-                            )
-                        }
+                    
+                    // Suspend and wait for user interaction to hold the mutex
+                    val confirmed = suspendCancellableCoroutine<Boolean> { cont ->
+                        val onConfirm: () -> Unit = { if (cont.isActive) cont.resume(true) }
+                        val onDismiss: () -> Unit = { if (cont.isActive) cont.resume(false) }
+                        onShowRationale(message, onConfirm, onDismiss)
                     }
-
-                    val onDismiss: () -> Unit = {
-                        // Clear callback to prevent memory leak
+                    
+                    if (confirmed) {
+                        val newStatus = grantManager.request(grant)
+                        _status.value = newStatus
+                        refreshStatus()
+                        handleStatusWithCustomUi(
+                            status = newStatus,
+                            rationaleMessage = rationaleMessage,
+                            settingsMessage = settingsMessage,
+                            onShowRationale = onShowRationale,
+                            onShowSettings = onShowSettings,
+                            isFirstRequest = true
+                        )
+                    } else {
                         onGrantedCallback = null
                     }
-
-                    onShowRationale(message, onConfirm, onDismiss)
                 } else {
-                    // Just denied from system dialog - don't show rationale yet
-                    // User can try again later and THEN we'll show rationale
                     onGrantedCallback = null
                 }
             }
             GrantStatus.DENIED_ALWAYS -> {
-                // Permanent denial - invoke settings callback
                 val message = settingsMessage ?: "Grant denied. Please enable it in Settings."
-
-                val onConfirm: () -> Unit = {
+                
+                // Suspend and wait for user interaction to hold the mutex
+                val confirmed = suspendCancellableCoroutine<Boolean> { cont ->
+                    val onConfirm: () -> Unit = { if (cont.isActive) cont.resume(true) }
+                    val onDismiss: () -> Unit = { if (cont.isActive) cont.resume(false) }
+                    onShowSettings(message, onConfirm, onDismiss)
+                }
+                
+                if (confirmed) {
                     grantManager.openSettings()
-                    // Clear callback - user needs to return to app and retry
-                    onGrantedCallback = null
                 }
-
-                val onDismiss: () -> Unit = {
-                    // Clear callback to prevent memory leak
-                    onGrantedCallback = null
-                }
-
-                onShowSettings(message, onConfirm, onDismiss)
+                onGrantedCallback = null
             }
         }
     }

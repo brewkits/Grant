@@ -21,6 +21,15 @@ class GrantAndServiceCheckerTest {
     }
 
     @Test
+    fun testLocationReady_withLocationAlways() = runTest {
+        val checker = createChecker(GrantStatus.GRANTED, ServiceStatus.ENABLED)
+
+        val status = checker.checkLocationReady(AppGrant.LOCATION_ALWAYS)
+
+        assertIs<LocationReadyStatus.Ready>(status)
+    }
+
+    @Test
     fun testLocationReady_grantDeniedServiceEnabled() = runTest {
         val checker = createChecker(GrantStatus.DENIED, ServiceStatus.ENABLED)
 

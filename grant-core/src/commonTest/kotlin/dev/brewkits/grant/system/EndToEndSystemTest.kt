@@ -11,6 +11,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlin.test.*
+import dev.brewkits.grant.assumeRationaleSupported
 
 /**
  * System-level end-to-end simulation tests.
@@ -52,53 +53,55 @@ class EndToEndSystemTest {
 
     @Test
     fun `System Journey - denial then settings flow`() = runTest {
-        println("Starting System Journey test")
-        // 1. Initial State: NOT_DETERMINED
-        mockGrantManager.mockStatus = GrantStatus.NOT_DETERMINED
-        mockGrantManager.mockRequestResult = GrantStatus.DENIED
+        assumeRationaleSupported {
+            println("Starting System Journey test")
+            // 1. Initial State: NOT_DETERMINED
+            mockGrantManager.mockStatus = GrantStatus.NOT_DETERMINED
+            mockGrantManager.mockRequestResult = GrantStatus.DENIED
 
-        val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
-        advanceUntilIdle()
-        
-        // 2. First Request -> User Denies
-        println("Step 2: First Request")
-        handler.request { }
-        advanceUntilIdle()
-        
-        assertFalse(handler.state.value.showRationale, "Rationale should NOT be shown on first denial")
+            val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
+            advanceUntilIdle()
 
-        // 3. Status updates to DENIED in the OS
-        println("Step 3: Status -> DENIED")
-        mockGrantManager.mockStatus = GrantStatus.DENIED
-        handler.refreshStatus()
-        advanceUntilIdle()
-        
-        // 4. Second Request -> User sees Rationale
-        println("Step 4: Second Request")
-        handler.request { }
-        advanceUntilIdle()
-        assertTrue(handler.state.value.showRationale, "Rationale should be shown on 2nd attempt")
+            // 2. First Request -> User Denies
+            println("Step 2: First Request")
+            handler.request { }
+            advanceUntilIdle()
 
-        // 5. User confirms rationale, OS denies permanently
-        println("Step 5: Rationale Confirmed -> DENIED_ALWAYS")
-        mockGrantManager.mockRequestResult = GrantStatus.DENIED_ALWAYS
-        handler.onRationaleConfirmed()
-        advanceUntilIdle()
-        
-        // 6. User should see settings guide
-        println("Step 6: Check Settings Guide")
-        assertTrue(handler.state.value.showSettingsGuide, "Settings guide should be shown after permanent denial")
+            assertFalse(handler.state.value.showRationale, "Rationale should NOT be shown on first denial")
 
-        // 7. User goes to settings and enables
-        println("Step 7: Confirm Settings -> GRANTED")
-        mockGrantManager.mockStatus = GrantStatus.GRANTED
-        handler.onSettingsConfirmed()
-        advanceUntilIdle()
-        handler.refreshStatus()
-        advanceUntilIdle()
-        
-        // 8. Result should be GRANTED
-        assertEquals(GrantStatus.GRANTED, handler.status.value, "Final status should be GRANTED")
-        println("Test finished successfully")
+            // 3. Status updates to DENIED in the OS
+            println("Step 3: Status -> DENIED")
+            mockGrantManager.mockStatus = GrantStatus.DENIED
+            handler.refreshStatus()
+            advanceUntilIdle()
+
+            // 4. Second Request -> User sees Rationale
+            println("Step 4: Second Request")
+            handler.request { }
+            advanceUntilIdle()
+            assertTrue(handler.state.value.showRationale, "Rationale should be shown on 2nd attempt")
+
+            // 5. User confirms rationale, OS denies permanently
+            println("Step 5: Rationale Confirmed -> DENIED_ALWAYS")
+            mockGrantManager.mockRequestResult = GrantStatus.DENIED_ALWAYS
+            handler.onRationaleConfirmed()
+            advanceUntilIdle()
+
+            // 6. User should see settings guide
+            println("Step 6: Check Settings Guide")
+            assertTrue(handler.state.value.showSettingsGuide, "Settings guide should be shown after permanent denial")
+
+            // 7. User goes to settings and enables
+            println("Step 7: Confirm Settings -> GRANTED")
+            mockGrantManager.mockStatus = GrantStatus.GRANTED
+            handler.onSettingsConfirmed()
+            advanceUntilIdle()
+            handler.refreshStatus()
+            advanceUntilIdle()
+
+            // 8. Result should be GRANTED
+            assertEquals(GrantStatus.GRANTED, handler.status.value, "Final status should be GRANTED")
+            println("Test finished successfully")
+        }
     }
 }

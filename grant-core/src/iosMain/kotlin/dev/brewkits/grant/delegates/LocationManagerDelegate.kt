@@ -26,7 +26,14 @@ import kotlin.coroutines.resume
  */
 internal class LocationManagerDelegate : NSObject(), CLLocationManagerDelegateProtocol {
 
-    private val locationManager = CLLocationManager()
+    private var locationManager: CLLocationManager? = null
+
+    private fun getManager(): CLLocationManager {
+        val manager = locationManager ?: CLLocationManager()
+        if (manager.delegate == null) manager.delegate = this
+        locationManager = manager
+        return manager
+    }
 
     /**
      * Active continuation — nulled out BEFORE resume to prevent double-resume.
@@ -34,8 +41,15 @@ internal class LocationManagerDelegate : NSObject(), CLLocationManagerDelegatePr
      */
     private var continuation: Continuation<CLAuthorizationStatus>? = null
 
-    init {
-        locationManager.delegate = this
+
+
+    /**
+     * Call when done to break the retain cycle.
+     */
+    fun dispose() {
+        locationManager?.delegate = null
+        locationManager = null
+        continuation = null
     }
 
     /**
@@ -47,17 +61,22 @@ internal class LocationManagerDelegate : NSObject(), CLLocationManagerDelegatePr
             continuation = cont
 
             // If already determined, resume immediately without showing dialog
-            val currentStatus = locationManager.authorizationStatus()
+            val manager = getManager()
+            val currentStatus = manager.authorizationStatus()
             if (currentStatus != kCLAuthorizationStatusNotDetermined) {
                 continuation = null
+                manager.delegate = null
+                locationManager = null
                 cont.resume(currentStatus)
                 return@suspendCancellableCoroutine
             }
 
-            locationManager.requestWhenInUseAuthorization()
+            manager.requestWhenInUseAuthorization()
 
             cont.invokeOnCancellation {
                 continuation = null
+                locationManager?.delegate = null
+                locationManager = null
             }
         }
     }
@@ -73,9 +92,12 @@ internal class LocationManagerDelegate : NSObject(), CLLocationManagerDelegatePr
         return suspendCancellableCoroutine { cont ->
             continuation = cont
 
-            val currentStatus = locationManager.authorizationStatus()
+            val manager = getManager()
+            val currentStatus = manager.authorizationStatus()
             if (currentStatus == kCLAuthorizationStatusAuthorizedAlways) {
                 continuation = null
+                manager.delegate = null
+                locationManager = null
                 cont.resume(currentStatus)
                 return@suspendCancellableCoroutine
             }
@@ -83,13 +105,15 @@ internal class LocationManagerDelegate : NSObject(), CLLocationManagerDelegatePr
             // iOS 11+ requirement: request WhenInUse first if not already granted
             if (currentStatus == kCLAuthorizationStatusNotDetermined ||
                 currentStatus == kCLAuthorizationStatusDenied) {
-                locationManager.requestWhenInUseAuthorization()
+                manager.requestWhenInUseAuthorization()
             }
 
-            locationManager.requestAlwaysAuthorization()
+            manager.requestAlwaysAuthorization()
 
             cont.invokeOnCancellation {
                 continuation = null
+                locationManager?.delegate = null
+                locationManager = null
             }
         }
     }
@@ -107,6 +131,10 @@ internal class LocationManagerDelegate : NSObject(), CLLocationManagerDelegatePr
         val cont = continuation
         continuation = null
         if (cont != null) {
+            manager.delegate = null
+            if (locationManager == manager) {
+                locationManager = null
+            }
             mainContinuation<CLAuthorizationStatus> { s -> cont.resume(s) }.invoke(status)
         }
     }
@@ -125,8 +153,20 @@ internal class LocationManagerDelegate : NSObject(), CLLocationManagerDelegatePr
         // FIX C3: If already consumed by the iOS 14+ callback above → skip
         val cont = continuation ?: return
         continuation = null
+        manager.delegate = null
+        locationManager = null
         mainContinuation<CLAuthorizationStatus> { status ->
             cont.resume(status)
         }.invoke(didChangeAuthorizationStatus)
+    }
+
+    /**
+     * Exposes the instance `authorizationStatus` property (iOS 14+ preferred API)
+     * so that [LocationPermissionHandler] does not need to call the deprecated
+     * `CLLocationManager.authorizationStatus()` class method.
+     */
+    fun currentAuthorizationStatus(): CLAuthorizationStatus {
+        val manager = CLLocationManager() // Ephemeral for check
+        return manager.authorizationStatus()
     }
 }

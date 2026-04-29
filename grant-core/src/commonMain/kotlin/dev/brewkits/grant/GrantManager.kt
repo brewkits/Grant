@@ -12,7 +12,7 @@ package dev.brewkits.grant
  * - No coupling between business logic and platform-specific code
  * - Simplified testing (mock this interface)
  *
- * @see MyGrantManager for the default implementation
+ * @see DefaultGrantManager for the default implementation
  * @see GrantHandler for ViewModel usage patterns
  */
 interface GrantManager {

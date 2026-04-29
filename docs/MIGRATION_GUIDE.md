@@ -1,7 +1,7 @@
 # Migration Guide to Grant
 
-**Version:** 1.0.2
-**Last Updated:** February 16, 2026
+**Version:** 1.3.0
+**Last Updated:** April 28, 2026
 
 This guide helps you migrate from other permission libraries to Grant with minimal code changes and maximum benefit.
 
@@ -13,8 +13,47 @@ This guide helps you migrate from other permission libraries to Grant with minim
 2. [From Google Accompanist](#from-google-accompanist)
 3. [From Custom Implementation](#from-custom-implementation)
 4. [From Native Android APIs](#from-native-android-apis)
-5. [Common Migration Patterns](#common-migration-patterns)
-6. [Troubleshooting](#troubleshooting)
+5. [Upgrading from Grant 1.2.x to 1.3.0](#upgrading-from-grant-12x-to-130)
+6. [Common Migration Patterns](#common-migration-patterns)
+7. [Troubleshooting](#troubleshooting)
+
+---
+
+## 5️⃣ Upgrading from Grant 1.2.x to 1.3.0
+
+### Overview
+
+Version 1.3.0 is a major architectural release for iOS that solves the **Apple App Store Rejection** issue (Issue #25) caused by unused permission frameworks.
+
+### What Changed?
+
+- **Permission Framework Isolation:** Every permission (Location, Bluetooth, etc.) is now isolated into its own handler file.
+- **Improved Linker Behavior:** Kotlin/Native now only links the frameworks you actually use in your code.
+- **Weak Linking:** Sensitive frameworks are now "weak-linked" as a secondary safety measure.
+
+### Step-by-Step Upgrade
+
+1. **Update Dependency Version**
+   Update your `build.gradle.kts` to use version `1.3.0`:
+   ```kotlin
+   implementation("dev.brewkits:grant-core:1.3.0")
+   implementation("dev.brewkits:grant-compose:1.3.0")
+   ```
+
+2. **Clean up `Info.plist` (Optional but Recommended)**
+   You can now remove the "dummy" usage description keys that were previously required to avoid App Store rejection for permissions you didn't use.
+   - **Keep** keys for permissions you actually use (e.g., `NSCameraUsageDescription`).
+   - **Remove** keys for permissions you don't use (e.g., `NSLocationWhenInUseUsageDescription`).
+
+3. **Clean & Rebuild**
+   To ensure the new linker flags are applied correctly on iOS:
+   ```bash
+   ./gradlew clean
+   # Then rebuild your iOS app/framework
+   ```
+
+### Breaking Changes
+**None.** Version 1.3.0 is 100% source and binary compatible with 1.2.x for all code in `commonMain`.
 
 ---
 

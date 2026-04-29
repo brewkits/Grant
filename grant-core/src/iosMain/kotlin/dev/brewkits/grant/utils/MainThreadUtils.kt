@@ -84,8 +84,15 @@ private fun NSRunLoop.performBlock(block: () -> Unit) {
         queue = dispatch_get_main_queue(),
         context = StableRef.create(block).asCPointer(),
         work = staticCFunction { blockPtr ->
-            val toRun = blockPtr!!.asStableRef<() -> Unit>().get()
-            toRun()
+            // dispose() MUST be called to release the pinned Kotlin object.
+            // StableRef bypasses ARC — without dispose(), every call leaks one reference,
+            // accumulating indefinitely until OOM crash.
+            val ref = blockPtr!!.asStableRef<() -> Unit>()
+            try {
+                ref.get().invoke()
+            } finally {
+                ref.dispose()
+            }
         }
     )
 }

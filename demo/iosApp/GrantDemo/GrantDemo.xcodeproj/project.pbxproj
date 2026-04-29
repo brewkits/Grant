@@ -27,7 +27,7 @@
 
 /* Begin PBXFileReference section */
 		EB58D14B2F1A30A10008A5EF /* GrantDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GrantDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		EB58D15A2F1A31350008A5EF /* GrantDemo.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = GrantDemo.framework; path = ../../build/bin/iosArm64/debugFramework/GrantDemo.framework; sourceTree = "<group>"; };
+		EB58D15A2F1A31350008A5EF /* GrantDemo.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = GrantDemo.framework; path = ../../build/bin/iosSimulatorArm64/debugFramework/GrantDemo.framework; sourceTree = "<group>"; };
 		EBEEBA2D2F1F9C18001D4E4B /* GrantDemoShared.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = GrantDemoShared.framework; path = ../../build/bin/iosArm64/debugFramework/GrantDemoShared.framework; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -333,7 +333,10 @@
 				ENABLE_RESOURCE_ACCESS_LOCATION = YES;
 				ENABLE_RESOURCE_ACCESS_PHOTO_LIBRARY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
-				FRAMEWORK_SEARCH_PATHS = "$(PROJECT_DIR)/../../build/bin/iosArm64/debugFramework";
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(PROJECT_DIR)/../../build/bin/iosSimulatorArm64/debugFramework",
+					"$(PROJECT_DIR)/../../build/bin/iosArm64/debugFramework",
+				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = GrantDemo/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "We need camera access to demonstrate grant flow ";
@@ -393,7 +396,7 @@
 				ENABLE_RESOURCE_ACCESS_PHOTO_LIBRARY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				FRAMEWORK_SEARCH_PATHS = (
-					"$(PROJECT_DIR)/../../build/bin/iosArm64/releaseFramework",
+					"$(PROJECT_DIR)/../../build/bin/iosSimulatorArm64/releaseFramework",
 					"$(PROJECT_DIR)/../../build/bin/iosX64/releaseFramework",
 					"$(PROJECT_DIR)/../../build/bin/iosArm64/releaseFramework",
 				);

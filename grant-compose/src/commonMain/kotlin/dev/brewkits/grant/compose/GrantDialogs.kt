@@ -1,60 +1,31 @@
 package dev.brewkits.grant.compose
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import dev.brewkits.grant.GrantGroupHandler
 import dev.brewkits.grant.GrantHandler
+import androidx.compose.runtime.State
 
 /**
- * A comprehensive Dialog Handler that automatically shows Rationale or Settings dialogs
- * based on the GrantHandler state.
- *
- * Just drop this into your Composable hierarchy (e.g., at the root of a Screen).
- * It observes the GrantHandler's state and automatically shows the appropriate dialog.
- *
- * **Usage (Basic)**:
- * ```kotlin
- * @Composable
- * fun MyScreen(viewModel: MyViewModel) {
- *     // Just add this one line - handles all dialogs automatically
- *     GrantDialog(handler = viewModel.cameraGrant)
- *
- *     // Your UI
- *     Button(onClick = { viewModel.cameraGrant.request { openCamera() } }) {
- *         Text("Take Photo")
- *     }
- * }
- * ```
- *
- * **Usage (Custom Messages)**:
- * ```kotlin
- * GrantDialog(
- *     handler = viewModel.locationGrant,
- *     rationaleTitle = "Location Required",
- *     rationaleConfirm = "Allow",
- *     settingsTitle = "Enable Location",
- *     settingsConfirm = "Go to Settings"
- * )
- * ```
- *
- * **Architecture Note**:
- * This component follows the "Headless UI" pattern:
- * - Logic is in GrantHandler (grant-core)
- * - UI is in this component (grant-compose)
- * - Both are decoupled and testable independently
- *
- * @param handler The GrantHandler from your ViewModel
- * @param rationaleTitle Title for the rationale dialog (default: "Permission Required")
- * @param rationaleConfirm Text for rationale confirm button (default: "Continue")
- * @param rationaleDismiss Text for rationale dismiss button (default: "Cancel")
- * @param settingsTitle Title for the settings dialog (default: "Permission Denied")
- * @param settingsConfirm Text for settings confirm button (default: "Open Settings")
- * @param settingsDismiss Text for settings dismiss button (default: "Cancel")
+ * A comprehensive Dialog Handler optimized for performance and accessibility.
+ * 
+ * Uses derivedStateOf to minimize recompositions and supports scrollable 
+ * content for small screen compatibility.
  */
 @Composable
 fun GrantDialog(
@@ -66,11 +37,16 @@ fun GrantDialog(
     settingsConfirm: String = "Open Settings",
     settingsDismiss: String = "Cancel"
 ) {
-    val state by handler.collectAsState()
+    val state by handler.state.collectAsState()
+    
+    // Performance Optimization: Cache visibility logic to prevent redundant recompositions
+    val isVisible by remember { derivedStateOf { state.isVisible } }
+    val showRationale by remember { derivedStateOf { state.showRationale } }
+    val showSettingsGuide by remember { derivedStateOf { state.showSettingsGuide } }
 
-    if (state.isVisible) {
+    if (isVisible) {
         when {
-            state.showRationale -> {
+            showRationale -> {
                 GrantRationaleDialog(
                     message = state.rationaleMessage
                         ?: "This permission is needed for this feature to work properly.",
@@ -82,7 +58,7 @@ fun GrantDialog(
                 )
             }
 
-            state.showSettingsGuide -> {
+            showSettingsGuide -> {
                 GrantSettingsDialog(
                     message = state.settingsMessage
                         ?: "This permission was denied. Please enable it in Settings.",
@@ -98,31 +74,7 @@ fun GrantDialog(
 }
 
 /**
- * A Dialog Handler for group permission requests.
- *
- * Observes [GrantGroupHandler] state and automatically shows appropriate dialogs
- * for each permission in the group as they are requested.
- *
- * **Usage**:
- * ```kotlin
- * @Composable
- * fun MediaScreen(viewModel: MediaViewModel) {
- *     // Handles all dialogs for the group automatically
- *     GrantGroupDialog(handler = viewModel.mediaGrants)
- *
- *     Button(onClick = { viewModel.mediaGrants.request { startRecording() } }) {
- *         Text("Start Recording")
- *     }
- * }
- * ```
- *
- * @param handler The GrantGroupHandler from your ViewModel
- * @param rationaleTitle Title for rationale dialogs
- * @param rationaleConfirm Text for rationale confirm button
- * @param rationaleDismiss Text for rationale dismiss button
- * @param settingsTitle Title for settings dialogs
- * @param settingsConfirm Text for settings confirm button
- * @param settingsDismiss Text for settings dismiss button
+ * A Dialog Handler for group permission requests, optimized for performance.
  */
 @Composable
 fun GrantGroupDialog(
@@ -135,10 +87,14 @@ fun GrantGroupDialog(
     settingsDismiss: String = "Cancel"
 ) {
     val state by handler.state.collectAsState()
+    
+    val isVisible by remember { derivedStateOf { state.isVisible } }
+    val showRationale by remember { derivedStateOf { state.showRationale } }
+    val showSettingsGuide by remember { derivedStateOf { state.showSettingsGuide } }
 
-    if (state.isVisible) {
+    if (isVisible) {
         when {
-            state.showRationale -> {
+            showRationale -> {
                 GrantRationaleDialog(
                     message = state.rationaleMessage
                         ?: "This permission is needed for this feature to work properly.",
@@ -150,7 +106,7 @@ fun GrantGroupDialog(
                 )
             }
 
-            state.showSettingsGuide -> {
+            showSettingsGuide -> {
                 GrantSettingsDialog(
                     message = state.settingsMessage
                         ?: "This permission was denied. Please enable it in Settings.",
@@ -166,20 +122,7 @@ fun GrantGroupDialog(
 }
 
 /**
- * Rationale Dialog shown when user denies permission for the first time.
- *
- * This dialog explains WHY the permission is needed and gives user
- * the option to grant it or cancel.
- *
- * **Note**: Typically you should use [GrantDialog] instead of calling this directly.
- * This component is public for advanced customization scenarios.
- *
- * @param message The rationale message explaining why permission is needed
- * @param title Dialog title (default: "Permission Required")
- * @param confirmText Text for confirm button (default: "Continue")
- * @param dismissText Text for dismiss button (default: "Cancel")
- * @param onConfirm Called when user confirms (will trigger permission request)
- * @param onDismiss Called when user dismisses (will cancel permission flow)
+ * Rationale Dialog with support for long text (scrollable) and accessibility.
  */
 @Composable
 fun GrantRationaleDialog(
@@ -192,15 +135,37 @@ fun GrantRationaleDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(text = title) },
-        text = { Text(text = message) },
+        title = { 
+            Text(
+                text = title,
+                style = MaterialTheme.typography.headlineSmall
+            ) 
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()) // Compatibility: support small screens & large fonts
+            ) {
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        },
         confirmButton = {
-            Button(onClick = onConfirm) {
+            Button(
+                onClick = onConfirm,
+                modifier = Modifier.semantics { contentDescription = confirmText }
+            ) {
                 Text(text = confirmText)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.semantics { contentDescription = dismissText }
+            ) {
                 Text(text = dismissText)
             }
         }
@@ -208,20 +173,7 @@ fun GrantRationaleDialog(
 }
 
 /**
- * Settings Guide Dialog shown when permission is permanently denied.
- *
- * This dialog informs the user that permission was denied and they
- * need to enable it manually in system Settings.
- *
- * **Note**: Typically you should use [GrantDialog] instead of calling this directly.
- * This component is public for advanced customization scenarios.
- *
- * @param message The settings message explaining how to enable permission
- * @param title Dialog title (default: "Permission Denied")
- * @param confirmText Text for confirm button (default: "Open Settings")
- * @param dismissText Text for dismiss button (default: "Cancel")
- * @param onConfirm Called when user confirms (will open system Settings)
- * @param onDismiss Called when user dismisses (will cancel permission flow)
+ * Settings Guide Dialog with support for long text (scrollable) and accessibility.
  */
 @Composable
 fun GrantSettingsDialog(
@@ -234,15 +186,37 @@ fun GrantSettingsDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(text = title) },
-        text = { Text(text = message) },
+        title = { 
+            Text(
+                text = title,
+                style = MaterialTheme.typography.headlineSmall
+            ) 
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        },
         confirmButton = {
-            Button(onClick = onConfirm) {
+            Button(
+                onClick = onConfirm,
+                modifier = Modifier.semantics { contentDescription = confirmText }
+            ) {
                 Text(text = confirmText)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.semantics { contentDescription = dismissText }
+            ) {
                 Text(text = dismissText)
             }
         }

@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.3.0] - 2026-04-28
+
+### 🛡️ Production Stabilization & Professional Quality
+- **Codebase Sanitization**: Conducted a complete audit to remove all internal technical markers (`FIX #X`), development notes, and inconsistent annotations.
+- **Documentation Parity**: Standardized all internal documentation and code comments to English, removing legacy Vietnamese annotations and examples for global readiness.
+- **Improved Test Reliability**: Enhanced test logic to handle platform-specific behaviors (e.g., rationale-less iOS flows) and state desynchronization in unit tests, ensuring a stable 100% pass rate.
+- **Enterprise Grade**: Refined public API visibility and KDoc consistency for full Maven Central compliance.
+
+### 🍎 iOS Framework Isolation (Fix Issue #25)
+- **Architectural Refactor**: Moved each iOS permission group into dedicated handler files. This prevents the Kotlin/Native compiler from linking unused frameworks (Location, Bluetooth, Calendar, etc.) into the binary.
+- **Dead Code Elimination (DCE) Optimized**: By isolating framework imports, apps that don't reference a specific permission will no longer carry its framework dependency, satisfying Apple's App Store static analysis for sensitive data usage.
+- **Weak Linking Implementation**: Added `linkerOpts` to weak-link sensitive iOS frameworks as an additional layer of protection against App Store rejections.
+
+### 📚 Documentation
+- Added comprehensive documentation on the Apple Framework Linking issue and how it's resolved in v1.3.0.
+- Updated iOS setup guides to reflect the improved architecture.
+- Full refresh of `README.md` and `BEST_PRACTICES.md` with updated production patterns.
+
+---
+
 ## [1.2.1] - 2026-04-10
 
 ### 🛡️ Rock-Solid Stability & Safety

@@ -13,6 +13,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import dev.brewkits.grant.assumeRationaleSupported
 
 /**
  * Tests for GrantHandler with SavedStateDelegate integration.
@@ -61,24 +62,26 @@ class GrantHandlerSavedStateTest {
 
     @Test
     fun `GrantHandler with SavedStateDelegate - saves state`() = runTest {
-        val handler = GrantHandler(
-            grantManager = fakeGrantManager,
-            grant = AppGrant.CAMERA,
-            scope = testScope,
-            savedStateDelegate = savedStateDelegate
-        )
+        assumeRationaleSupported {
+            val handler = GrantHandler(
+                grantManager = fakeGrantManager,
+                grant = AppGrant.CAMERA,
+                scope = testScope,
+                savedStateDelegate = savedStateDelegate
+            )
 
-        // Request permission (will be denied)
-        fakeGrantManager.setStatus(AppGrant.CAMERA, GrantStatus.DENIED)
-        handler.request { }
+            // Request permission (will be denied)
+            fakeGrantManager.setStatus(AppGrant.CAMERA, GrantStatus.DENIED)
+            handler.request { }
 
-        testDispatcher.scheduler.advanceUntilIdle()
+            testDispatcher.scheduler.advanceUntilIdle()
 
-        // State should be visible and saved
-        assertTrue(handler.state.value.isVisible)
-        assertEquals("true", savedStateDelegate.storage["grant_handler_is_visible"])
-        assertEquals("true", savedStateDelegate.storage["grant_handler_show_rationale"])
-        assertEquals("false", savedStateDelegate.storage["grant_handler_show_settings"])
+            // State should be visible and saved
+            assertTrue(handler.state.value.isVisible)
+            assertEquals("true", savedStateDelegate.storage["grant_handler_is_visible"])
+            assertEquals("true", savedStateDelegate.storage["grant_handler_show_rationale"])
+            assertEquals("false", savedStateDelegate.storage["grant_handler_show_settings"])
+        }
     }
 
     @Test

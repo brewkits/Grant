@@ -49,33 +49,42 @@ Frameworks/PermissionDemo.framework
 # Compose
 compose-desktop.properties
 
-# Temporary files
+# Temporary & Junk files
 *.swp
 *.swo
 *~
-.tmp/
 *.log
 *.bak
-.claude
-.idea
+.tmp/
+.DS_Store
+test_output.txt
+
+# IDE & Tooling
+.idea/
+.vscode/
+.claude/
+.kotlin/
+.run-ios-from-studio.sh
 run-ios-from-studio.sh
+run-ios.sh
+*.iml
+
+# Maven & Build Artifacts
+maven-central-artifacts/
+build/
+local.properties
+*.apk
+*.aab
+*.klib
 
 # Internal documentation (not for public git)
 docs/internal/
 MANUAL_UPLOAD_INSTRUCTIONS.md
 MAVEN_ARTIFACTS_v1.0.0.md
 PUBLISH_CHECKLIST.md
-
-# Maven bundle creation (internal instructions)
 HUONG_DAN_TAO_MAVEN_BUNDLE_V2.md
 MAVEN_BUNDLE_CHECKLIST.md
 SUMMARY_UPDATES.md
+REDDIT_POST.md
 create-maven-bundle*.sh
 create-grant-maven-bundle*.sh
-maven-central-artifacts/
-
-# Marketing materials (drafts)
-REDDIT_POST.md
-
-# Reference files (keep in repo for now)
-# 2026-01-22-*.txt

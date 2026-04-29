@@ -53,6 +53,22 @@ This document explains the architectural decisions behind KMP Grant library and 
 └──────────────────┘           └──────────────────┘
 ```
 
+## 🍎 iOS Framework Isolation (NEW in v1.3.0)
+
+To avoid Apple App Store rejections due to "unused sensitive permissions" (e.g., your app doesn't use Location but the library contains Location code), Grant v1.3.0 introduced a strict isolation architecture.
+
+### The Problem
+Kotlin/Native's dead code elimination (DCE) sometimes fails to remove framework linkages if they are referenced in a large, monolithic platform delegate. This causes the App Store static scanner to detect frameworks like `CoreLocation` or `CoreBluetooth` even if your app never requests them.
+
+### The Solution: Isolated Handlers
+Grant refactored `PlatformGrantDelegate.ios.kt` to move framework-specific logic into separate files:
+- `LocationGrantHandler.ios.kt` (CoreLocation)
+- `BluetoothGrantHandler.ios.kt` (CoreBluetooth)
+- `CalendarGrantHandler.ios.kt` (EventKit)
+- ...and so on.
+
+These handlers are only linked if the corresponding `AppGrant` enum is referenced in your code. This ensures a zero-overhead binary and a smooth App Store review process.
+
 ## 🎨 Design Patterns
 
 ### 1. Wrapper/Adapter Pattern

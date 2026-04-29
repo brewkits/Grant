@@ -135,7 +135,6 @@ interface GrantStore {
 fun GrantStore.isRequestedBefore(grant: GrantPermission): Boolean = when (grant) {
     is AppGrant     -> isRequestedBefore(grant)
     is RawPermission -> isRawPermissionRequested(grant.identifier)
-    else             -> false
 }
 
 /**
@@ -146,7 +145,6 @@ fun GrantStore.isRequestedBefore(grant: GrantPermission): Boolean = when (grant)
 fun GrantStore.setRequested(grant: GrantPermission) = when (grant) {
     is AppGrant      -> setRequested(grant)
     is RawPermission -> markRawPermissionRequested(grant.identifier)
-    else             -> Unit
 }
 
 /**
@@ -154,6 +152,6 @@ fun GrantStore.setRequested(grant: GrantPermission) = when (grant) {
  * Only [AppGrant] values are cached; [RawPermission] always returns null.
  */
 fun GrantStore.getStatus(grant: GrantPermission): GrantStatus? = when (grant) {
-    is AppGrant -> getStatus(grant)
-    else        -> null
+    is AppGrant      -> getStatus(grant)
+    is RawPermission -> null
 }

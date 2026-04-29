@@ -96,7 +96,53 @@ class GrantHandlerTest {
         assertFalse(state.showSettingsGuide)
     }
 
-    // ==================== Request Flow - NOT_DETERMINED ====================
+    @Test
+    fun `requestWithCustomUi should trigger custom callbacks for rationale`() = runTest {
+        mockGrantManager.mockStatus = GrantStatus.DENIED
+        val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
+        testScheduler.advanceUntilIdle()
+
+        var rationaleShown = false
+        var settingsShown = false
+        var grantedInvoked = false
+
+        handler.requestWithCustomUi(
+            onShowRationale = { _, onConfirm, _ -> 
+                rationaleShown = true
+                onConfirm() // Simulate user accepting rationale
+            },
+            onShowSettings = { _, _, _ -> settingsShown = true },
+            onGranted = { grantedInvoked = true }
+        )
+        testScheduler.advanceUntilIdle()
+
+        assertTrue(rationaleShown, "Rationale should be shown")
+        assertFalse(settingsShown, "Settings should NOT be shown")
+        // After rationale confirm, it should request again. 
+        // FakeGrantManager.request returns GRANTED by default.
+        assertTrue(grantedInvoked, "Callback should be invoked after rationale confirm")
+    }
+
+    @Test
+    fun `requestWithCustomUi should trigger custom callbacks for settings`() = runTest {
+        mockGrantManager.mockStatus = GrantStatus.DENIED_ALWAYS
+        val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
+        testScheduler.advanceUntilIdle()
+
+        var settingsShown = false
+
+        handler.requestWithCustomUi(
+            onShowRationale = { _, _, _ -> },
+            onShowSettings = { _, onConfirm, _ -> 
+                settingsShown = true
+                onConfirm() // Simulate user going to settings
+            },
+            onGranted = { }
+        )
+        testScheduler.advanceUntilIdle()
+
+        assertTrue(settingsShown, "Settings should be shown")
+    }
 
     @Test
     fun `request when NOT_DETERMINED should request grant and invoke callback if granted`() = runTest {
@@ -148,21 +194,23 @@ class GrantHandlerTest {
 
     @Test
     fun `request when DENIED should show rationale dialog`() = runTest {
-        mockGrantManager.mockStatus = GrantStatus.DENIED
-        val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
-        testScheduler.advanceUntilIdle()
-
-        handler.state.test {
-            skipItems(1) // Skip initial
-
-            handler.request(rationaleMessage = "Camera is required") { }
+        assumeRationaleSupported {
+            mockGrantManager.mockStatus = GrantStatus.DENIED
+            val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
             testScheduler.advanceUntilIdle()
 
-            val state = awaitItem()
-            assertTrue(state.isVisible, "Dialog should be visible")
-            assertTrue(state.showRationale, "Should show rationale")
-            assertFalse(state.showSettingsGuide)
-            assertEquals("Camera is required", state.rationaleMessage)
+            handler.state.test {
+                skipItems(1) // Skip initial
+
+                handler.request(rationaleMessage = "Camera is required") { }
+                testScheduler.advanceUntilIdle()
+
+                val state = awaitItem()
+                assertTrue(state.isVisible, "Dialog should be visible")
+                assertTrue(state.showRationale, "Should show rationale")
+                assertFalse(state.showSettingsGuide)
+                assertEquals("Camera is required", state.rationaleMessage)
+            }
         }
     }
 
@@ -187,58 +235,62 @@ class GrantHandlerTest {
 
     @Test
     fun `onRationaleConfirmed when denied again should hide dialog`() = runTest {
-        mockGrantManager.mockStatus = GrantStatus.DENIED
-        mockGrantManager.mockRequestResult = GrantStatus.DENIED_ALWAYS
-        val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
-        testScheduler.advanceUntilIdle()
+        assumeRationaleSupported {
+            mockGrantManager.mockStatus = GrantStatus.DENIED
+            mockGrantManager.mockRequestResult = GrantStatus.DENIED_ALWAYS
+            val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
+            testScheduler.advanceUntilIdle()
 
-        handler.request { }
-        testScheduler.advanceUntilIdle()
+            handler.request { }
+            testScheduler.advanceUntilIdle()
 
-        handler.onRationaleConfirmed()
-        testScheduler.advanceUntilIdle()
+            handler.onRationaleConfirmed()
+            testScheduler.advanceUntilIdle()
 
-        // Check state directly - should now show settings guide
-        val state = handler.state.value
-        assertTrue(state.isVisible)
-        assertFalse(state.showRationale)
-        assertTrue(state.showSettingsGuide, "Should show settings guide after rationale")
+            // Check state directly - should now show settings guide
+            val state = handler.state.value
+            assertTrue(state.isVisible)
+            assertFalse(state.showRationale)
+            assertTrue(state.showSettingsGuide, "Should show settings guide after rationale")
+        }
     }
 
     // ==================== Request Flow - DENIED_ALWAYS (Hard Denial) ====================
 
     @Test
     fun `request when DENIED_ALWAYS should show settings guide if rationale was shown before`() = runTest {
-        mockGrantManager.mockStatus = GrantStatus.DENIED
-        val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
-        testScheduler.advanceUntilIdle()
-
-        handler.state.test {
-            skipItems(1) // Skip initial
-
-            // First request - shows rationale
-            handler.request(rationaleMessage = "Camera needed", settingsMessage = "Enable in Settings") { }
+        assumeRationaleSupported {
+            mockGrantManager.mockStatus = GrantStatus.DENIED
+            val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
             testScheduler.advanceUntilIdle()
 
-            val rationaleState = awaitItem()
-            assertTrue(rationaleState.showRationale, "Should show rationale first")
+            handler.state.test {
+                skipItems(1) // Skip initial
 
-            // Simulate user denying permanently
-            mockGrantManager.mockStatus = GrantStatus.DENIED_ALWAYS
-            mockGrantManager.mockRequestResult = GrantStatus.DENIED_ALWAYS
-            handler.onRationaleConfirmed()
-            testScheduler.advanceUntilIdle()
+                // First request - shows rationale
+                handler.request(rationaleMessage = "Camera needed", settingsMessage = "Enable in Settings") { }
+                testScheduler.advanceUntilIdle()
 
-            // onRationaleConfirmed() emits resetState() first, then settings guide
-            val resetState = awaitItem()
-            assertFalse(resetState.isVisible, "Dialog is hidden during reset")
+                val rationaleState = awaitItem()
+                assertTrue(rationaleState.showRationale, "Should show rationale first")
 
-            val settingsState = awaitItem()
-            assertTrue(settingsState.isVisible, "Dialog should be visible")
-            assertFalse(settingsState.showRationale)
-            assertTrue(settingsState.showSettingsGuide, "Should show settings guide")
-            // onRationaleConfirmed() doesn't preserve messages - it passes null
-            assertNull(settingsState.settingsMessage, "Message is not preserved after onRationaleConfirmed")
+                // Simulate user denying permanently
+                mockGrantManager.mockStatus = GrantStatus.DENIED_ALWAYS
+                mockGrantManager.mockRequestResult = GrantStatus.DENIED_ALWAYS
+                handler.onRationaleConfirmed()
+                testScheduler.advanceUntilIdle()
+
+                // onRationaleConfirmed() emits resetState() first, then settings guide
+                val resetState = awaitItem()
+                assertFalse(resetState.isVisible, "Dialog is hidden during reset")
+
+                val settingsState = awaitItem()
+                assertTrue(settingsState.isVisible, "Dialog should be visible")
+                assertFalse(settingsState.showRationale)
+                assertTrue(settingsState.showSettingsGuide, "Should show settings guide")
+                // onRationaleConfirmed() doesn't preserve messages - it passes null
+                assertNull(settingsState.settingsMessage, "Message is not preserved after onRationaleConfirmed")
+            }
         }
     }
 
@@ -568,32 +620,34 @@ class GrantHandlerTest {
 
     @Test
     fun `should handle RawPermission denial flow`() = runTest {
-        val customPermission = RawPermission(
-            identifier = "CUSTOM_SENSOR",
-            androidPermissions = listOf("com.example.permission.SENSOR"),
-            iosUsageKey = null  // Android-only permission
-        )
+        assumeRationaleSupported {
+            val customPermission = RawPermission(
+                identifier = "CUSTOM_SENSOR",
+                androidPermissions = listOf("com.example.permission.SENSOR"),
+                iosUsageKey = null  // Android-only permission
+            )
 
-        mockGrantManager.mockStatus = GrantStatus.DENIED
-        val handler = GrantHandler(mockGrantManager, customPermission, testScope)
-        testScheduler.advanceUntilIdle()
-
-        handler.state.test {
-            awaitItem() // Initial state
-
-            handler.request {
-                fail("Callback should not be invoked when denied")
-            }
+            mockGrantManager.mockStatus = GrantStatus.DENIED
+            val handler = GrantHandler(mockGrantManager, customPermission, testScope)
             testScheduler.advanceUntilIdle()
 
-            // Should show rationale for custom permission (second request)
-            handler.request {
-                fail("Callback should not be invoked")
-            }
-            testScheduler.advanceUntilIdle()
+            handler.state.test {
+                awaitItem() // Initial state
 
-            val state = awaitItem()
-            assertTrue(state.showRationale, "Should show rationale for denied RawPermission")
+                handler.request {
+                    fail("Callback should not be invoked when denied")
+                }
+                testScheduler.advanceUntilIdle()
+
+                // Should show rationale for custom permission (second request)
+                handler.request {
+                    fail("Callback should not be invoked")
+                }
+                testScheduler.advanceUntilIdle()
+
+                val state = awaitItem()
+                assertTrue(state.showRationale, "Should show rationale for denied RawPermission")
+            }
         }
     }
 

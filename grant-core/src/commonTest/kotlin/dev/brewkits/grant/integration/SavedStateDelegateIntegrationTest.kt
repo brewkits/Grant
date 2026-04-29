@@ -13,6 +13,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import dev.brewkits.grant.assumeRationaleSupported
 
 /**
  * Integration tests for SavedStateDelegate with GrantHandler.
@@ -66,44 +67,46 @@ class SavedStateDelegateIntegrationTest {
 
     @Test
     fun `Process death Dialog state is saved and restored`() = runTest {
-        val savedStateDelegate = FakeSavedStateDelegate()
-        mockGrantManager.mockStatus = GrantStatus.DENIED
-        mockGrantManager.mockRequestResult = GrantStatus.DENIED
+        assumeRationaleSupported {
+            val savedStateDelegate = FakeSavedStateDelegate()
+            mockGrantManager.mockStatus = GrantStatus.DENIED
+            mockGrantManager.mockRequestResult = GrantStatus.DENIED
 
-        // Create handler with SavedStateDelegate
-        val handler = GrantHandler(
-            grantManager = mockGrantManager,
-            grant = AppGrant.CAMERA,
-            scope = testScope,
-            savedStateDelegate = savedStateDelegate
-        )
+            // Create handler with SavedStateDelegate
+            val handler = GrantHandler(
+                grantManager = mockGrantManager,
+                grant = AppGrant.CAMERA,
+                scope = testScope,
+                savedStateDelegate = savedStateDelegate
+            )
 
-        // User requests permission, gets rationale dialog
-        handler.request(rationaleMessage = "Camera needed") { }
-        testScope.advanceUntilIdle()
+            // User requests permission, gets rationale dialog
+            handler.request(rationaleMessage = "Camera needed") { }
+            testScope.advanceUntilIdle()
 
-        handler.state.test {
-            val state = awaitItem()
-            assertTrue(state.showRationale, "Rationale should be shown")
-        }
+            handler.state.test {
+                val state = awaitItem()
+                assertTrue(state.showRationale, "Rationale should be shown")
+            }
 
-        // Verify: State saved to delegate
-        assertTrue(savedStateDelegate.getStorageSize() > 0, "State should be saved")
+            // Verify: State saved to delegate
+            assertTrue(savedStateDelegate.getStorageSize() > 0, "State should be saved")
 
-        // SIMULATE PROCESS DEATH - Create new handler with same delegate
-        val restoredHandler = GrantHandler(
-            grantManager = mockGrantManager,
-            grant = AppGrant.CAMERA,
-            scope = testScope,
-            savedStateDelegate = savedStateDelegate
-        )
+            // SIMULATE PROCESS DEATH - Create new handler with same delegate
+            val restoredHandler = GrantHandler(
+                grantManager = mockGrantManager,
+                grant = AppGrant.CAMERA,
+                scope = testScope,
+                savedStateDelegate = savedStateDelegate
+            )
 
-        testScope.advanceUntilIdle()
+            testScope.advanceUntilIdle()
 
-        // Verify: State restored - dialog still shown
-        restoredHandler.state.test {
-            val restoredState = awaitItem()
-            assertTrue(restoredState.showRationale, "Rationale should be restored after process death")
+            // Verify: State restored - dialog still shown
+            restoredHandler.state.test {
+                val restoredState = awaitItem()
+                assertTrue(restoredState.showRationale, "Rationale should be restored after process death")
+            }
         }
     }
 
@@ -239,43 +242,45 @@ class SavedStateDelegateIntegrationTest {
 
     @Test
     fun `NoOpSavedStateDelegate No state is saved or restored`() = runTest {
-        val noOpDelegate = NoOpSavedStateDelegate()
-        mockGrantManager.mockStatus = GrantStatus.DENIED
-        mockGrantManager.mockRequestResult = GrantStatus.DENIED
+        assumeRationaleSupported {
+            val noOpDelegate = NoOpSavedStateDelegate()
+            mockGrantManager.mockStatus = GrantStatus.DENIED
+            mockGrantManager.mockRequestResult = GrantStatus.DENIED
 
-        val handler = GrantHandler(
-            grantManager = mockGrantManager,
-            grant = AppGrant.CAMERA,
-            scope = testScope,
-            savedStateDelegate = noOpDelegate
-        )
+            val handler = GrantHandler(
+                grantManager = mockGrantManager,
+                grant = AppGrant.CAMERA,
+                scope = testScope,
+                savedStateDelegate = noOpDelegate
+            )
 
-        // Show rationale
-        handler.request(rationaleMessage = "Camera needed") { }
-        testScope.advanceUntilIdle()
+            // Show rationale
+            handler.request(rationaleMessage = "Camera needed") { }
+            testScope.advanceUntilIdle()
 
-        handler.state.test {
-            val state = awaitItem()
-            assertTrue(state.showRationale)
-        }
+            handler.state.test {
+                val state = awaitItem()
+                assertTrue(state.showRationale)
+            }
 
-        // NoOp should not save anything
-        assertNull(noOpDelegate.restoreState("any_key"), "NoOp should not restore state")
+            // NoOp should not save anything
+            assertNull(noOpDelegate.restoreState("any_key"), "NoOp should not restore state")
 
-        // Create new handler - state NOT restored
-        val newHandler = GrantHandler(
-            grantManager = mockGrantManager,
-            grant = AppGrant.CAMERA,
-            scope = testScope,
-            savedStateDelegate = noOpDelegate
-        )
+            // Create new handler - state NOT restored
+            val newHandler = GrantHandler(
+                grantManager = mockGrantManager,
+                grant = AppGrant.CAMERA,
+                scope = testScope,
+                savedStateDelegate = noOpDelegate
+            )
 
-        testScope.advanceUntilIdle()
+            testScope.advanceUntilIdle()
 
-        // Verify: Dialog NOT shown (no restoration)
-        newHandler.state.test {
-            val state = awaitItem()
-            assertFalse(state.showRationale, "NoOp should not restore dialog state")
+            // Verify: Dialog NOT shown (no restoration)
+            newHandler.state.test {
+                val state = awaitItem()
+                assertFalse(state.showRationale, "NoOp should not restore dialog state")
+            }
         }
     }
 
@@ -295,46 +300,48 @@ class SavedStateDelegateIntegrationTest {
 
     @Test
     fun `Multiple dialogs shown and dismissed state tracking works`() = runTest {
-        val savedStateDelegate = FakeSavedStateDelegate()
-        mockGrantManager.mockStatus = GrantStatus.DENIED
-        mockGrantManager.mockRequestResult = GrantStatus.DENIED
+        assumeRationaleSupported {
+            val savedStateDelegate = FakeSavedStateDelegate()
+            mockGrantManager.mockStatus = GrantStatus.DENIED
+            mockGrantManager.mockRequestResult = GrantStatus.DENIED
 
-        val handler = GrantHandler(
-            grantManager = mockGrantManager,
-            grant = AppGrant.CAMERA,
-            scope = testScope,
-            savedStateDelegate = savedStateDelegate
-        )
+            val handler = GrantHandler(
+                grantManager = mockGrantManager,
+                grant = AppGrant.CAMERA,
+                scope = testScope,
+                savedStateDelegate = savedStateDelegate
+            )
 
-        // First dialog
-        handler.request(rationaleMessage = "Camera needed") { }
-        testScope.advanceUntilIdle()
+            // First dialog
+            handler.request(rationaleMessage = "Camera needed") { }
+            testScope.advanceUntilIdle()
 
-        handler.onDismiss()
-        testScope.advanceUntilIdle()
+            handler.onDismiss()
+            testScope.advanceUntilIdle()
 
-        // Second dialog
-        handler.request(rationaleMessage = "Camera needed") { }
-        testScope.advanceUntilIdle()
+            // Second dialog
+            handler.request(rationaleMessage = "Camera needed") { }
+            testScope.advanceUntilIdle()
 
-        handler.state.test {
-            val state = awaitItem()
-            assertTrue(state.showRationale, "Second dialog should be shown")
-        }
+            handler.state.test {
+                val state = awaitItem()
+                assertTrue(state.showRationale, "Second dialog should be shown")
+            }
 
-        // SIMULATE PROCESS DEATH - Should restore second dialog
-        val restoredHandler = GrantHandler(
-            grantManager = mockGrantManager,
-            grant = AppGrant.CAMERA,
-            scope = testScope,
-            savedStateDelegate = savedStateDelegate
-        )
+            // SIMULATE PROCESS DEATH - Should restore second dialog
+            val restoredHandler = GrantHandler(
+                grantManager = mockGrantManager,
+                grant = AppGrant.CAMERA,
+                scope = testScope,
+                savedStateDelegate = savedStateDelegate
+            )
 
-        testScope.advanceUntilIdle()
+            testScope.advanceUntilIdle()
 
-        restoredHandler.state.test {
-            val state = awaitItem()
-            assertTrue(state.showRationale, "Latest dialog state should be restored")
+            restoredHandler.state.test {
+                val state = awaitItem()
+                assertTrue(state.showRationale, "Latest dialog state should be restored")
+            }
         }
     }
 
@@ -385,95 +392,99 @@ class SavedStateDelegateIntegrationTest {
 
     @Test
     fun `SavedStateDelegate with different keys for different handlers`() = runTest {
-        val savedStateDelegate = FakeSavedStateDelegate()
-        mockGrantManager.mockStatus = GrantStatus.NOT_DETERMINED
-        mockGrantManager.mockRequestResult = GrantStatus.DENIED
+        assumeRationaleSupported {
+            val savedStateDelegate = FakeSavedStateDelegate()
+            mockGrantManager.mockStatus = GrantStatus.NOT_DETERMINED
+            mockGrantManager.mockRequestResult = GrantStatus.DENIED
 
-        // Two different handlers with same delegate
-        val cameraHandler = GrantHandler(
-            grantManager = mockGrantManager,
-            grant = AppGrant.CAMERA,
-            scope = testScope,
-            savedStateDelegate = savedStateDelegate
-        )
+            // Two different handlers with same delegate
+            val cameraHandler = GrantHandler(
+                grantManager = mockGrantManager,
+                grant = AppGrant.CAMERA,
+                scope = testScope,
+                savedStateDelegate = savedStateDelegate
+            )
 
-        val micHandler = GrantHandler(
-            grantManager = mockGrantManager,
-            grant = AppGrant.MICROPHONE,
-            scope = testScope,
-            savedStateDelegate = savedStateDelegate
-        )
+            val micHandler = GrantHandler(
+                grantManager = mockGrantManager,
+                grant = AppGrant.MICROPHONE,
+                scope = testScope,
+                savedStateDelegate = savedStateDelegate
+            )
 
-        // First request for both - denied (no rationale yet)
-        cameraHandler.request(rationaleMessage = "Camera needed") { }
-        micHandler.request(rationaleMessage = "Microphone needed") { }
-        testScope.advanceUntilIdle()
+            // First request for both - denied (no rationale yet)
+            cameraHandler.request(rationaleMessage = "Camera needed") { }
+            micHandler.request(rationaleMessage = "Microphone needed") { }
+            testScope.advanceUntilIdle()
 
-        // Update status to DENIED for second requests
-        mockGrantManager.mockStatus = GrantStatus.DENIED
+            // Update status to DENIED for second requests
+            mockGrantManager.mockStatus = GrantStatus.DENIED
 
-        // Second request for both - rationale shown
-        cameraHandler.request(rationaleMessage = "Camera needed") { }
-        micHandler.request(rationaleMessage = "Microphone needed") { }
-        testScope.advanceUntilIdle()
+            // Second request for both - rationale shown
+            cameraHandler.request(rationaleMessage = "Camera needed") { }
+            micHandler.request(rationaleMessage = "Microphone needed") { }
+            testScope.advanceUntilIdle()
 
-        // Both dialogs shown
-        cameraHandler.state.test {
-            assertTrue(awaitItem().showRationale)
-        }
-        micHandler.state.test {
-            assertTrue(awaitItem().showRationale)
-        }
+            // Both dialogs shown
+            cameraHandler.state.test {
+                assertTrue(awaitItem().showRationale)
+            }
+            micHandler.state.test {
+                assertTrue(awaitItem().showRationale)
+            }
 
-        // Verify: Both states saved independently (at least 2 keys: one for each handler)
-        assertTrue(savedStateDelegate.getStorageSize() >= 2,
-            "Both handlers should save state independently")
+            // Verify: Both states saved independently (at least 2 keys: one for each handler)
+            assertTrue(savedStateDelegate.getStorageSize() >= 2,
+                "Both handlers should save state independently")
 
-        // Dismiss camera
-        cameraHandler.onDismiss()
-        testScope.advanceUntilIdle()
+            // Dismiss camera
+            cameraHandler.onDismiss()
+            testScope.advanceUntilIdle()
 
-        // Verify: Camera dialog dismissed, Microphone still shown
-        cameraHandler.state.test {
-            assertFalse(awaitItem().showRationale, "Camera dialog should be dismissed")
-        }
-        micHandler.state.test {
-            assertTrue(awaitItem().showRationale, "Microphone dialog should still be shown")
+            // Verify: Camera dialog dismissed, Microphone still shown
+            cameraHandler.state.test {
+                assertFalse(awaitItem().showRationale, "Camera dialog should be dismissed")
+            }
+            micHandler.state.test {
+                assertTrue(awaitItem().showRationale, "Microphone dialog should still be shown")
+            }
         }
     }
 
     @Test
     fun `SavedStateDelegate persists rationale dialog state`() = runTest {
-        val savedStateDelegate = FakeSavedStateDelegate()
-        val customRationaleMessage = "Custom rationale message for camera"
+        assumeRationaleSupported {
+            val savedStateDelegate = FakeSavedStateDelegate()
+            val customRationaleMessage = "Custom rationale message for camera"
 
-        mockGrantManager.mockStatus = GrantStatus.DENIED
-        mockGrantManager.mockRequestResult = GrantStatus.DENIED
+            mockGrantManager.mockStatus = GrantStatus.DENIED
+            mockGrantManager.mockRequestResult = GrantStatus.DENIED
 
-        val handler = GrantHandler(
-            grantManager = mockGrantManager,
-            grant = AppGrant.CAMERA,
-            scope = testScope,
-            savedStateDelegate = savedStateDelegate
-        )
+            val handler = GrantHandler(
+                grantManager = mockGrantManager,
+                grant = AppGrant.CAMERA,
+                scope = testScope,
+                savedStateDelegate = savedStateDelegate
+            )
 
-        handler.request(rationaleMessage = customRationaleMessage) { }
-        testScope.advanceUntilIdle()
+            handler.request(rationaleMessage = customRationaleMessage) { }
+            testScope.advanceUntilIdle()
 
-        // SIMULATE PROCESS DEATH
-        val restoredHandler = GrantHandler(
-            grantManager = mockGrantManager,
-            grant = AppGrant.CAMERA,
-            scope = testScope,
-            savedStateDelegate = savedStateDelegate
-        )
+            // SIMULATE PROCESS DEATH
+            val restoredHandler = GrantHandler(
+                grantManager = mockGrantManager,
+                grant = AppGrant.CAMERA,
+                scope = testScope,
+                savedStateDelegate = savedStateDelegate
+            )
 
-        testScope.advanceUntilIdle()
+            testScope.advanceUntilIdle()
 
-        // Verify: Dialog restored (but custom message needs to be passed again)
-        restoredHandler.state.test {
-            val state = awaitItem()
-            assertTrue(state.showRationale)
+            // Verify: Dialog restored (but custom message needs to be passed again)
+            restoredHandler.state.test {
+                val state = awaitItem()
+                assertTrue(state.showRationale)
+            }
         }
     }
 

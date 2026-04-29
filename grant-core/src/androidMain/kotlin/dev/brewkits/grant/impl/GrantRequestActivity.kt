@@ -71,53 +71,43 @@ class GrantRequestActivity : ComponentActivity() {
                 return
             }
 
-            // Check if this requestId still has a waiting coroutine
-            // If process died, the old requestId has no waiting coroutine and should be abandoned
-            if (!pendingResults.containsKey(requestId)) {
-                GrantLogger.w(TAG, "RequestId $requestId has no pending coroutine - orphaned request after process death")
-                finish()
-                return
-            }
-
             currentGrants = intent.getStringArrayExtra(EXTRA_GRANTS) ?: run {
                 setResult(requestId, GrantResult.ERROR)
                 finish()
                 return
             }
 
-            // Register grant launcher for multiple grants
+            // Register grant launcher for multiple grants BEFORE checking if orphaned
+            // This is critical for Process Death recovery. If the OS recreates this Activity
+            // to deliver a permission result, we MUST register the launcher to receive it.
             requestMultipleGrantsLauncher = registerForActivityResult(
                 ActivityResultContracts.RequestMultiplePermissions()
             ) { grantsResult: Map<String, Boolean> ->
-                // Determine overall result based on all grants
                 val allGranted = grantsResult.values.all { it }
-
                 val result = when {
                     allGranted -> GrantResult.GRANTED
                     else -> {
-                        // Check if ALL denied permissions are permanently denied
-                        // If at least one denied permission can still show rationale, return DENIED
-                        // Only return DENIED_PERMANENTLY if ALL denied permissions are permanent
                         val deniedGrants = grantsResult.filter { !it.value }.keys
-
-                        val rationaleStatus = deniedGrants.map { grant ->
-                            val canShow = shouldShowRequestPermissionRationale(grant)
-                            grant to canShow
-                        }
-
-                        val anyCanShowRationale = rationaleStatus.any { it.second }
-
-                        if (anyCanShowRationale) {
-                            GrantResult.DENIED
-                        } else {
-                            // All denied permissions are permanently denied
-                            GrantResult.DENIED_PERMANENTLY
-                        }
+                        val anyCanShowRationale = deniedGrants.any { shouldShowRequestPermissionRationale(it) }
+                        if (anyCanShowRationale) GrantResult.DENIED else GrantResult.DENIED_PERMANENTLY
                     }
                 }
-
                 setResult(requestId, result)
                 finish()
+            }
+
+            // Check if this requestId still has a waiting coroutine
+            // If process died, the old requestId has no waiting coroutine.
+            // We STILL need to register the launcher (done above) so the OS doesn't crash
+            // trying to deliver the result, but we shouldn't launch a NEW request.
+            if (!pendingResults.containsKey(requestId)) {
+                GrantLogger.w(TAG, "RequestId $requestId has no pending coroutine - orphaned request after process death")
+                // If it's recreated by the OS to deliver a result, we shouldn't finish() here
+                // because the result is delivered AFTER onCreate.
+                if (savedInstanceState == null) {
+                    finish()
+                }
+                return
             }
 
             // Add lifecycle observer for cleanup
@@ -235,7 +225,15 @@ class GrantRequestActivity : ComponentActivity() {
                 // launched from a Service or Application context.
                 addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
             }
-            context.startActivity(intent)
+            
+            try {
+                context.startActivity(intent)
+            } catch (e: Exception) {
+                GrantLogger.e("GrantRequestActivity", "Failed to start GrantRequestActivity. On Android 10+, starting activities from the background (e.g. from Application context) is restricted and may be blocked by the OS.", e)
+                // Complete immediately with ERROR to prevent hanging
+                pendingResults[requestId]?.complete(GrantResult.ERROR)
+                cleanup(requestId)
+            }
 
             return requestId
         }

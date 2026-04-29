@@ -429,36 +429,46 @@ GrantSettingsDialog(
 
 ---
 
-## UI Approaches Comparison
+## UI Approaches & Customization Levels
 
-Grant Compose offers **three approaches** to fit your needs:
+Grant Compose offers **three levels** of UI integration to fit your app's design system:
 
-| Approach | Flexibility | Code | Best For |
+| Level | Approach | Implementation | Best For |
 |----------|-------------|------|----------|
-| **GrantDialog** | Low | 1 line | Quick prototypes, standard Material 3 apps |
-| **Custom Messages** | Medium | 5-10 lines | Material 3 apps with branded messages |
-| **Headless Pattern** | High | 20-30 lines | Custom design systems, iOS-style UI, complete control |
+| **1. Convenience** | `GrantDialog` | **One line** of code | Standard Material 3 apps, quick prototypes |
+| **2. Flexibility** | `GrantUiState` | **Headless logic** (Observe state) | Apps needing custom layouts/animations |
+| **3. Absolute** | `requestWithCustomUi` | **Imperative UI callbacks** | Non-Material apps, Legacy systems, Games |
 
-### Approach 1: GrantDialog (Quick & Easy)
+### Level 1: Convenience (GrantDialog)
+Perfect for 90% of apps. It uses Material 3 components and automatically inherits your `MaterialTheme`.
 ```kotlin
-GrantDialog(handler = viewModel.cameraGrant) // One line, Material 3 UI
+GrantDialog(handler = viewModel.cameraGrant)
 ```
 
-### Approach 2: Custom Messages (Branded)
-```kotlin
-GrantDialog(
-    handler = viewModel.cameraGrant,
-    rationaleTitle = "Camera Access Required",
-    rationaleMessage = "We need camera to scan QR codes",
-    settingsTitle = "Enable Camera in Settings"
-)
-```
-
-### Approach 3: Headless Pattern (Complete Control)
+### Level 2: Flexibility (Headless UI State)
+Observe the `state` Flow and render your own Composables. Ideal for custom Dialogs or Bottom Sheets.
 ```kotlin
 val state by handler.collectAsState()
 if (state.showRationale) {
-    MyCustomUI(state, handler)
+    MyCustomDialog(message = state.rationaleMessage, onConfirm = { handler.onRationaleConfirmed() })
+}
+```
+
+### Level 3: Absolute Customization (requestWithCustomUi)
+If your app doesn't use Material or even Compose for dialogs (e.g., using a legacy system or a game engine), use the imperative callback approach. The library won't render anything; it just tells you when to show UI.
+
+```kotlin
+handler.requestWithCustomUi(
+    onShowRationale = { message, onConfirm, onDismiss ->
+        // 🎨 Your code here: Draw anything you want!
+        showMyBrandedUi(message, onConfirm, onDismiss)
+    },
+    onShowSettings = { message, onConfirm, onDismiss ->
+        showMyBrandedSettingsGuide(message, onConfirm, onDismiss)
+    }
+) {
+    // Permission granted!
+    openCamera()
 }
 ```
 

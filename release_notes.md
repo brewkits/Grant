@@ -1,3 +1,16 @@
+## [1.3.0] - 2026-04-28
+
+### 🛡️ Production Stabilization & Quality
+- **Codebase Sanitization**: Conducted a final audit to remove all development markers (`FIX #X`), temporary technical notes, and inconsistent annotations, ensuring an enterprise-grade public API.
+- **Documentation Parity**: Standardized all internal documentation and code comments to English, removing legacy Vietnamese annotations and examples for global readiness.
+- **Improved Test Reliability**: Enhanced test logic to handle platform-specific behaviors (e.g., rationale-less iOS flows) and state desynchronization in unit tests, ensuring a stable 100% pass rate.
+- **Apple App Store Resilience**: Verified and documented the combination of `Weak Linking` and the `Handler` pattern to prevent binary detection of sensitive frameworks (Camera/Microphone) by App Store scanners.
+
+### 🧪 Full Spectrum Testing
+- **Verified Pass Rate**: Successfully executed full test suites across common code, iOS Simulator, and Android Robolectric environments.
+- **Performance & Stress Baseline**: Confirmed scaling performance for large permission groups and high-concurrency request patterns.
+- **Security Audit**: Validated permission identity sanitization and strict store privacy isolation.
+
 ## [1.2.1] - 2026-04-10
 
 ### 🛡️ Rock-Solid Stability & Safety

@@ -10,6 +10,9 @@ import kotlinx.coroutines.delay
 
 /**
  * Simple mock implementation for demo purposes.
+ * 
+ * ⚠️ FOR TESTING AND DEMO ONLY. DO NOT USE IN PRODUCTION.
+ * Use GrantFactory.create() for production usage.
  *
  * This simulates realistic grant request behavior:
  * - First request: User denies → DENIED (shows rationale)
@@ -21,6 +24,10 @@ import kotlinx.coroutines.delay
  * 2. Settings dialog (after second denial)
  * 3. Success callback (after grant)
  */
+@Deprecated(
+    message = "FOR TESTING AND DEMO ONLY. DO NOT USE IN PRODUCTION. Use GrantFactory.create() instead.",
+    level = DeprecationLevel.WARNING
+)
 class SimpleGrantManager : GrantManager {
 
     private val grantedGrants = mutableSetOf<AppGrant>()
@@ -67,8 +74,8 @@ class SimpleGrantManager : GrantManager {
         return when {
             appGrant in grantedGrants -> GrantStatus.GRANTED
             (requestCount[appGrant] ?: 0) >= 2 -> {
-                // After 2 denials, it becomes permanent
-                if (simulationMode == SimulationMode.ALWAYS_DENY_PERMANENTLY) {
+                // After 2 denials, it becomes permanent in Realistic or DenyPermanently mode
+                if (simulationMode == SimulationMode.ALWAYS_DENY_PERMANENTLY || simulationMode == SimulationMode.REALISTIC) {
                     GrantStatus.DENIED_ALWAYS
                 } else {
                     GrantStatus.DENIED

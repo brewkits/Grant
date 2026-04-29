@@ -299,8 +299,8 @@ Required keys:
 // en.lproj/InfoPlist.strings
 "NSCameraUsageDescription" = "Camera is used to scan QR codes for quick login";
 
-// vi.lproj/InfoPlist.strings
-"NSCameraUsageDescription" = "Camera được sử dụng để quét mã QR đăng nhập nhanh";
+// fr.lproj/InfoPlist.strings
+"NSCameraUsageDescription" = "L'appareil photo est utilisé pour scanner les codes QR pour une connexion rapide";
 
 // ja.lproj/InfoPlist.strings
 "NSCameraUsageDescription" = "カメラはQRコードをスキャンしてクイックログインに使用されます";
@@ -604,4 +604,4 @@ fun testLocationAlways_iOSBehavior() {
 
 ---
 
-*Last Updated: 2026-01-23*
+*Last Updated: 2026-04-28*

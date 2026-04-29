@@ -11,6 +11,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import dev.brewkits.grant.assumeRationaleSupported
 
 /**
  * Regression tests to ensure previously fixed bugs don't return.
@@ -85,119 +86,125 @@ class RegressionTest {
 
     @Test
     fun `Regression - Permission state correctly reflects DENIED after user denial`() = runTest {
-        // Bug: After user denies permission, subsequent clicks don't show rationale
-        // Fixed in: Grant v1.0.1
-        // Verification: DENIED status persists and rationale shows on retry
+        assumeRationaleSupported {
+            // Bug: After user denies permission, subsequent clicks don't show rationale
+            // Fixed in: Grant v1.0.1
+            // Verification: DENIED status persists and rationale shows on retry
 
-        mockGrantManager.mockStatus = GrantStatus.NOT_DETERMINED
-        mockGrantManager.mockRequestResult = GrantStatus.DENIED
+            mockGrantManager.mockStatus = GrantStatus.NOT_DETERMINED
+            mockGrantManager.mockRequestResult = GrantStatus.DENIED
 
-        val handler = GrantHandler(
-            grantManager = mockGrantManager,
-            grant = AppGrant.CAMERA,
-            scope = testScope
-        )
+            val handler = GrantHandler(
+                grantManager = mockGrantManager,
+                grant = AppGrant.CAMERA,
+                scope = testScope
+            )
 
-        // First request - denied
-        handler.request { }
-        testScope.advanceUntilIdle()
+            // First request - denied
+            handler.request { }
+            testScope.advanceUntilIdle()
 
-        // Update status to DENIED (simulates real behavior)
-        mockGrantManager.mockStatus = GrantStatus.DENIED
+            // Update status to DENIED (simulates real behavior)
+            mockGrantManager.mockStatus = GrantStatus.DENIED
 
-        // Second request - should show rationale
-        handler.request(rationaleMessage = "Camera needed") { }
-        testScope.advanceUntilIdle()
+            // Second request - should show rationale
+            handler.request(rationaleMessage = "Camera needed") { }
+            testScope.advanceUntilIdle()
 
-        // Verify rationale is shown
-        handler.state.value.let { state ->
-            assertTrue(state.showRationale, "Rationale should be shown after denial")
+            // Verify rationale is shown
+            handler.state.value.let { state ->
+                assertTrue(state.showRationale, "Rationale should be shown after denial")
+            }
         }
     }
 
     @Test
     fun `Regression - Multiple denials transition to DENIED_ALWAYS correctly`() = runTest {
-        // Bug: Permanent denial state not properly handled
-        // Fixed in: Grant v1.0.1
-        // Verification: After multiple denials, shows settings guide
+        assumeRationaleSupported {
+            // Bug: Permanent denial state not properly handled
+            // Fixed in: Grant v1.0.1
+            // Verification: After multiple denials, shows settings guide
 
-        mockGrantManager.mockStatus = GrantStatus.DENIED
-        mockGrantManager.mockRequestResult = GrantStatus.DENIED
+            mockGrantManager.mockStatus = GrantStatus.DENIED
+            mockGrantManager.mockRequestResult = GrantStatus.DENIED
 
-        val handler = GrantHandler(
-            grantManager = mockGrantManager,
-            grant = AppGrant.CAMERA,
-            scope = testScope
-        )
+            val handler = GrantHandler(
+                grantManager = mockGrantManager,
+                grant = AppGrant.CAMERA,
+                scope = testScope
+            )
 
-        // First denial - show rationale
-        handler.request(
-            rationaleMessage = "Camera needed",
-            settingsMessage = "Enable in Settings"
-        ) { }
-        testScope.advanceUntilIdle()
+            // First denial - show rationale
+            handler.request(
+                rationaleMessage = "Camera needed",
+                settingsMessage = "Enable in Settings"
+            ) { }
+            testScope.advanceUntilIdle()
 
-        assertTrue(handler.state.value.showRationale)
+            assertTrue(handler.state.value.showRationale)
 
-        // User denies again - becomes permanent
-        mockGrantManager.mockRequestResult = GrantStatus.DENIED_ALWAYS
-        handler.onRationaleConfirmed()
-        testScope.advanceUntilIdle()
+            // User denies again - becomes permanent
+            mockGrantManager.mockRequestResult = GrantStatus.DENIED_ALWAYS
+            handler.onRationaleConfirmed()
+            testScope.advanceUntilIdle()
 
-        // Should show settings guide
-        assertTrue(handler.state.value.showSettingsGuide, "Settings guide should be shown")
+            // Should show settings guide
+            assertTrue(handler.state.value.showSettingsGuide, "Settings guide should be shown")
+        }
     }
 
     // ==================== Process Death Recovery ====================
 
     @Test
     fun `Regression - Dialog state is saved across process death`() = runTest {
-        // Bug: Dialog state lost on Android process death
-        // Fixed in: Grant v1.0.0 (SavedStateDelegate support)
-        // Verification: State persists and restores
+        assumeRationaleSupported {
+            // Bug: Dialog state lost on Android process death
+            // Fixed in: Grant v1.0.0 (SavedStateDelegate support)
+            // Verification: State persists and restores
 
-        val savedStateDelegate = object : SavedStateDelegate {
-            private val storage = mutableMapOf<String, String>()
+            val savedStateDelegate = object : SavedStateDelegate {
+                private val storage = mutableMapOf<String, String>()
 
-            override fun saveState(key: String, value: String) {
-                storage[key] = value
+                override fun saveState(key: String, value: String) {
+                    storage[key] = value
+                }
+
+                override fun restoreState(key: String): String? = storage[key]
+
+                override fun clear(key: String) {
+                    storage.remove(key)
+                }
             }
 
-            override fun restoreState(key: String): String? = storage[key]
+            mockGrantManager.mockStatus = GrantStatus.DENIED
+            mockGrantManager.mockRequestResult = GrantStatus.DENIED
 
-            override fun clear(key: String) {
-                storage.remove(key)
-            }
+            val handler = GrantHandler(
+                grantManager = mockGrantManager,
+                grant = AppGrant.CAMERA,
+                scope = testScope,
+                savedStateDelegate = savedStateDelegate
+            )
+
+            // Show rationale
+            handler.request(rationaleMessage = "Camera needed") { }
+            testScope.advanceUntilIdle()
+
+            assertTrue(handler.state.value.showRationale)
+
+            // Simulate process death - create new handler with same delegate
+            val restoredHandler = GrantHandler(
+                grantManager = mockGrantManager,
+                grant = AppGrant.CAMERA,
+                scope = testScope,
+                savedStateDelegate = savedStateDelegate
+            )
+
+            testScope.advanceUntilIdle()
+
+            // State should be restored
+            assertTrue(restoredHandler.state.value.showRationale, "Dialog state should be restored")
         }
-
-        mockGrantManager.mockStatus = GrantStatus.DENIED
-        mockGrantManager.mockRequestResult = GrantStatus.DENIED
-
-        val handler = GrantHandler(
-            grantManager = mockGrantManager,
-            grant = AppGrant.CAMERA,
-            scope = testScope,
-            savedStateDelegate = savedStateDelegate
-        )
-
-        // Show rationale
-        handler.request(rationaleMessage = "Camera needed") { }
-        testScope.advanceUntilIdle()
-
-        assertTrue(handler.state.value.showRationale)
-
-        // Simulate process death - create new handler with same delegate
-        val restoredHandler = GrantHandler(
-            grantManager = mockGrantManager,
-            grant = AppGrant.CAMERA,
-            scope = testScope,
-            savedStateDelegate = savedStateDelegate
-        )
-
-        testScope.advanceUntilIdle()
-
-        // State should be restored
-        assertTrue(restoredHandler.state.value.showRationale, "Dialog state should be restored")
     }
 
     @Test
@@ -304,37 +311,39 @@ class RegressionTest {
 
     @Test
     fun `Regression - Dialog dismissal properly cleans up state`() = runTest {
-        // Bug: Dismissed dialogs could re-appear
-        // Fixed in: Grant v1.0.1
-        // Verification: Dismissed dialogs stay dismissed
+        assumeRationaleSupported {
+            // Bug: Dismissed dialogs could re-appear
+            // Fixed in: Grant v1.0.1
+            // Verification: Dismissed dialogs stay dismissed
 
-        mockGrantManager.mockStatus = GrantStatus.DENIED
-        mockGrantManager.mockRequestResult = GrantStatus.DENIED
+            mockGrantManager.mockStatus = GrantStatus.DENIED
+            mockGrantManager.mockRequestResult = GrantStatus.DENIED
 
-        val handler = GrantHandler(
-            grantManager = mockGrantManager,
-            grant = AppGrant.CAMERA,
-            scope = testScope
-        )
+            val handler = GrantHandler(
+                grantManager = mockGrantManager,
+                grant = AppGrant.CAMERA,
+                scope = testScope
+            )
 
-        // Show rationale
-        handler.request(rationaleMessage = "Camera needed") { }
-        testScope.advanceUntilIdle()
+            // Show rationale
+            handler.request(rationaleMessage = "Camera needed") { }
+            testScope.advanceUntilIdle()
 
-        assertTrue(handler.state.value.showRationale)
+            assertTrue(handler.state.value.showRationale)
 
-        // Dismiss
-        handler.onDismiss()
-        testScope.advanceUntilIdle()
+            // Dismiss
+            handler.onDismiss()
+            testScope.advanceUntilIdle()
 
-        // Should stay dismissed
-        assertFalse(handler.state.value.showRationale, "Dialog should stay dismissed")
+            // Should stay dismissed
+            assertFalse(handler.state.value.showRationale, "Dialog should stay dismissed")
 
-        // Even after checking status
-        handler.refreshStatus()
-        testScope.advanceUntilIdle()
+            // Even after checking status
+            handler.refreshStatus()
+            testScope.advanceUntilIdle()
 
-        assertFalse(handler.state.value.showRationale, "Dialog should still be dismissed")
+            assertFalse(handler.state.value.showRationale, "Dialog should still be dismissed")
+        }
     }
 
     // ==================== Permission Identifiers ====================

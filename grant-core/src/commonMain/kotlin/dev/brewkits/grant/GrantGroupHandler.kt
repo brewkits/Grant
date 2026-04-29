@@ -88,13 +88,15 @@ class GrantGroupHandler(
     private val _statuses = MutableStateFlow<Map<GrantPermission, GrantStatus>>(emptyMap())
     val statuses: StateFlow<Map<GrantPermission, GrantStatus>> = _statuses.asStateFlow()
 
+    @kotlin.concurrent.Volatile
     private var onAllGrantedCallback: (() -> Unit)? = null
+
+    @kotlin.concurrent.Volatile
     private var currentRationaleMessages: Map<GrantPermission, String> = emptyMap()
+
+    @kotlin.concurrent.Volatile
     private var currentSettingsMessages: Map<GrantPermission, String> = emptyMap()
 
-    /**
-     * FIX M6: Guard against double-tap / parallel group requests.
-     */
     private val requestMutex = Mutex()
 
     init {
@@ -103,8 +105,6 @@ class GrantGroupHandler(
 
     /**
      * Refresh all grant statuses.
-     *
-     * FIX: Uses async to check all permissions in parallel for better performance.
      */
     fun refreshAllStatuses() {
         scope.launch {
@@ -114,7 +114,11 @@ class GrantGroupHandler(
                 }.awaitAll().toMap()
             }
 
-            val grantedSet = statusMap.filter { it.value == GrantStatus.GRANTED }.keys
+            // Include PARTIAL_GRANTED (e.g. "Select Photos" on iOS) in the granted
+            // set to keep refreshAllStatuses() consistent with the request() logic.
+            val grantedSet = statusMap.filter {
+                it.value == GrantStatus.GRANTED || it.value == GrantStatus.PARTIAL_GRANTED
+            }.keys
 
             _statuses.value = statusMap
             _state.update { it.copy(grantedGrants = grantedSet) }
@@ -133,11 +137,11 @@ class GrantGroupHandler(
         this.currentRationaleMessages = rationaleMessages
         this.currentSettingsMessages = settingsMessages
 
-        // FIX M6: Guard against rapid taps/concurrent requests
-        if (requestMutex.isLocked) return
+        // tryLock() is atomic — replaces the racy isLocked check.
+        if (!requestMutex.tryLock()) return
 
-        scope.launch {
-            requestMutex.withLock {
+        val job = scope.launch {
+            try {
                 // 1. Initial check: What is already granted? (Parallel)
                 val currentStatuses = coroutineScope {
                     grants.map { grant ->
@@ -158,7 +162,7 @@ class GrantGroupHandler(
                     val callback = onAllGrantedCallback
                     onAllGrantedCallback = null
                     callback?.invoke()
-                    return@withLock
+                    return@launch
                 }
 
                 // 2. Request all denied grants at once
@@ -181,6 +185,16 @@ class GrantGroupHandler(
                     val firstDenied = stillDenied.keys.first()
                     handleStatus(firstDenied, stillDenied[firstDenied]!!)
                 }
+            } finally {
+                if (requestMutex.isLocked) {
+                    try { requestMutex.unlock() } catch (_: IllegalStateException) {}
+                }
+            }
+        }
+        
+        job.invokeOnCompletion {
+            if (requestMutex.isLocked) {
+                try { requestMutex.unlock() } catch (_: IllegalStateException) {}
             }
         }
     }
@@ -189,23 +203,34 @@ class GrantGroupHandler(
      * Called when user confirms rationale dialog.
      */
     fun onRationaleConfirmed() {
-        // FIX M6: Guard against rapid taps/concurrent requests
-        if (requestMutex.isLocked) return
+        // Atomic guard replacing the racy isLocked check.
+        if (!requestMutex.tryLock()) return
 
-        scope.launch {
-            requestMutex.withLock {
-                val currentPerm = _state.value.currentGrant ?: return@withLock
+        val job = scope.launch {
+            try {
+                val currentPerm = _state.value.currentGrant ?: return@launch
 
                 val newStatus = grantManager.request(currentPerm)
                 _statuses.update { it + (currentPerm to newStatus) }
 
                 if (newStatus == GrantStatus.GRANTED || newStatus == GrantStatus.PARTIAL_GRANTED) {
-                    // Update granted set
-                    _state.update { it.copy(grantedGrants = it.grantedGrants + currentPerm) }
+            
+                    // Re-evaluate all statuses to ensure we have the latest state for the whole group
+                    val currentStatuses = coroutineScope {
+                        grants.map { g ->
+                            async { g to grantManager.checkStatus(g) }
+                        }.awaitAll().toMap()
+                    }
+                    _statuses.update { currentStatuses }
                     
-                    // Re-evaluate if there are any remaining denied permissions in the group
-                    val stillDenied = _statuses.value.filter { 
-                        grants.contains(it.key) && it.value != GrantStatus.GRANTED && it.value != GrantStatus.PARTIAL_GRANTED 
+                    val grantedSet = currentStatuses.filter { 
+                        it.value == GrantStatus.GRANTED || it.value == GrantStatus.PARTIAL_GRANTED 
+                    }.keys
+                    
+                    _state.update { it.copy(grantedGrants = grantedSet) }
+                    
+                    val stillDenied = currentStatuses.filter { 
+                        it.value != GrantStatus.GRANTED && it.value != GrantStatus.PARTIAL_GRANTED 
                     }
                     
                     if (stillDenied.isEmpty()) {
@@ -222,6 +247,16 @@ class GrantGroupHandler(
                     // Still denied, handle the new status (might be DENIED_ALWAYS now)
                     handleStatus(currentPerm, newStatus)
                 }
+            } finally {
+                if (requestMutex.isLocked) {
+                    try { requestMutex.unlock() } catch (_: IllegalStateException) {}
+                }
+            }
+        }
+        
+        job.invokeOnCompletion {
+            if (requestMutex.isLocked) {
+                try { requestMutex.unlock() } catch (_: IllegalStateException) {}
             }
         }
     }

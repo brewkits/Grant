@@ -4,11 +4,20 @@
 
 iOS requires you to declare **usage descriptions** in `Info.plist` for each permission before requesting it. **If you forget to add these keys, your app will crash immediately** when requesting the permission.
 
-Grant provides helpful logging to detect missing keys before release, but it's critical to add them during development.
+### 🍎 v1.3.0 Architectural Improvement (Framework Isolation)
+
+Prior to version 1.3.0, Apple's static analysis would often require **all** usage description keys (Location, Bluetooth, Calendar, etc.) even if your app didn't use them, because the library linked those frameworks statically.
+
+**Starting with v1.3.0, Grant uses a "Handler Pattern" to isolate framework imports.** This means:
+1.  **Only requested permissions are linked**: If you don't use Location in your code, the `CoreLocation` framework will not be linked to your binary.
+2.  **No more "Dummy" keys**: You no longer need to add usage descriptions for permissions your app doesn't use.
+3.  **App Store Connect safety**: Apple's scanners will only flag frameworks that are actually referenced in your binary.
 
 ---
 
 ## Required Keys by Permission
+
+> **Rule**: You only need to add keys for the permissions you **actually use** in your `commonMain` code.
 
 ### Camera (AppGrant.CAMERA)
 

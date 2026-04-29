@@ -16,6 +16,12 @@ import platform.UIKit.UIDevice
 object SimulatorDetector {
 
     /**
+     * Set this to false to disable mocking on Simulator.
+     * Useful for testing DENIED logic on Simulator.
+     */
+    var mockSimulatorGranted: Boolean = true
+
+    /**
      * Check if running on iOS Simulator.
      *
      * Returns true if on simulator, false if on real device.
