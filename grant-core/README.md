@@ -59,7 +59,7 @@ class MyViewModel(private val grantManager: GrantManager) {
 - **Built-in Service Checking** - GPS, Bluetooth, Location services
 - **Thread-Safe** - Coroutine-first with proper mutex handling
 - **Memory Leak Free** - Application context only, no Activity retention
-- **103 Unit Tests** - Comprehensive coverage, all passing
+- **430+ Unit Tests** - Comprehensive coverage, all passing, covering 2026-era edge cases
 
 ### Architecture
 

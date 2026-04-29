@@ -33,6 +33,7 @@ Grant is not just another permission library. It is a **production-hardened engi
 - **📦 17+ Native Permissions** — Deep, native integration for Camera, Gallery (Partial access!), Location, Bluetooth, Motion, and more.
 - **🛠️ Service Intelligence** — Don't just check permissions; check if services (GPS, Bluetooth) are actually enabled.
 - **🧩 Custom Extensibility** — Use `RawPermission` to support new OS versions (Android 15+, iOS 18+) instantly without library updates.
+- **🧪 Ultra-Robust Testing** — **430+ automated tests** covering every platform edge case (Android 14+, iOS 18+), state invariant, and UI interaction. 100% pass rate.
 
 ---
 

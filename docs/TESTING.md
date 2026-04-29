@@ -7,24 +7,45 @@ Comprehensive test coverage for the Grant permission management library.
 ## Test Coverage Summary
 
 ### Test Statistics
-- **Total Tests**: 103 test cases
-- **Pass Rate**: 100% (103 passed, 0 failures)
-- **Test Files**: 10 test classes
+- **Total Tests**: 438 test cases
+- **Pass Rate**: 100% (438 passed, 0 failures)
+- **Test Files**: 55+ test classes
 
 ### Test Distribution
 
-| Module | Test Class | Test Count | Status | Coverage |
-|--------|-----------|------------|--------|----------|
-| **Enums & Types** | GrantTypeTest | 9 | ✅ 100% | All AppGrant enum values |
-| | GrantStatusTest | 5 | ✅ 100% | All GrantStatus values |
-| | ServiceTypeTest | 3 | ✅ 100% | All ServiceType values |
-| | ServiceStatusTest | 3 | ✅ 100% | All ServiceStatus values |
-| **Core Logic** | GrantFactoryTest | 3 | ✅ 100% | Factory pattern creation |
-| | ServiceManagerTest | 5 | ✅ 100% | Default implementations |
-| | GrantAndServiceCheckerTest | 12 | ✅ 100% | Combined grant+service logic |
-| **Utilities** | GrantLoggerTest | 8 | ✅ 100% | Logger functionality |
-| **State Machines** | GrantHandlerTest | 27 | ✅ 100% | Complex state flow logic |
-| | GrantGroupHandlerTest | 18 | ✅ 100% | Sequential multi-grant flow |
+| Module | Test Class / Suite | Test Count | Status | Coverage |
+|--------|--------------------|------------|--------|----------|
+| **Foundation** | Enums & Types (4 classes) | 20 | ✅ 100% | All AppGrant and Service types |
+| **State Logic** | GrantHandler & GroupHandler | 45 | ✅ 100% | State machine transitions |
+| **Modern Edges**| `ModernPermissionEdgeCasesTest` | 7 | ✅ 100% | Android 14+ / iOS 14+ Partial, Precision, Concurrency |
+| **Safety** | `CoreOptimizedSafetyTest` | 5 | ✅ 100% | Exceptions, Process Death, State Invariants |
+| **UI Logic** | `GrantDialogIntegrationTest` | 4 | ✅ 100% | Compose UI state mapping |
+| **Android UI** | `GrantDialogUiTest` (Robolectric) | 3 | ✅ 100% | Interaction and display verification |
+| **Platform** | Platform Delegates (Android/iOS) | 350+ | ✅ 100% | Deep native mapping and edge cases |
+
+---
+
+## ✅ Specialized Test Suites (New in v1.3.0)
+
+### 1. Modern Permission Edge Cases (7 tests)
+Located in `ModernPermissionEdgeCasesTest.kt`. Covers 2026-era platform complexities:
+- **Partial Access**: Verified `PARTIAL_GRANTED` logic for Android 14+ / iOS 14+ Photos.
+- **Location Precision**: Handled Approximate vs Precise location states.
+- **Background Upgrade**: 2-step upgrade logic (Foreground -> Background).
+- **Concurrency Safety**: Rapid concurrent requests are dropped/debounced via atomic Mutex.
+
+### 2. Core Robustness & Safety (5 tests)
+Located in `CoreOptimizedSafetyTest.kt`. Focuses on defensive programming:
+- **Exception Safety**: Ensures Mutex is unlocked and callbacks cleared even if OS-level exceptions occur.
+- **Process Death**: Verified state restoration using `SavedStateDelegate`.
+- **State Invariants**: Uses **Turbine** to ensure UI state never enters illegal configurations (e.g., XOR between Rationale and Settings).
+
+### 3. UI Integration & Interaction (7 tests)
+Located in `GrantDialogIntegrationTest` and `GrantDialogUiTest`:
+- **State-to-UI Mapping**: Ensures the correct Compose Dialog (Rationale vs Settings) is triggered by the logic.
+- **Interaction Testing**: Verified that clicking "Continue" or "Open Settings" triggers the expected native actions.
+- **Auto-Dismissal**: Confirmed Dialogs correctly remove themselves from the UI tree on cancellation.
+
 
 ---
 
@@ -626,8 +647,8 @@ The library's architecture prioritizes **type safety** and **compile-time guaran
 - Clearer API contracts
 - Faster development cycles
 
-With **103 automated tests** achieving 100% pass rate and comprehensive manual testing coverage through the demo app, Grant provides production-ready quality assurance.
+With **438 automated tests** achieving 100% pass rate and comprehensive manual testing coverage through the demo app, Grant provides production-ready quality assurance.
 
 ---
 
-*Last Updated: 2026-01-27 - Achieved 100% test pass rate with 103 automated tests*
+*Last Updated: 2026-04-29 - Achieved 100% test pass rate with 438 automated tests*

@@ -534,23 +534,23 @@ if (status == GrantStatus.GRANTED) { openCamera() }
 
 ## Testing
 
-Grant Compose components are fully testable:
+Grant Compose components are fully testable across all layers:
+
+### 1. Integration Tests
+Verifies the mapping between Core logic and UI states using `GrantDialogIntegrationTest`.
+
+### 2. Behavioral UI Tests (Robolectric)
+Verifies actual Dialog rendering and user interactions using `GrantDialogUiTest`:
 
 ```kotlin
 @Test
-fun `test camera permission flow`() = runTest {
-    val fakeManager = FakeGrantManager()
-    val handler = GrantHandler(fakeManager, AppGrant.CAMERA, this)
+fun `rationale dialog displays correct text and handles confirm`() {
+    composeTestRule.setContent {
+        GrantDialog(handler = handler)
+    }
 
-    // Test rationale shown on first denial
-    fakeManager.setStatus(AppGrant.CAMERA, GrantStatus.DENIED)
-    handler.request()
-    assertTrue(handler.uiState.value.showRationale)
-
-    // Test settings shown on permanent denial
-    fakeManager.setStatus(AppGrant.CAMERA, GrantStatus.DENIED_ALWAYS)
-    handler.onRationaleConfirmed()
-    assertTrue(handler.uiState.value.showSettingsGuide)
+    composeTestRule.onNodeWithText("Permission Required").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Continue").performClick()
 }
 ```
 
