@@ -1,55 +1,59 @@
 package dev.brewkits.grant
 
 /**
- * Unified grant status across platforms.
+ * The unified state of a system permission across Android and iOS.
  *
- * This enum standardizes grant states for both iOS and Android,
- * making it easy for UI layer to handle all cases consistently.
+ * This enum standardizes platform-specific authorization states, enabling the
+ * UI layer to handle all scenarios consistently.
  */
 enum class GrantStatus {
     /**
-     * Grant has been granted by the user.
-     * The feature can be used immediately.
+     * The permission has been granted by the user.
+     *
+     * The associated feature can be used immediately.
      */
     GRANTED,
 
     /**
-     * Grant is granted, but only partially.
+     * The permission is granted with limited scope.
      *
-     * **Platform Specifics**:
-     * - Android 14+: User selected "Select photos and videos" instead of "Allow all".
-     * - iOS: User selected "Limited" access to Photo Library.
+     * - **Android 14+**: User selected "Select photos and videos" (Media Visual Picker).
+     * - **iOS**: User selected "Limited" access to the Photo Library.
      *
-     * **Next Action**: Proceed with limited access or explain why full access is better.
+     * **Developer Action**: Proceed with limited access or inform the user why
+     * full access would provide a better experience.
      */
     PARTIAL_GRANTED,
 
     /**
-     * Grant was denied by the user, but can be requested again.
+     * The permission was denied, but can be requested again natively.
      *
-     * **Android**: User denied but didn't check "Don't ask again"
-     * **iOS**: User denied the first time (can show alert to explain)
+     * - **Android**: User clicked "Deny" but did not check "Don't ask again".
+     * - **iOS**: Internal state indicating the user has denied, but a rationale
+     *   can still be shown before directing them to Settings.
      *
-     * **Next Action**: Show rationale dialog, then request again
+     * **Developer Action**: Show a rationale dialog to explain why the permission
+     * is needed, then trigger a new request.
      */
     DENIED,
 
     /**
-     * Grant was permanently denied.
-     * The system will not show the grant dialog anymore.
+     * The permission was permanently denied and cannot be requested via system dialog.
      *
-     * **Android**: User checked "Don't ask again" and denied
-     * **iOS**: User denied multiple times
+     * - **Android**: User checked "Don't ask again" or denied multiple times.
+     * - **iOS**: User clicked "Don't Allow" on the system dialog.
      *
-     * **Next Action**: Must open app settings for user to manually enable
+     * **Developer Action**: Direct the user to the app's system settings page
+     * using `grantManager.openSettings()`.
      */
     DENIED_ALWAYS,
 
     /**
-     * Grant has never been requested before.
-     * This is the initial state.
+     * The permission has never been requested in the current session/install.
      *
-     * **Next Action**: Request grant (system dialog will appear)
+     * This is the initial state before any system dialog is shown.
+     *
+     * **Developer Action**: Trigger a request to show the system permission dialog.
      */
     NOT_DETERMINED
 }

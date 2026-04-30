@@ -39,6 +39,7 @@ internal class LocationManagerDelegate : NSObject(), CLLocationManagerDelegatePr
      * Active continuation — nulled out BEFORE resume to prevent double-resume.
      * Pattern: val cont = continuation; continuation = null; cont?.resume(...)
      */
+    @kotlin.concurrent.Volatile
     private var continuation: Continuation<CLAuthorizationStatus>? = null
 
 
@@ -165,8 +166,6 @@ internal class LocationManagerDelegate : NSObject(), CLLocationManagerDelegatePr
      * so that [LocationPermissionHandler] does not need to call the deprecated
      * `CLLocationManager.authorizationStatus()` class method.
      */
-    fun currentAuthorizationStatus(): CLAuthorizationStatus {
-        val manager = CLLocationManager() // Ephemeral for check
-        return manager.authorizationStatus()
-    }
+    fun currentAuthorizationStatus(): CLAuthorizationStatus =
+        locationManager?.authorizationStatus() ?: CLLocationManager().authorizationStatus()
 }

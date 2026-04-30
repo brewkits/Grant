@@ -60,12 +60,12 @@ class EndToEndSystemTest {
             mockGrantManager.mockRequestResult = GrantStatus.DENIED
 
             val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
-            advanceUntilIdle()
+            testScope.advanceUntilIdle()
 
             // 2. First Request -> User Denies
             println("Step 2: First Request")
             handler.request { }
-            advanceUntilIdle()
+            testScope.advanceUntilIdle()
 
             assertFalse(handler.state.value.showRationale, "Rationale should NOT be shown on first denial")
 
@@ -73,19 +73,19 @@ class EndToEndSystemTest {
             println("Step 3: Status -> DENIED")
             mockGrantManager.mockStatus = GrantStatus.DENIED
             handler.refreshStatus()
-            advanceUntilIdle()
+            testScope.advanceUntilIdle()
 
             // 4. Second Request -> User sees Rationale
             println("Step 4: Second Request")
             handler.request { }
-            advanceUntilIdle()
+            testScope.advanceUntilIdle()
             assertTrue(handler.state.value.showRationale, "Rationale should be shown on 2nd attempt")
 
             // 5. User confirms rationale, OS denies permanently
             println("Step 5: Rationale Confirmed -> DENIED_ALWAYS")
             mockGrantManager.mockRequestResult = GrantStatus.DENIED_ALWAYS
             handler.onRationaleConfirmed()
-            advanceUntilIdle()
+            testScope.advanceUntilIdle()
 
             // 6. User should see settings guide
             println("Step 6: Check Settings Guide")
@@ -95,9 +95,9 @@ class EndToEndSystemTest {
             println("Step 7: Confirm Settings -> GRANTED")
             mockGrantManager.mockStatus = GrantStatus.GRANTED
             handler.onSettingsConfirmed()
-            advanceUntilIdle()
+            testScope.advanceUntilIdle()
             handler.refreshStatus()
-            advanceUntilIdle()
+            testScope.advanceUntilIdle()
 
             // 8. Result should be GRANTED
             assertEquals(GrantStatus.GRANTED, handler.status.value, "Final status should be GRANTED")

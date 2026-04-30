@@ -10,65 +10,83 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 
 /**
- * UI State for group grant dialogs.
+ * The UI state produced by [GrantGroupHandler].
  */
 data class GrantGroupUiState(
+    /**
+     * Whether a permission dialog should currently be visible.
+     */
     val isVisible: Boolean = false,
+
+    /**
+     * The specific permission that is currently being addressed (rationale/settings).
+     */
     val currentGrant: GrantPermission? = null,
+
+    /**
+     * Whether to show a rationale dialog.
+     */
     val showRationale: Boolean = false,
+
+    /**
+     * Whether to show a settings guide.
+     */
     val showSettingsGuide: Boolean = false,
+
+    /**
+     * Custom rationale text for [currentGrant].
+     */
     val rationaleMessage: String? = null,
+
+    /**
+     * Custom settings guide text for [currentGrant].
+     */
     val settingsMessage: String? = null,
+
+    /**
+     * The set of permissions in the group that have been successfully granted.
+     */
     val grantedGrants: Set<GrantPermission> = emptySet(),
+
+    /**
+     * The total number of permissions in the group.
+     */
     val totalGrants: Int = 0
 )
 
 /**
- * Handles multiple grants as a group.
+ * A specialized handler for managing multiple permissions as a single logical group.
  *
- * All grants must be granted for onAllGranted callback to execute.
- * Individual grants are requested sequentially to avoid overwhelming the user.
+ * Use this when a feature requires several unrelated permissions to be granted
+ * simultaneously (e.g., an Augmented Reality feature requiring Camera + Location).
  *
- * **Use Cases:**
- * - Video recording: Camera + Microphone
- * - Location photos: Camera + Location
- * - Contact sync: Contacts + Storage
- * - Fitness tracking: Location + Activity Recognition
+ * ### Behavior
+ * 1. **Initial Batch**: Requests all denied permissions at once to minimize dialogs.
+ * 2. **Sequential Cleanup**: If some are denied, it iterates through them sequentially
+ *    to show specific rationale or settings guidance for each.
+ * 3. **Success**: The `onAllGranted` callback is only executed when every permission
+ *    in the group is either [GrantStatus.GRANTED] or [GrantStatus.PARTIAL_GRANTED].
  *
- * **Benefits:**
- * - Single handler for related grants
- * - Sequential requests for better UX
- * - Progress tracking (X of Y grants granted)
- * - Custom messages per grant
- * - Automatic state management
- *
- * **Usage Example:**
+ * ### Usage Example
  * ```kotlin
- * val videoRecordingGrants = GrantGroupHandler(
+ * val arGrants = GrantGroupHandler(
  *     grantManager = grantManager,
- *     grants = listOf(AppGrant.CAMERA, AppGrant.MICROPHONE),
+ *     grants = listOf(AppGrant.CAMERA, AppGrant.LOCATION),
  *     scope = viewModelScope
  * )
  *
- * videoRecordingGrants.request(
+ * arGrants.request(
  *     rationaleMessages = mapOf(
- *         AppGrant.CAMERA to "Camera needed for video",
- *         AppGrant.MICROPHONE to "Microphone needed for audio"
+ *         AppGrant.CAMERA to "Camera is needed to render AR content",
+ *         AppGrant.LOCATION to "Location is needed to anchor AR objects"
  *     )
  * ) {
- *     // Both granted!
- *     startVideoRecording()
+ *     // This block runs ONLY when BOTH permissions are granted
+ *     launchArFeature()
  * }
  * ```
- *
- * @param grantManager The underlying grant manager
- * @param grants List of grants to request as a group
- * @param scope CoroutineScope for launching grant requests.
- *              **MUST** use viewModelScope from a ViewModel.
- *              See [GrantHandler] documentation for detailed scope requirements.
  */
 class GrantGroupHandler(
     private val grantManager: GrantManager,
@@ -76,16 +94,22 @@ class GrantGroupHandler(
     private val scope: CoroutineScope
 ) {
     init {
-        // Validate grants list
         require(grants.isNotEmpty()) {
-            "GrantGroupHandler requires at least one grant. " +
-            "Provided grants list is empty."
+            "GrantGroupHandler requires at least one grant."
         }
     }
     private val _state = MutableStateFlow(GrantGroupUiState(totalGrants = grants.size))
+
+    /**
+     * Observable state for driving group-based permission UI.
+     */
     val state: StateFlow<GrantGroupUiState> = _state.asStateFlow()
 
     private val _statuses = MutableStateFlow<Map<GrantPermission, GrantStatus>>(emptyMap())
+
+    /**
+     * The latest native status for each managed permission in the group.
+     */
     val statuses: StateFlow<Map<GrantPermission, GrantStatus>> = _statuses.asStateFlow()
 
     @kotlin.concurrent.Volatile
@@ -104,7 +128,7 @@ class GrantGroupHandler(
     }
 
     /**
-     * Refresh all grant statuses.
+     * Re-queries the OS for the status of all permissions in the group.
      */
     fun refreshAllStatuses() {
         scope.launch {
@@ -114,8 +138,6 @@ class GrantGroupHandler(
                 }.awaitAll().toMap()
             }
 
-            // Include PARTIAL_GRANTED (e.g. "Select Photos" on iOS) in the granted
-            // set to keep refreshAllStatuses() consistent with the request() logic.
             val grantedSet = statusMap.filter {
                 it.value == GrantStatus.GRANTED || it.value == GrantStatus.PARTIAL_GRANTED
             }.keys
@@ -126,23 +148,25 @@ class GrantGroupHandler(
     }
 
     /**
-     * Request all grants in the group.
+     * Initiates the group permission request flow.
+     *
+     * @param rationaleMessages Map of permission to its custom rationale text.
+     * @param settingsMessages Map of permission to its custom settings guide text.
+     * @param onAllGranted Callback executed ONLY when all permissions are granted.
      */
     fun request(
         rationaleMessages: Map<GrantPermission, String> = emptyMap(),
         settingsMessages: Map<GrantPermission, String> = emptyMap(),
         onAllGranted: () -> Unit
     ) {
+        if (!requestMutex.tryLock()) return
+
         this.onAllGrantedCallback = onAllGranted
         this.currentRationaleMessages = rationaleMessages
         this.currentSettingsMessages = settingsMessages
 
-        // tryLock() is atomic — replaces the racy isLocked check.
-        if (!requestMutex.tryLock()) return
-
         val job = scope.launch {
             try {
-                // 1. Initial check: What is already granted? (Parallel)
                 val currentStatuses = coroutineScope {
                     grants.map { grant ->
                         async { grant to grantManager.checkStatus(grant) }
@@ -156,7 +180,6 @@ class GrantGroupHandler(
                 _statuses.update { it + currentStatuses }
 
                 if (deniedGrants.isEmpty()) {
-                    // Everything already good!
                     resetState()
                     _state.update { it.copy(grantedGrants = grants.toSet()) }
                     val callback = onAllGrantedCallback
@@ -165,11 +188,9 @@ class GrantGroupHandler(
                     return@launch
                 }
 
-                // 2. Request all denied grants at once
                 val results = grantManager.request(deniedGrants)
                 _statuses.update { it + results }
 
-                // 3. Evaluate results
                 val newlyGranted = results.filter { it.value == GrantStatus.GRANTED || it.value == GrantStatus.PARTIAL_GRANTED }.keys
                 _state.update { it.copy(grantedGrants = it.grantedGrants + newlyGranted) }
 
@@ -181,41 +202,33 @@ class GrantGroupHandler(
                     onAllGrantedCallback = null
                     callback?.invoke()
                 } else {
-                    // Show dialog for the first denied permission
                     val firstDenied = stillDenied.keys.first()
                     handleStatus(firstDenied, stillDenied[firstDenied]!!)
                 }
             } finally {
-                if (requestMutex.isLocked) {
-                    try { requestMutex.unlock() } catch (_: IllegalStateException) {}
-                }
+                requestMutex.unlock()
             }
         }
-        
-        job.invokeOnCompletion {
-            if (requestMutex.isLocked) {
-                try { requestMutex.unlock() } catch (_: IllegalStateException) {}
-            }
+
+        if (!job.isActive) {
+            requestMutex.unlock()
         }
     }
 
     /**
-     * Called when user confirms rationale dialog.
+     * Confirms the rationale for the [GrantGroupUiState.currentGrant] and requests
+     * that specific permission again.
      */
     fun onRationaleConfirmed() {
-        // Atomic guard replacing the racy isLocked check.
         if (!requestMutex.tryLock()) return
 
         val job = scope.launch {
             try {
                 val currentPerm = _state.value.currentGrant ?: return@launch
-
                 val newStatus = grantManager.request(currentPerm)
                 _statuses.update { it + (currentPerm to newStatus) }
 
                 if (newStatus == GrantStatus.GRANTED || newStatus == GrantStatus.PARTIAL_GRANTED) {
-            
-                    // Re-evaluate all statuses to ensure we have the latest state for the whole group
                     val currentStatuses = coroutineScope {
                         grants.map { g ->
                             async { g to grantManager.checkStatus(g) }
@@ -239,69 +252,54 @@ class GrantGroupHandler(
                         onAllGrantedCallback = null
                         callback?.invoke()
                     } else {
-                        // Show dialog for the next denied permission
                         val nextDenied = stillDenied.keys.first()
                         handleStatus(nextDenied, stillDenied[nextDenied]!!)
                     }
                 } else {
-                    // Still denied, handle the new status (might be DENIED_ALWAYS now)
                     handleStatus(currentPerm, newStatus)
                 }
             } finally {
-                if (requestMutex.isLocked) {
-                    try { requestMutex.unlock() } catch (_: IllegalStateException) {}
-                }
+                requestMutex.unlock()
             }
         }
-        
-        job.invokeOnCompletion {
-            if (requestMutex.isLocked) {
-                try { requestMutex.unlock() } catch (_: IllegalStateException) {}
-            }
+
+        if (!job.isActive) {
+            requestMutex.unlock()
         }
     }
 
     /**
-     * Called when user clicks "Open Settings".
+     * Confirms the settings guide and opens the app's settings page.
      */
     fun onSettingsConfirmed() {
-        resetState()
-        onAllGrantedCallback = null
-        grantManager.openSettings()
+        if (!requestMutex.tryLock()) return
+        try {
+            resetState()
+            onAllGrantedCallback = null
+            grantManager.openSettings()
+        } finally {
+            requestMutex.unlock()
+        }
     }
 
     /**
-     * Called when user dismisses any dialog.
+     * Dismisses the current dialog and cancels the group permission request flow.
      */
     fun onDismiss() {
-        resetState()
-        onAllGrantedCallback = null
+        if (!requestMutex.tryLock()) return
+        try {
+            resetState()
+            onAllGrantedCallback = null
+        } finally {
+            requestMutex.unlock()
+        }
     }
-
-    // --- Internal Logic ---
 
     private fun handleStatus(grant: GrantPermission, status: GrantStatus): Boolean {
         return when (status) {
             GrantStatus.GRANTED, GrantStatus.PARTIAL_GRANTED -> true
 
-            GrantStatus.NOT_DETERMINED -> {
-                // This can happen if request() returned NOT_DETERMINED
-                // (e.g. Motion dummy-query race on iOS, or system dialog dismissed
-                // without interaction). Treat as DENIED so we surface rationale next time.
-                _state.update {
-                    it.copy(
-                        isVisible        = true,
-                        currentGrant     = grant,
-                        showRationale    = true,
-                        showSettingsGuide = false,
-                        rationaleMessage = currentRationaleMessages[grant]
-                    )
-                }
-                false
-            }
-
-            GrantStatus.DENIED -> {
-                // Show rationale
+            GrantStatus.NOT_DETERMINED, GrantStatus.DENIED -> {
                 _state.update {
                     it.copy(
                         isVisible        = true,
@@ -315,7 +313,6 @@ class GrantGroupHandler(
             }
 
             GrantStatus.DENIED_ALWAYS -> {
-                // Show settings guide
                 _state.update {
                     it.copy(
                         isVisible        = true,

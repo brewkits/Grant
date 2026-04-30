@@ -10,16 +10,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import dev.brewkits.grant.GrantAndServiceHandler
 import dev.brewkits.grant.GrantGroupHandler
 import dev.brewkits.grant.GrantHandler
-import androidx.compose.runtime.State
 
 /**
  * A comprehensive Dialog Handler optimized for performance and accessibility.
@@ -37,16 +36,15 @@ fun GrantDialog(
     settingsConfirm: String = "Open Settings",
     settingsDismiss: String = "Cancel"
 ) {
-    val state by handler.state.collectAsState()
-    
-    // Performance Optimization: Cache visibility logic to prevent redundant recompositions
-    val isVisible by remember { derivedStateOf { state.isVisible } }
-    val showRationale by remember { derivedStateOf { state.showRationale } }
-    val showSettingsGuide by remember { derivedStateOf { state.showSettingsGuide } }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        handler.refreshStatus()
+    }
 
-    if (isVisible) {
+    val state by handler.collectAsStateWithLifecycle()
+
+    if (state.isVisible) {
         when {
-            showRationale -> {
+            state.showRationale -> {
                 GrantRationaleDialog(
                     message = state.rationaleMessage
                         ?: "This permission is needed for this feature to work properly.",
@@ -58,7 +56,7 @@ fun GrantDialog(
                 )
             }
 
-            showSettingsGuide -> {
+            state.showSettingsGuide -> {
                 GrantSettingsDialog(
                     message = state.settingsMessage
                         ?: "This permission was denied. Please enable it in Settings.",
@@ -86,15 +84,15 @@ fun GrantGroupDialog(
     settingsConfirm: String = "Open Settings",
     settingsDismiss: String = "Cancel"
 ) {
-    val state by handler.state.collectAsState()
-    
-    val isVisible by remember { derivedStateOf { state.isVisible } }
-    val showRationale by remember { derivedStateOf { state.showRationale } }
-    val showSettingsGuide by remember { derivedStateOf { state.showSettingsGuide } }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        handler.refreshAllStatuses()
+    }
 
-    if (isVisible) {
+    val state by handler.collectAsStateWithLifecycle()
+
+    if (state.isVisible) {
         when {
-            showRationale -> {
+            state.showRationale -> {
                 GrantRationaleDialog(
                     message = state.rationaleMessage
                         ?: "This permission is needed for this feature to work properly.",
@@ -106,7 +104,7 @@ fun GrantGroupDialog(
                 )
             }
 
-            showSettingsGuide -> {
+            state.showSettingsGuide -> {
                 GrantSettingsDialog(
                     message = state.settingsMessage
                         ?: "This permission was denied. Please enable it in Settings.",
@@ -114,6 +112,68 @@ fun GrantGroupDialog(
                     confirmText = settingsConfirm,
                     dismissText = settingsDismiss,
                     onConfirm = { handler.onSettingsConfirmed() },
+                    onDismiss = { handler.onDismiss() }
+                )
+            }
+        }
+    }
+}
+
+/**
+ * A Dialog Handler for unified permission and hardware service requests.
+ */
+@Composable
+fun GrantAndServiceDialog(
+    handler: GrantAndServiceHandler,
+    rationaleTitle: String = "Permission Required",
+    rationaleConfirm: String = "Continue",
+    rationaleDismiss: String = "Cancel",
+    permissionSettingsTitle: String = "Permission Denied",
+    permissionSettingsConfirm: String = "Open Settings",
+    serviceSettingsTitle: String = "Service Required",
+    serviceSettingsConfirm: String = "Enable Service",
+    dismissText: String = "Cancel"
+) {
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        handler.refreshStatus()
+    }
+
+    val state by handler.collectAsStateWithLifecycle()
+
+    if (state.isVisible) {
+        when {
+            state.showRationale -> {
+                GrantRationaleDialog(
+                    message = state.rationaleMessage
+                        ?: "This permission is needed for this feature to work properly.",
+                    title = rationaleTitle,
+                    confirmText = rationaleConfirm,
+                    dismissText = rationaleDismiss,
+                    onConfirm = { handler.onRationaleConfirmed() },
+                    onDismiss = { handler.onDismiss() }
+                )
+            }
+
+            state.showPermissionSettings -> {
+                GrantSettingsDialog(
+                    message = state.permissionSettingsMessage
+                        ?: "This permission was denied. Please enable it in Settings.",
+                    title = permissionSettingsTitle,
+                    confirmText = permissionSettingsConfirm,
+                    dismissText = dismissText,
+                    onConfirm = { handler.onPermissionSettingsConfirmed() },
+                    onDismiss = { handler.onDismiss() }
+                )
+            }
+            
+            state.showServiceSettings -> {
+                GrantSettingsDialog(
+                    message = state.serviceSettingsMessage
+                        ?: "This service needs to be enabled for this feature to work.",
+                    title = serviceSettingsTitle,
+                    confirmText = serviceSettingsConfirm,
+                    dismissText = dismissText,
+                    onConfirm = { handler.onServiceSettingsConfirmed() },
                     onDismiss = { handler.onDismiss() }
                 )
             }

@@ -71,6 +71,29 @@ fun CameraScreen(viewModel: CameraViewModel) {
 }
 ```
 
+### 🏆 Best Practice: The Full Readiness Check (Logic + Hardware)
+Permission is only half the battle. In production, you also need to check if the hardware service (GPS, Bluetooth) is actually enabled.
+
+```kotlin
+// 💡 Use GrantAndServiceChecker to combine both worlds
+class LocationViewModel(
+    private val checker: GrantAndServiceChecker,
+    private val grantManager: GrantManager
+) : ViewModel() {
+
+    fun startTracking() {
+        viewModelScope.launch {
+            when (val status = checker.checkLocationReady()) {
+                LocationReadyStatus.Ready -> sensor.start()
+                LocationReadyStatus.ServiceDisabled -> _uiState.showEnableGPS()
+                LocationReadyStatus.GrantDenied -> requestPermission() // Use GrantHandler
+                LocationReadyStatus.BothRequired -> _uiState.showTotalFailure()
+            }
+        }
+    }
+}
+```
+
 ---
 
 ## ⚔️ Why Grant?
@@ -117,6 +140,7 @@ kotlin {
         commonMain.dependencies {
             implementation("dev.brewkits:grant-core:1.3.0")
             implementation("dev.brewkits:grant-compose:1.3.0") // Optional UI pack
+            implementation("dev.brewkits:grant-core-koin:1.3.0") // Optional Koin DI support
         }
     }
 }
@@ -133,6 +157,7 @@ kotlin {
 *   [**iOS Setup**](docs/platform-specific/ios/info-plist.md) - Critical Info.plist configuration.
 *   [**Android Reliability**](docs/FIX_DEAD_CLICK_ANDROID.md) - How we fix "Dead Clicks".
 *   [**Service Checking**](docs/grant-core/SERVICES.md) - Beyond just permissions.
+*   [**Manual Injection**](docs/MANUAL_INJECTION.md) - Using Grant without Koin/DI.
 
 ---
 

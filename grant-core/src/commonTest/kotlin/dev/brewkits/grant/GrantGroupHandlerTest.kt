@@ -165,12 +165,10 @@ class GrantGroupHandlerTest {
 
         testScheduler.advanceUntilIdle()
 
-        // After completion, first callback should be invoked (or the latest one, depending on implementation)
-        // In GrantGroupHandler, requestMutex.tryLock() ignores subsequent calls.
-        assertTrue(callback1Invoked || callback2Invoked)
-        // Since callback is overwritten in request(), only the LATEST one survives
-        assertTrue(callback2Invoked, "The latest callback should be the one invoked")
-        // But the core logic should only have run ONCE.
+        // Second request() is silently ignored because tryLock() fails while first is in-flight.
+        // The FIRST callback fires; the second is never registered.
+        assertTrue(callback1Invoked, "First callback must fire")
+        assertFalse(callback2Invoked, "Second request was dropped — its callback must not fire")
         assertEquals(1, mockGrantManager.requestCount, "GrantManager should only be called once due to mutex")
     }
 

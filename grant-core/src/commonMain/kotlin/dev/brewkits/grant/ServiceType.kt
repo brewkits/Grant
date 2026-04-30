@@ -1,46 +1,54 @@
 package dev.brewkits.grant
 
 /**
- * System services that need to be enabled for grants to work properly.
- *
- * Even when a grant is GRANTED, the underlying system service might be disabled,
- * preventing the feature from working.
- *
- * **Example**: Location grant is GRANTED, but GPS is turned off.
+ * The types of hardware or system services that can be monitored.
  */
 enum class ServiceType {
     /**
-     * Location/GPS service
-     * - Android: LocationManager.isProviderEnabled()
-     * - iOS: CLLocationManager.locationServicesEnabled()
+     * System location and GPS services.
+     *
+     * - **Android**: Checked via `LocationManager.isProviderEnabled()`.
+     * - **iOS**: Checked via `CLLocationManager.locationServicesEnabled()`.
      */
     LOCATION_GPS,
 
     /**
-     * Bluetooth service
-     * - Android: BluetoothAdapter.isEnabled()
-     * - iOS: CBCentralManager.state == .poweredOn
+     * Bluetooth radio status.
+     *
+     * - **Android**: Checked via `BluetoothAdapter.isEnabled()`.
+     * - **iOS**: Checked via `CBCentralManager.state`.
      */
     BLUETOOTH,
 
     /**
-     * Wi-Fi service (optional)
-     * - Android: WifiManager.isWifiEnabled()
-     * - iOS: Network framework
+     * Wi-Fi radio status.
+     *
+     * - **Android**: Checked via `WifiManager.isWifiEnabled()`.
+     * - **iOS**: Limited detection via Network framework.
      */
     WIFI,
 
     /**
-     * NFC service (Android only)
-     * - Android: NfcAdapter.isEnabled()
-     * - iOS: N/A
+     * Near Field Communication (NFC).
+     *
+     * - **Android**: Checked via `NfcAdapter.isEnabled()`.
+     * - **iOS**: No-op (NFC is managed automatically by the OS).
      */
     NFC,
 
     /**
-     * Camera hardware availability
-     * - Android: Camera availability check
-     * - iOS: AVCaptureDevice availability
+     * Availability of the camera hardware.
+     *
+     * - **Android**: Checks if at least one camera is available on the device.
+     * - **iOS**: Checks `AVCaptureDevice` discovery sessions.
      */
-    CAMERA_HARDWARE
+    CAMERA_HARDWARE,
+
+    /**
+     * Health data services (Apple Health, Health Connect).
+     *
+     * - **Android**: Checked via Health Connect settings intent resolution.
+     * - **iOS**: Checked via `HKHealthStore.isHealthDataAvailable()`.
+     */
+    HEALTH
 }

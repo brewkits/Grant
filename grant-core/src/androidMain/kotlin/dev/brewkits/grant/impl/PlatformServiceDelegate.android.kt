@@ -25,6 +25,7 @@ internal actual class PlatformServiceDelegate(
             ServiceType.WIFI -> checkWifiService()
             ServiceType.NFC -> checkNfcService()
             ServiceType.CAMERA_HARDWARE -> checkCameraHardware()
+            ServiceType.HEALTH -> checkHealthService()
         }
     }
 
@@ -36,6 +37,7 @@ internal actual class PlatformServiceDelegate(
                 ServiceType.WIFI -> Intent(Settings.ACTION_WIFI_SETTINGS)
                 ServiceType.NFC -> Intent(Settings.ACTION_NFC_SETTINGS)
                 ServiceType.CAMERA_HARDWARE -> Intent(Settings.ACTION_SETTINGS)
+                ServiceType.HEALTH -> Intent("androidx.health.ACTION_HEALTH_CONNECT_SETTINGS")
             }.apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }
@@ -110,6 +112,25 @@ internal actual class PlatformServiceDelegate(
                 ServiceStatus.ENABLED
             } else {
                 ServiceStatus.DISABLED
+            }
+        } catch (e: Exception) {
+            ServiceStatus.UNKNOWN
+        }
+    }
+
+    private fun checkHealthService(): ServiceStatus {
+        return try {
+            val intent = Intent("androidx.health.ACTION_HEALTH_CONNECT_SETTINGS")
+            val resolveInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.packageManager.resolveActivity(intent, android.content.pm.PackageManager.ResolveInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION")
+                context.packageManager.resolveActivity(intent, 0)
+            }
+            if (resolveInfo != null) {
+                ServiceStatus.ENABLED
+            } else {
+                ServiceStatus.NOT_AVAILABLE
             }
         } catch (e: Exception) {
             ServiceStatus.UNKNOWN

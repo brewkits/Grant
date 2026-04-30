@@ -38,8 +38,8 @@ private const val BLUETOOTH_REQUEST_TIMEOUT_MS = 10_000L
 @OptIn(ExperimentalForeignApi::class)
 internal class BluetoothManagerDelegate : NSObject(), CBCentralManagerDelegateProtocol {
 
-    private var centralManager: CBCentralManager? = null
-    private var continuation: Continuation<GrantStatus>? = null
+    @kotlin.concurrent.Volatile private var centralManager: CBCentralManager? = null
+    @kotlin.concurrent.Volatile private var continuation: Continuation<GrantStatus>? = null
 
     /**
      * FIX H4: Check authorization status WITHOUT creating a CBCentralManager.

@@ -1,50 +1,50 @@
 package dev.brewkits.grant.utils
 
 /**
- * Simple logger interface for grant library.
+ * A lightweight logging utility for the Grant library.
  *
- * This allows apps to:
- * - Enable/disable logging
- * - Integrate with their own logging framework
- * - Control log output
+ * Use this to monitor permission flows, debug platform-specific denials, or
+ * integrate Grant's internal logs with your app's logging framework.
+ *
+ * ### Usage Example
+ * ```kotlin
+ * GrantLogger.isEnabled = true
+ * GrantLogger.logHandler = { level, tag, message ->
+ *     MyAnalytics.log("[$tag] $message")
+ * }
+ * ```
  */
 object GrantLogger {
     /**
-     * Enable or disable logging.
-     * Default: false (no logs in production)
+     * Globally enables or disables internal library logging.
+     *
+     * Defaults to `false`.
      */
     var isEnabled: Boolean = false
 
     /**
-     * Custom log handler.
-     * Default: prints to console if enabled
+     * A custom lambda for redirecting library logs.
+     *
+     * If provided, this handler takes precedence over the default console output.
      */
     var logHandler: ((level: LogLevel, tag: String, message: String) -> Unit)? = null
 
-    /**
-     * Log a debug message
-     */
+    /** Logs a debug message. */
     fun d(tag: String, message: String) {
         log(LogLevel.DEBUG, tag, message)
     }
 
-    /**
-     * Log an info message
-     */
+    /** Logs an informational message. */
     fun i(tag: String, message: String) {
         log(LogLevel.INFO, tag, message)
     }
 
-    /**
-     * Log a warning message
-     */
+    /** Logs a warning message. */
     fun w(tag: String, message: String) {
         log(LogLevel.WARNING, tag, message)
     }
 
-    /**
-     * Log an error message
-     */
+    /** Logs an error message with an optional exception. */
     fun e(tag: String, message: String, error: Throwable? = null) {
         val fullMessage = if (error != null) {
             "$message: ${error.message}"
@@ -61,7 +61,6 @@ object GrantLogger {
         if (handler != null) {
             handler(level, tag, message)
         } else if (isEnabled) {
-            // Default console output
             val emoji = when (level) {
                 LogLevel.DEBUG -> "🔍"
                 LogLevel.INFO -> "ℹ️"
@@ -72,6 +71,7 @@ object GrantLogger {
         }
     }
 
+    /** Log severity levels. */
     enum class LogLevel {
         DEBUG, INFO, WARNING, ERROR
     }

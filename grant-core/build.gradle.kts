@@ -48,18 +48,11 @@ kotlin {
 
     sourceSets {
         androidMain.dependencies {
-            // Koin for Android (Optional DI support - can be excluded)
-            // See docs/DEPENDENCY_MANAGEMENT.md for handling version conflicts
-            compileOnly(libs.koin.android)
             // AndroidX Activity for grant requests
             implementation(libs.androidx.activity.compose)
         }
 
         commonMain.dependencies {
-            // Koin core (Optional DI support - can be excluded)
-            // Note: Koin is OPTIONAL. Use GrantFactory.create() for manual injection
-            // See docs/DEPENDENCY_MANAGEMENT.md for more information
-            compileOnly(libs.koin.core)
             // Coroutines
             implementation(libs.kotlinx.coroutines.core)
         }

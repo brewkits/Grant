@@ -1,22 +1,27 @@
 package dev.brewkits.grant
 
 /**
- * Combined checker for grants and services.
+ * A utility that combines OS permission checks and hardware service monitoring
+ * into a single unified API.
  *
- * **Why is this useful?**
- * - Grant GRANTED doesn't mean feature works
- * - Need to check both grant AND service
- * - Provides clear status for UI
+ * In production mobile development, a permission being [GrantStatus.GRANTED]
+ * is often insufficient to use a feature. For example, Location features require
+ * BOTH the permission and the system GPS toggle to be enabled.
  *
- * **Example**:
+ * [GrantAndServiceChecker] is considered the **Best Practice** for verifying
+ * full feature readiness.
+ *
+ * ### Usage Example
  * ```kotlin
  * val checker = GrantAndServiceChecker(grantManager, serviceManager)
  *
- * when (checker.checkLocationReady()) {
- *     LocationReadyStatus.Ready -> startTracking()
- *     LocationReadyStatus.GrantDenied -> showGrantDialog()
- *     LocationReadyStatus.ServiceDisabled -> showEnableGPSDialog()
- *     LocationReadyStatus.Both -> showBothRequiredDialog()
+ * suspend fun startLocationFeature() {
+ *     when (val status = checker.checkLocationReady()) {
+ *         LocationReadyStatus.Ready -> sensor.start()
+ *         LocationReadyStatus.ServiceDisabled -> ui.showEnableGpsPrompt()
+ *         LocationReadyStatus.GrantDenied -> grantHandler.request { ... }
+ *         LocationReadyStatus.BothRequired -> ui.showTotalFailure()
+ *     }
  * }
  * ```
  */
@@ -25,8 +30,10 @@ class GrantAndServiceChecker(
     private val serviceManager: ServiceManager
 ) {
     /**
-     * Check if location is ready to use (both grant and GPS enabled).
-     * @param grant The specific location grant to check (defaults to LOCATION)
+     * Checks if location features are fully ready (Permission + GPS hardware).
+     *
+     * @param grant The specific location permission to check (defaults to [AppGrant.LOCATION]).
+     * @return A [LocationReadyStatus] representing the aggregate state.
      */
     suspend fun checkLocationReady(grant: AppGrant = AppGrant.LOCATION): LocationReadyStatus {
         val grantStatus = grantManager.checkStatus(grant)
@@ -50,7 +57,7 @@ class GrantAndServiceChecker(
     }
 
     /**
-     * Check if Bluetooth is ready to use.
+     * Checks if Bluetooth features are fully ready (Permission + Radio hardware).
      */
     suspend fun checkBluetoothReady(): BluetoothReadyStatus {
         val grantStatus = grantManager.checkStatus(AppGrant.BLUETOOTH)
@@ -74,7 +81,7 @@ class GrantAndServiceChecker(
     }
 
     /**
-     * Generic check for any grant + service combination.
+     * Performs a generic readiness check for any permission/service combination.
      */
     suspend fun checkReady(
         grant: AppGrant,
@@ -91,20 +98,17 @@ class GrantAndServiceChecker(
     }
 
     /**
-     * Convenience API to quickly check if a feature mapped to an AppGrant is fully ready 
-     * (permission granted AND hardware enabled if applicable).
-     * 
-     * Mappings:
-     * - LOCATION -> LOCATION_GPS
-     * - BLUETOOTH -> BLUETOOTH
-     * - Default -> Only checks permission status
+     * A simplified convenience API to check if a feature is fully ready.
+     *
+     * Automatically maps common permissions to their corresponding hardware services:
+     * - [AppGrant.LOCATION] -> [ServiceType.LOCATION_GPS]
+     * - [AppGrant.BLUETOOTH] -> [ServiceType.BLUETOOTH]
      */
     suspend fun isReady(grant: AppGrant): Boolean {
         val hasPermission = grantManager.checkStatus(grant) == GrantStatus.GRANTED
         val serviceType = when (grant) {
             AppGrant.LOCATION, AppGrant.LOCATION_ALWAYS -> ServiceType.LOCATION_GPS
             AppGrant.BLUETOOTH -> ServiceType.BLUETOOTH
-            // Add other mappings if they correspond to specific hardware services
             else -> null
         }
         
@@ -117,27 +121,27 @@ class GrantAndServiceChecker(
 }
 
 /**
- * Location readiness status.
+ * Aggregate status for Location feature readiness.
  */
 sealed class LocationReadyStatus {
-    /** Location is ready to use */
+    /** Feature is fully functional. */
     object Ready : LocationReadyStatus()
 
-    /** Grant denied, service doesn't matter */
+    /** Permission is missing; hardware status is secondary. */
     data class GrantDenied(val grantStatus: GrantStatus) : LocationReadyStatus()
 
-    /** Grant OK, but GPS disabled */
+    /** Permission is OK, but GPS hardware is disabled. */
     object ServiceDisabled : LocationReadyStatus()
 
-    /** Both grant denied AND GPS disabled */
+    /** Both the OS permission and the hardware service are disabled. */
     data class BothRequired(val grantStatus: GrantStatus) : LocationReadyStatus()
 
-    /** Unable to determine */
+    /** Status could not be determined. */
     object Unknown : LocationReadyStatus()
 }
 
 /**
- * Bluetooth readiness status.
+ * Aggregate status for Bluetooth feature readiness.
  */
 sealed class BluetoothReadyStatus {
     object Ready : BluetoothReadyStatus()
@@ -148,13 +152,16 @@ sealed class BluetoothReadyStatus {
 }
 
 /**
- * Generic readiness status.
+ * A generic data structure representing the aggregate state of a permission and service.
  */
 data class ReadyStatus(
     val grantStatus: GrantStatus,
     val serviceStatus: ServiceStatus,
     val isReady: Boolean
 ) {
+    /**
+     * A human-readable diagnostic message.
+     */
     val message: String
         get() = when {
             isReady -> "Ready to use"

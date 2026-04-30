@@ -28,5 +28,6 @@ dependencyResolutionManagement {
 }
 
 include(":grant-core")
+include(":grant-core-koin")
 include(":grant-compose")
 include(":demo")

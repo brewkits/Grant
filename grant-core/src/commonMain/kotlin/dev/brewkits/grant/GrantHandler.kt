@@ -8,7 +8,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
@@ -153,7 +152,7 @@ class GrantHandler(
     val grantedEvents: kotlinx.coroutines.flow.SharedFlow<Unit> = _grantedEvents.asSharedFlow()
 
     @kotlin.concurrent.Volatile
-    private var onGrantedCallback: (() -> Unit)? = null
+    private var onGrantedCallback: ((GrantStatus) -> Unit)? = null
 
     @kotlin.concurrent.Volatile
     private var hasShownRationaleDialog = false
@@ -189,8 +188,8 @@ class GrantHandler(
     }
 
     /**
-     * If a request is already in-flight, the new `onGranted` callback replaces the previous
-     * one but no new coroutine is launched, preventing parallel state machine executions.
+     * If a request is already in-flight, the call is silently ignored — no new coroutine
+     * is launched and the in-flight request continues to completion.
      *
      * This function orchestrates the entire flow:
      * 1. Check current status
@@ -201,20 +200,20 @@ class GrantHandler(
      *
      * @param rationaleMessage Custom message for rationale dialog (optional)
      * @param settingsMessage  Custom message for settings dialog (optional)
-     * @param onGranted        Callback executed ONLY when grant is GRANTED/PARTIAL_GRANTED.
+     * @param onGranted        Callback executed ONLY when grant is GRANTED or PARTIAL_GRANTED.
      *                         Callback is cleared after execution to prevent memory leaks.
      */
     fun request(
         rationaleMessage: String? = null,
         settingsMessage: String? = null,
-        onGranted: () -> Unit
+        onGranted: (GrantStatus) -> Unit
     ) {
         // tryLock() is atomic — safe concurrent guard replacing the racy isLocked check.
         if (!requestMutex.tryLock()) return
         
         this.onGrantedCallback = onGranted
 
-        scope.launch {
+        val job = scope.launch {
             try {
                 val currentStatus = grantManager.checkStatus(grant)
                 _status.value = currentStatus
@@ -227,6 +226,12 @@ class GrantHandler(
                 requestMutex.unlock()
             }
         }
+        
+        // Safety: If the scope was already cancelled, launch() returns a cancelled job 
+        // and the block never runs. We must unlock manually to prevent a permanent leak.
+        if (!job.isActive) {
+            requestMutex.unlock()
+        }
     }
 
     /**
@@ -235,7 +240,7 @@ class GrantHandler(
     fun onRationaleConfirmed() {
         if (!requestMutex.tryLock()) return
 
-        scope.launch {
+        val job = scope.launch {
             try {
                 // Hide dialog first to prevent user confusion
                 resetState()
@@ -253,23 +258,38 @@ class GrantHandler(
                 requestMutex.unlock()
             }
         }
+
+        if (!job.isActive) {
+            requestMutex.unlock()
+        }
     }
 
     /**
      * Called when user clicks "Open Settings" button
      */
     fun onSettingsConfirmed() {
-        resetState()
-        grantManager.openSettings()
+        if (!requestMutex.tryLock()) return
+        try {
+            resetState()
+            grantManager.openSettings()
+            onGrantedCallback = null
+        } finally {
+            requestMutex.unlock()
+        }
     }
 
     /**
      * Called when user dismisses any dialog (Cancel/Outside tap)
      */
     fun onDismiss() {
-        resetState()
-        // Clear callback to prevent memory leak when grant flow is cancelled
-        onGrantedCallback = null
+        if (!requestMutex.tryLock()) return
+        try {
+            resetState()
+            // Clear callback to prevent memory leak when grant flow is cancelled
+            onGrantedCallback = null
+        } finally {
+            requestMutex.unlock()
+        }
     }
 
     /**
@@ -351,12 +371,12 @@ class GrantHandler(
         settingsMessage: String? = null,
         onShowRationale: (message: String, onConfirm: () -> Unit, onDismiss: () -> Unit) -> Unit,
         onShowSettings: (message: String, onConfirm: () -> Unit, onDismiss: () -> Unit) -> Unit,
-        onGranted: () -> Unit
+        onGranted: (GrantStatus) -> Unit
     ) {
         if (!requestMutex.tryLock()) return
         this.onGrantedCallback = onGranted
 
-        scope.launch {
+        val job = scope.launch {
             try {
                 val currentStatus = grantManager.checkStatus(grant)
                 _status.value = currentStatus
@@ -368,12 +388,13 @@ class GrantHandler(
                     onShowSettings = onShowSettings
                 )
             } finally {
-                // Prevent memory leak by clearing callback when flow finishes or scope is cancelled
                 onGrantedCallback = null
-                if (requestMutex.isLocked) {
-                    try { requestMutex.unlock() } catch (_: IllegalStateException) {}
-                }
+                requestMutex.unlock()
             }
+        }
+
+        if (!job.isActive) {
+            requestMutex.unlock()
         }
     }
 
@@ -412,7 +433,7 @@ class GrantHandler(
                             resetState()
                             hasShownRationaleDialog = false
                             _grantedEvents.tryEmit(Unit)
-                            onGrantedCallback?.invoke()
+                            onGrantedCallback?.invoke(state.status)
                             onGrantedCallback = null
                             currentState = FlowState.Done
                         }
@@ -459,11 +480,10 @@ class GrantHandler(
                         }
                     }
                 }
-                FlowState.Done -> { }
+                else -> {}
             }
         }
     }
-
 
     private fun resetState() {
         updateState { GrantUiState() }
@@ -490,13 +510,6 @@ class GrantHandler(
         }
     }
 
-    /**
-     * Internal handler for custom UI flow.
-     *
-     * @param isFirstRequest True if this is the first request from system dialog denial.
-     *                       Prevents showing rationale immediately after system dialog.
-     */
-    
     private suspend fun handleStatusWithCustomUi(
         status: GrantStatus,
         rationaleMessage: String?,
@@ -523,7 +536,7 @@ class GrantHandler(
                     when (state.status) {
                         GrantStatus.GRANTED, GrantStatus.PARTIAL_GRANTED -> {
                             _grantedEvents.tryEmit(Unit)
-                            onGrantedCallback?.invoke()
+                            onGrantedCallback?.invoke(state.status)
                             onGrantedCallback = null
                             currentState = FlowState.Done
                         }
@@ -560,7 +573,7 @@ class GrantHandler(
                                 val onDismiss: () -> Unit = { if (cont.isActive) cont.resume(false) }
                                 onShowSettings(message, onConfirm, onDismiss)
                             }
-                            
+
                             if (confirmed) {
                                 grantManager.openSettings()
                             }
@@ -569,7 +582,7 @@ class GrantHandler(
                         }
                     }
                 }
-                FlowState.Done -> { }
+                else -> {}
             }
         }
     }

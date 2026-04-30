@@ -13,6 +13,7 @@
             <option value="$PROJECT_DIR$/demo" />
             <option value="$PROJECT_DIR$/grant-compose" />
             <option value="$PROJECT_DIR$/grant-core" />
+            <option value="$PROJECT_DIR$/grant-core-koin" />
           </set>
         </option>
       </GradleProjectSettings>

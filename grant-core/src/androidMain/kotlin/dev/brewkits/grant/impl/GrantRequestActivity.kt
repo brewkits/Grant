@@ -101,23 +101,23 @@ class GrantRequestActivity : ComponentActivity() {
             // We STILL need to register the launcher (done above) so the OS doesn't crash
             // trying to deliver the result, but we shouldn't launch a NEW request.
             if (!pendingResults.containsKey(requestId)) {
-                GrantLogger.w(TAG, "RequestId $requestId has no pending coroutine - orphaned request after process death")
-                // If it's recreated by the OS to deliver a result, we shouldn't finish() here
-                // because the result is delivered AFTER onCreate.
-                if (savedInstanceState == null) {
-                    finish()
-                }
+                GrantLogger.w(TAG, "RequestId $requestId has no pending coroutine - finishing orphaned activity")
+                finish()
                 return
             }
 
             // Add lifecycle observer for cleanup
             lifecycle.addObserver(object : DefaultLifecycleObserver {
                 override fun onDestroy(owner: LifecycleOwner) {
-                    // Clear pending result if activity is destroyed without result
-                    // Optimization: Do this BEFORE unregistering launcher to ensure no race
-                    val deferred = pendingResults[requestId]
-                    if (deferred?.isActive == true) {
-                        setResult(requestId, GrantResult.ERROR)
+                    // If the activity is being recreated for a configuration change,
+                    // DO NOT fail the request. The new activity instance will re-attach to the request.
+                    if (!isChangingConfigurations) {
+                        // Clear pending result if activity is destroyed without result
+                        // Optimization: Do this BEFORE unregistering launcher to ensure no race
+                        val deferred = pendingResults[requestId]
+                        if (deferred?.isActive == true) {
+                            setResult(requestId, GrantResult.ERROR)
+                        }
                     }
 
                     // Cleanup to prevent memory leaks
@@ -166,12 +166,6 @@ class GrantRequestActivity : ComponentActivity() {
         private const val KEY_REQUEST_ID = "saved_request_id"
 
         /**
-         * Counter for generating unique request IDs.
-         * More efficient than UUID for simple tracking.
-         */
-        
-
-        /**
          * Map of request ID to result Deferred.
          * Using CompletableDeferred is more efficient than StateFlow for single results.
          */
@@ -206,15 +200,6 @@ class GrantRequestActivity : ComponentActivity() {
          * @param androidGrants List of Android grant strings (e.g., [Manifest.permission.CAMERA])
          * @return Unique request ID to track this grant request
          */
-        
-        private fun isAppInForeground(context: Context): Boolean {
-            val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager ?: return false
-            val appProcessInfo = android.app.ActivityManager.RunningAppProcessInfo()
-            android.app.ActivityManager.getMyMemoryState(appProcessInfo)
-            return appProcessInfo.importance == android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND ||
-                   appProcessInfo.importance == android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_VISIBLE
-        }
-
         fun requestGrants(context: Context, androidGrants: List<String>): String {
             val requestId = UUID.randomUUID().toString()
 

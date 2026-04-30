@@ -46,6 +46,7 @@ kotlin {
             // Compose dependencies
             implementation(compose.runtime)
             implementation(compose.foundation)
+            implementation(libs.androidx.lifecycle.runtimeCompose)
             // Material3 as api - allows apps to control version
             // Apps using Material 2 or different Compose versions can override
             api(compose.material3)
