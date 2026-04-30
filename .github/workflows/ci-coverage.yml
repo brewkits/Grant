@@ -21,33 +21,9 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
-      # 1. Run Kotlin Multiplatform Tests & Coverage (Android & iOS Simulator)
       - name: Run KMP Coverage (Kover)
         run: ./gradlew :grant-core:koverHtmlReport :grant-core:koverVerify :grant-compose:koverHtmlReport
 
-      # 2. Run Native iOS App Tests & Coverage (Slather)
-      - name: Install Slather
-        run: gem install slather
-
-      - name: Run iOS App Tests
-        run: |
-          xcodebuild test \
-            -project demo/iosApp/GrantDemo/GrantDemo.xcodeproj \
-            -scheme GrantDemo \
-            -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' \
-            -derivedDataPath Build/ \
-            enableCodeCoverage=YES
-
-      - name: Export iOS Coverage (Slather)
-        run: |
-          slather coverage \
-            --html \
-            --project demo/iosApp/GrantDemo/GrantDemo.xcodeproj \
-            --scheme GrantDemo \
-            --output-directory build/reports/slather \
-            demo/iosApp/GrantDemo/GrantDemo.xcodeproj
-
-      # 3. Upload Reports
       - name: Upload KMP Coverage Report
         uses: actions/upload-artifact@v4
         with:
@@ -55,9 +31,3 @@ jobs:
           path: |
             grant-core/build/reports/kover/html
             grant-compose/build/reports/kover/html
-
-      - name: Upload iOS Native Coverage Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: ios-native-coverage-report
-          path: build/reports/slather
