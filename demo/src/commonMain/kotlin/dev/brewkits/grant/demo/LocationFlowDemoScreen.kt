@@ -16,6 +16,7 @@ import dev.brewkits.grant.GrantManager
 import dev.brewkits.grant.GrantStatus
 import dev.brewkits.grant.ServiceManager
 import dev.brewkits.grant.ServiceType
+import dev.brewkits.grant.GrantAndServiceUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -35,7 +36,7 @@ fun LocationFlowDemoScreen(
     viewModel: LocationFlowViewModel,
     modifier: Modifier = Modifier
 ) {
-    val locationState by viewModel.locationState.collectAsState()
+    val locationState by viewModel.locationHandler.state.collectAsState()
 
     Scaffold(
         topBar = {
@@ -79,167 +80,149 @@ fun LocationFlowDemoScreen(
             LocationStatusCard(state = locationState)
 
             // Action button
-            when (locationState) {
-                is LocationState.Idle -> {
-                    Button(
-                        onClick = { viewModel.requestLocation() },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Request Location Access")
-                    }
+            if (!locationState.isVisible && !locationState.isReady) {
+                Button(
+                    onClick = { viewModel.requestLocation() },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Request Location Access")
                 }
+            }
 
-                is LocationState.Loading -> {
-                    CircularProgressIndicator()
-                }
-
-                is LocationState.Ready -> {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.tertiaryContainer
-                        ),
-                        modifier = Modifier.fillMaxWidth()
+            if (locationState.isReady) {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                        Text(
+                            text = "🎯 Location Ready!",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Both permission and GPS are enabled. You can now start location tracking.",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Button(
+                            onClick = { viewModel.reset() },
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(
-                                text = "🎯 Location Ready!",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "Both permission and GPS are enabled. You can now start location tracking.",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Button(
-                                onClick = { viewModel.reset() },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("Try Again")
-                            }
+                            Text("Try Again")
                         }
                     }
                 }
+            }
 
-                is LocationState.ShowRationale -> {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer
-                        ),
-                        modifier = Modifier.fillMaxWidth()
+            if (locationState.showRationale) {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        Text(
+                            text = "Location Permission Needed",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = locationState.rationaleMessage ?: "We need location access.",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Button(
+                            onClick = { viewModel.locationHandler.onRationaleConfirmed() },
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(
-                                text = "Location Permission Needed",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "We need location access to show nearby places and provide navigation features.",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Button(
-                                onClick = { viewModel.requestLocation() },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("Allow Location")
-                            }
+                            Text("Allow Location")
+                        }
+                        OutlinedButton(
+                            onClick = { viewModel.locationHandler.onDismiss() },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Cancel")
                         }
                     }
                 }
+            }
 
-                is LocationState.ShowSettingsPrompt -> {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer
-                        ),
-                        modifier = Modifier.fillMaxWidth()
+            if (locationState.showPermissionSettings) {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        Text(
+                            text = "Permission Denied Permanently",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = locationState.permissionSettingsMessage ?: "Please enable location permission in Settings.",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Button(
+                            onClick = { viewModel.openAppSettings() },
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(
-                                text = "Permission Denied Permanently",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "Please enable location permission in Settings to use this feature.",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Button(
-                                onClick = { viewModel.openAppSettings() },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("Open Settings")
-                            }
+                            Text("Open Settings")
+                        }
+                        OutlinedButton(
+                            onClick = { viewModel.locationHandler.onDismiss() },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Cancel")
                         }
                     }
                 }
+            }
 
-                is LocationState.ShowGpsPrompt -> {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer
-                        ),
-                        modifier = Modifier.fillMaxWidth()
+            if (locationState.showServiceSettings) {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        Text(
+                            text = "GPS Disabled",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = locationState.serviceSettingsMessage ?: "Please enable GPS to continue.",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Button(
+                            onClick = { viewModel.openLocationSettings() },
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(
-                                text = "GPS Disabled",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "Location permission is granted, but GPS is turned off. Please enable GPS to continue.",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Button(
-                                onClick = { viewModel.openLocationSettings() },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("Enable GPS")
-                            }
+                            Text("Enable GPS")
                         }
-                    }
-                }
-
-                is LocationState.Error -> {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        OutlinedButton(
+                            onClick = { viewModel.locationHandler.onDismiss() },
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(
-                                text = "Error",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = (locationState as LocationState.Error).message,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Button(
-                                onClick = { viewModel.reset() },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("Try Again")
-                            }
+                            Text("Cancel")
                         }
                     }
                 }
@@ -276,7 +259,7 @@ fun LocationFlowDemoScreen(
 }
 
 @Composable
-private fun LocationStatusCard(state: LocationState) {
+private fun LocationStatusCard(state: GrantAndServiceUiState) {
     Card(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -294,20 +277,12 @@ private fun LocationStatusCard(state: LocationState) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("State:")
+                Text("Is Ready:")
                 Text(
-                    text = state::class.simpleName ?: "Unknown",
+                    text = state.isReady.toString(),
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            if (state is LocationState.Error) {
-                Divider()
-                Text(
-                    text = "Message: ${state.message}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error
+                    fontWeight = FontWeight.Bold,
+                    color = if (state.isReady) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                 )
             }
         }
@@ -325,75 +300,34 @@ class LocationFlowViewModel(
     private val serviceManager: ServiceManager
 ) : ViewModel() {
 
-    private val _locationState = MutableStateFlow<LocationState>(LocationState.Idle)
-    val locationState: StateFlow<LocationState> = _locationState.asStateFlow()
+    val locationHandler = dev.brewkits.grant.GrantAndServiceHandler(
+        grantManager = grantManager,
+        serviceManager = serviceManager,
+        grant = AppGrant.LOCATION,
+        serviceType = ServiceType.LOCATION_GPS,
+        scope = viewModelScope
+    )
 
     fun requestLocation() {
-        viewModelScope.launch {
-            _locationState.value = LocationState.Loading
-
-            // Step 1: Request location permission
-            val permissionStatus = grantManager.request(AppGrant.LOCATION)
-
-            when (permissionStatus) {
-                GrantStatus.DENIED -> {
-                    // User denied, show rationale for next attempt
-                    _locationState.value = LocationState.ShowRationale
-                    return@launch
-                }
-
-                GrantStatus.DENIED_ALWAYS -> {
-                    // Permanently denied, guide to Settings
-                    _locationState.value = LocationState.ShowSettingsPrompt
-                    return@launch
-                }
-
-                GrantStatus.NOT_DETERMINED -> {
-                    // Shouldn't happen after request, but handle it
-                    _locationState.value = LocationState.Error("Unexpected permission state")
-                    return@launch
-                }
-
-                GrantStatus.GRANTED, GrantStatus.PARTIAL_GRANTED -> {
-                    // Permission granted, continue to GPS check
-                }
-            }
-
-            // Step 2: Check if GPS is enabled
-            if (!serviceManager.isServiceEnabled(ServiceType.LOCATION_GPS)) {
-                _locationState.value = LocationState.ShowGpsPrompt
-                return@launch
-            }
-
-            // Both permission AND GPS are ready!
-            _locationState.value = LocationState.Ready
+        locationHandler.request(
+            rationaleMessage = "We need location access to show nearby places and provide navigation features.",
+            permissionSettingsMessage = "Please enable location permission in Settings to use this feature.",
+            serviceSettingsMessage = "Location permission is granted, but GPS is turned off. Please enable GPS to continue."
+        ) {
+            // Callback when ready
         }
     }
 
     fun openLocationSettings() {
-        viewModelScope.launch {
-            serviceManager.openServiceSettings(ServiceType.LOCATION_GPS)
-        }
+        locationHandler.onServiceSettingsConfirmed()
     }
 
     fun openAppSettings() {
-        grantManager.openSettings()
+        locationHandler.onPermissionSettingsConfirmed()
     }
 
     fun reset() {
-        _locationState.value = LocationState.Idle
+        locationHandler.onDismiss()
+        locationHandler.refreshStatus()
     }
-}
-
-/**
- * State representing the location flow.
- */
-sealed interface LocationState {
-    object Idle : LocationState
-    object Loading : LocationState
-    object Ready : LocationState
-    object ShowRationale : LocationState
-    object ShowSettingsPrompt : LocationState
-    object ShowGpsPrompt : LocationState
-    data class Error(val message: String) : LocationState
 }

@@ -113,14 +113,16 @@ actual class PlatformGrantDelegate(
 
     actual suspend fun checkStatus(grant: GrantPermission): GrantStatus {
         val identifier = grant.identifier
-        mapsMutex.withLock {
-            statusCacheMap[identifier]?.let { (cachedStatus, timestamp) ->
-                if (getMonotonicTimeMillis() - timestamp < STATUS_CACHE_TTL_MS) return cachedStatus
+        return getMutexFor(identifier).withLock {
+            mapsMutex.withLock {
+                statusCacheMap[identifier]?.let { (cachedStatus, timestamp) ->
+                    if (getMonotonicTimeMillis() - timestamp < STATUS_CACHE_TTL_MS) return@withLock cachedStatus
+                }
             }
+            val status = checkStatusInternal(grant)
+            mapsMutex.withLock { statusCacheMap[identifier] = status to getMonotonicTimeMillis() }
+            status
         }
-        val status = checkStatusInternal(grant)
-        mapsMutex.withLock { statusCacheMap[identifier] = status to getMonotonicTimeMillis() }
-        return status
     }
 
     actual suspend fun request(grant: GrantPermission): GrantStatus =
@@ -223,8 +225,9 @@ actual class PlatformGrantDelegate(
         }
 
         if (grant is RawPermission) {
-            GrantLogger.w(TAG, "RawPermission '${grant.identifier}' on iOS requires native handling.")
-            return GrantStatus.DENIED
+            GrantLogger.w(TAG, "RawPermission '${grant.identifier}' on iOS: no generic request API available. " +
+                "Implement a custom IosPermissionHandler for this permission.")
+            return GrantStatus.NOT_DETERMINED
         }
 
         val result = when (grant as AppGrant) {

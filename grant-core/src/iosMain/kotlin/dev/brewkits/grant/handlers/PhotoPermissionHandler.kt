@@ -36,7 +36,25 @@ internal class PhotoPermissionHandler : IosPermissionHandler {
 
     override fun checkStatus(): GrantStatus {
         if (!hasInfoPlistKey(TAG, "NSPhotoLibraryUsageDescription")) return GrantStatus.DENIED_ALWAYS
-        return when (PHPhotoLibrary.authorizationStatus()) {
+
+        // Use non-deprecated API on iOS 14+ (authorizationStatus() is deprecated in iOS 14).
+        @OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+        val isIos14OrNewer = NSProcessInfo.processInfo.isOperatingSystemAtLeastVersion(
+            kotlinx.cinterop.cValue {
+                majorVersion = 14
+                minorVersion = 0
+                patchVersion = 0
+            }
+        )
+
+        val status = if (isIos14OrNewer) {
+            PHPhotoLibrary.authorizationStatusForAccessLevel(PHAccessLevelReadWrite)
+        } else {
+            @Suppress("DEPRECATION")
+            PHPhotoLibrary.authorizationStatus()
+        }
+
+        return when (status) {
             PHAuthorizationStatusAuthorized    -> GrantStatus.GRANTED
             PHAuthorizationStatusLimited       -> GrantStatus.PARTIAL_GRANTED
             PHAuthorizationStatusDenied,

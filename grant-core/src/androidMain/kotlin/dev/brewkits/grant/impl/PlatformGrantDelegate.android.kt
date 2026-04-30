@@ -4,12 +4,14 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.SystemClock
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import dev.brewkits.grant.AppGrant
 import dev.brewkits.grant.GrantPermission
 import dev.brewkits.grant.GrantStatus
 import dev.brewkits.grant.GrantStore
+import dev.brewkits.grant.PlatformConfig
 import dev.brewkits.grant.RawPermission
 import dev.brewkits.grant.utils.GrantLogger
 import kotlinx.coroutines.async
@@ -46,7 +48,7 @@ actual class PlatformGrantDelegate(
         const val TAG = "AndroidGrantDelegate"
         const val READ_MEDIA_VISUAL_USER_SELECTED = "android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
         const val NOTIFICATION_CACHE_TTL_MS = 200L
-        const val STATUS_CACHE_TTL_MS = 0L
+        const val STATUS_CACHE_TTL_MS = 200L
     }
 
     private fun isPartialGalleryAccessGranted(): Boolean {
@@ -60,7 +62,7 @@ actual class PlatformGrantDelegate(
         // Protect statusCacheMap reads through mapsMutex (like iOS)
         mapsMutex.withLock {
             statusCacheMap[identifier]?.let { (cachedStatus, timestamp) ->
-                if (System.currentTimeMillis() - timestamp < STATUS_CACHE_TTL_MS) {
+                if (SystemClock.elapsedRealtime() - timestamp < STATUS_CACHE_TTL_MS) {
                     return@withLock cachedStatus
                 }
             }
@@ -68,10 +70,10 @@ actual class PlatformGrantDelegate(
 
         // Perform actual check WITHOUT holding the per-permission mutex to avoid deadlock
         val status = checkStatusInternal(grant)
-        
+
         // Protect statusCacheMap writes through mapsMutex
         mapsMutex.withLock {
-            statusCacheMap[identifier] = status to System.currentTimeMillis()
+            statusCacheMap[identifier] = status to SystemClock.elapsedRealtime()
         }
         return status
     }
@@ -92,14 +94,15 @@ actual class PlatformGrantDelegate(
 
             if (!store.isRawPermissionRequested(grant.identifier)) return GrantStatus.NOT_DETERMINED
 
-            val isActivity = context is android.app.Activity
-            val anyCanShowRationale = if (isActivity) {
-                androidPermissions.any { (context as android.app.Activity).shouldShowRequestPermissionRationale(it) }
+            val activeActivity = PlatformConfig.activity ?: (context as? android.app.Activity)
+            
+            return if (activeActivity != null) {
+                val anyCanShowRationale = androidPermissions.any { activeActivity.shouldShowRequestPermissionRationale(it) }
+                if (anyCanShowRationale) GrantStatus.DENIED else GrantStatus.DENIED_ALWAYS
             } else {
-                GrantLogger.w(TAG, "checkStatus() called with non-Activity Context (${context.javaClass.simpleName}). Cannot determine true Rationale state. Falling back to GrantStatus.DENIED to prevent locking the user out. To get exact DENIED_ALWAYS status, you must use an Activity Context.")
-                false // Fallback to DENIED_ALWAYS instead of DENIED if context is not an Activity
+                GrantLogger.w(TAG, "checkStatus() called without an Activity context. Cannot accurately distinguish between DENIED and DENIED_ALWAYS. Falling back to DENIED to allow rationale display. Set PlatformConfig.activity for better accuracy.")
+                GrantStatus.DENIED
             }
-            return if (anyCanShowRationale) GrantStatus.DENIED else GrantStatus.DENIED_ALWAYS
         }
 
         val appGrant = grant as AppGrant
@@ -114,7 +117,13 @@ actual class PlatformGrantDelegate(
             return when {
                 hasBackground -> GrantStatus.GRANTED
                 hasForeground -> GrantStatus.PARTIAL_GRANTED
-                store.isRequestedBefore(appGrant) -> GrantStatus.DENIED
+                store.isRequestedBefore(appGrant) -> {
+                    val activeActivity = PlatformConfig.activity ?: (context as? android.app.Activity)
+                    if (activeActivity != null) {
+                        val canShowRationale = activeActivity.shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                        if (canShowRationale) GrantStatus.DENIED else GrantStatus.DENIED_ALWAYS
+                    } else GrantStatus.DENIED
+                }
                 else -> GrantStatus.NOT_DETERMINED
             }
         }
@@ -132,7 +141,16 @@ actual class PlatformGrantDelegate(
         }
 
         store.getStatus(appGrant)?.let { if (it == GrantStatus.DENIED || it == GrantStatus.DENIED_ALWAYS) return it }
-        return if (store.isRequestedBefore(appGrant)) GrantStatus.DENIED else GrantStatus.NOT_DETERMINED
+
+        if (store.isRequestedBefore(appGrant)) {
+            val activeActivity = PlatformConfig.activity ?: (context as? android.app.Activity)
+            return if (activeActivity != null) {
+                val anyCanShowRationale = androidGrants.any { activeActivity.shouldShowRequestPermissionRationale(it) }
+                if (anyCanShowRationale) GrantStatus.DENIED else GrantStatus.DENIED_ALWAYS
+            } else GrantStatus.DENIED
+        }
+        
+        return GrantStatus.NOT_DETERMINED
     }
 
     actual suspend fun request(grant: GrantPermission): GrantStatus {
@@ -165,7 +183,7 @@ actual class PlatformGrantDelegate(
     private suspend fun <T> lockAllIterative(grants: List<GrantPermission>, block: suspend () -> T): T {
         // Build a suspend chain: grant_n.mutex { grant_(n-1).mutex { ... block() } }
         // using fold so the call stack stays O(1).
-        val chain: suspend () -> T = grants.fold(block) { inner, grant ->
+        val chain: suspend () -> T = grants.foldRight(block) { grant, inner ->
             suspend { getMutexFor(grant.identifier).withLock { inner() } }
         }
         return chain()
@@ -217,7 +235,8 @@ actual class PlatformGrantDelegate(
                 if (bgDeferred != null) {
                     try {
                         withTimeout(60_000) { bgDeferred.await() }
-                    } catch (_: Exception) {
+                    } catch (e: Exception) {
+                        GrantLogger.w(TAG, "LOCATION_ALWAYS background step timed out or failed: ${e.message}")
                     } finally {
                         GrantRequestActivity.cleanup(bgRequestId)
                     }
@@ -243,6 +262,10 @@ actual class PlatformGrantDelegate(
 
         val allAndroidPermissions = mutableSetOf<String>()
         grants.forEach { grant ->
+            // Ensure we record that this was requested
+            if (grant is AppGrant) store.setRequested(grant)
+            else if (grant is RawPermission) store.markRawPermissionRequested(grant.identifier)
+
             when (grant) {
                 is RawPermission -> allAndroidPermissions.addAll(grant.androidPermissions)
                 is AppGrant -> allAndroidPermissions.addAll(grant.toAndroidGrants())
@@ -251,15 +274,17 @@ actual class PlatformGrantDelegate(
 
         if (allAndroidPermissions.isEmpty()) return grants.associateWith { GrantStatus.GRANTED }
 
+        var multiRequestId: String? = null
         try {
-            val requestId = GrantRequestActivity.requestGrants(context, allAndroidPermissions.toList())
-            val deferred = GrantRequestActivity.getResultDeferred(requestId)
+            multiRequestId = GrantRequestActivity.requestGrants(context, allAndroidPermissions.toList())
+            val deferred = GrantRequestActivity.getResultDeferred(multiRequestId)
             if (deferred != null) {
                 withTimeout(60_000) { deferred.await() }
-                GrantRequestActivity.cleanup(requestId)
             }
         } catch (e: Exception) {
             GrantLogger.e("AndroidGrant", "Multi-request failed", e)
+        } finally {
+            multiRequestId?.let { GrantRequestActivity.cleanup(it) }
         }
 
         // Invalidate cache for all grants after request
@@ -270,7 +295,14 @@ actual class PlatformGrantDelegate(
         // Parallelize status checks for all grants in the group
         return kotlinx.coroutines.coroutineScope {
             grants.map { grant ->
-                async { grant to checkStatus(grant) }
+                async { 
+                    val finalStatus = checkStatus(grant)
+                    if (grant is AppGrant) {
+                        if (finalStatus == GrantStatus.GRANTED) store.clear(grant)
+                        else store.setStatus(grant, finalStatus)
+                    }
+                    grant to finalStatus 
+                }
             }.awaitAll().toMap()
         }
     }
@@ -298,10 +330,10 @@ actual class PlatformGrantDelegate(
             }
             AppGrant.NOTIFICATION -> {
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-                    notificationStatusCache?.let { (status, time) -> if (System.currentTimeMillis() - time < NOTIFICATION_CACHE_TTL_MS) return status }
+                    notificationStatusCache?.let { (status, time) -> if (SystemClock.elapsedRealtime() - time < NOTIFICATION_CACHE_TTL_MS) return status }
                     val enabled = NotificationManagerCompat.from(context).areNotificationsEnabled()
                     val status = if (enabled) GrantStatus.GRANTED else if (store.isRequestedBefore(grant)) GrantStatus.DENIED_ALWAYS else GrantStatus.NOT_DETERMINED
-                    notificationStatusCache = status to System.currentTimeMillis()
+                    notificationStatusCache = status to SystemClock.elapsedRealtime()
                     status
                 } else null
             }

@@ -1,89 +1,35 @@
 package dev.brewkits.grant
 
 /**
- * Platform-agnostic interface for saving and restoring UI state across process death.
+ * A platform-agnostic interface for persisting UI state across system-initiated
+ * process death.
  *
- * **Why This Exists:**
- * - Android can kill processes at any time to reclaim memory
- * - Dialog state (GrantHandler UI state) is lost on process death
- * - SavedStateHandle is Android-specific, so we need abstraction
- * - Other platforms (iOS, Desktop) don't need this functionality
- *
- * **Android Implementation:**
- * - Uses SavedStateHandle from ViewModel/Compose
- * - Automatically persists state across process death
- * - Restored when process is recreated
- *
- * **Other Platforms:**
- * - Use NoOpSavedStateDelegate (default)
- * - Process death is extremely rare or doesn't happen
- * - No state persistence needed
- *
- * **Usage:**
- * ```kotlin
- * // Android with ViewModel
- * class MyViewModel(
- *     grantManager: GrantManager,
- *     savedStateHandle: SavedStateHandle
- * ) : ViewModel() {
- *     val cameraGrant = GrantHandler(
- *         grantManager = grantManager,
- *         grant = AppGrant.CAMERA,
- *         scope = viewModelScope,
- *         savedStateDelegate = AndroidSavedStateDelegate(savedStateHandle)
- *     )
- * }
- *
- * // iOS or other platforms (automatic)
- * val cameraGrant = GrantHandler(
- *     grantManager = grantManager,
- *     grant = AppGrant.CAMERA,
- *     scope = scope
- *     // savedStateDelegate defaults to NoOpSavedStateDelegate
- * )
- * ```
+ * This is primarily used on Android to ensure that rationale or settings guide
+ * dialogs remain visible if the OS kills the app process while the user is away.
  */
 interface SavedStateDelegate {
     /**
-     * Save a string value with the given key.
-     * @param key Unique identifier for this value
-     * @param value String to save (supports Boolean.toString(), Int.toString(), etc.)
+     * Persists a state value.
      */
     fun saveState(key: String, value: String)
 
     /**
-     * Restore a previously saved string value.
-     * @param key The key used to save the value
-     * @return The saved value, or null if not found
+     * Retrieves a persisted state value.
      */
     fun restoreState(key: String): String?
 
     /**
-     * Clear a saved value.
-     * @param key The key to clear
+     * Clears a persisted state value.
      */
     fun clear(key: String)
 }
 
 /**
- * Default no-op implementation for platforms that don't need state persistence.
- *
- * **Used by:**
- * - iOS (process death is extremely rare)
- * - Desktop (process is user-controlled)
- * - Any platform without SavedStateHandle equivalent
+ * A no-op implementation used on platforms where process death recovery is not
+ * required (e.g., iOS, Desktop).
  */
 class NoOpSavedStateDelegate : SavedStateDelegate {
-    override fun saveState(key: String, value: String) {
-        // No-op: State is not persisted
-    }
-
-    override fun restoreState(key: String): String? {
-        // No-op: Always returns null (no state to restore)
-        return null
-    }
-
-    override fun clear(key: String) {
-        // No-op: Nothing to clear
-    }
+    override fun saveState(key: String, value: String) {}
+    override fun restoreState(key: String): String? = null
+    override fun clear(key: String) {}
 }

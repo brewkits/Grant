@@ -24,9 +24,9 @@ class DefaultGrantManager(
     private val platformDelegate: PlatformGrantDelegate
 ) : GrantManager {
 
-    override suspend fun checkStatus(grant: GrantPermission): GrantStatus =
-        platformDelegate.checkStatus(grant)
-
+    override suspend fun checkStatus(grant: GrantPermission): GrantStatus {
+        return platformDelegate.checkStatus(grant)
+    }
     override suspend fun request(grant: GrantPermission): GrantStatus =
         platformDelegate.request(grant)
 

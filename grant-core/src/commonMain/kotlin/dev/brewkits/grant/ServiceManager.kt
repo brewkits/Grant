@@ -1,50 +1,42 @@
 package dev.brewkits.grant
 
 /**
- * Manages system service status (GPS, Bluetooth, etc.).
+ * Manages the status of system-level services like GPS, Bluetooth, and Wi-Fi.
  *
- * **Why is this needed?**
- * - Grant GRANTED ≠ Feature working
- * - User might disable service (GPS off, Bluetooth off)
- * - Better UX: Tell user exactly what's wrong
+ * A permission being [GrantStatus.GRANTED] does not guarantee that a feature
+ * is functional. For example, if Location permission is granted but the GPS
+ * hardware is disabled, location-based features will still fail.
  *
- * **Example**:
- * ```kotlin
- * val locationGranted = GrantManager.checkStatus(GrantType.LOCATION) == GrantStatus.GRANTED
- * val gpsEnabled = serviceManager.isServiceEnabled(ServiceType.LOCATION_GPS)
- *
- * if (locationGranted && !gpsEnabled) {
- *     showEnableGPSDialog()
- * }
- * ```
+ * Use [ServiceManager] in combination with [GrantManager] or use the high-level
+ * [GrantAndServiceChecker] to verify both software and hardware readiness.
  */
 interface ServiceManager {
     /**
-     * Check if a system service is enabled.
+     * Checks the current availability and state of a system service.
      *
-     * @param service The service to check
-     * @return Service status
+     * @param service The type of service to check (e.g., [ServiceType.LOCATION_GPS]).
+     * @return The current [ServiceStatus].
      */
     suspend fun checkServiceStatus(service: ServiceType): ServiceStatus
 
     /**
-     * Check if service is enabled (convenience method).
+     * A convenience check to see if a service is fully [ServiceStatus.ENABLED].
      *
-     * @param service The service to check
-     * @return true if ENABLED, false otherwise
+     * @param service The type of service to check.
+     * @return `true` if the service is [ServiceStatus.ENABLED], `false` otherwise.
      */
     suspend fun isServiceEnabled(service: ServiceType): Boolean {
         return checkServiceStatus(service) == ServiceStatus.ENABLED
     }
 
     /**
-     * Open system settings to enable a service.
+     * Directs the user to the system settings page to enable a specific service.
      *
-     * - Android: Opens specific settings (Location, Bluetooth, etc.)
-     * - iOS: Opens Settings app (cannot deep-link to specific service)
+     * - **Android**: Opens the specific service settings page (e.g., Location Settings).
+     * - **iOS**: Opens the main Settings app (deep-linking to specific services is restricted).
      *
-     * @param service The service to enable
-     * @return true if settings opened successfully
+     * @param service The service the user needs to enable.
+     * @return `true` if the settings page was opened successfully.
      */
     suspend fun openServiceSettings(service: ServiceType): Boolean
 }

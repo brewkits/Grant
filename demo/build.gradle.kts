@@ -54,6 +54,7 @@ kotlin {
 
             // Grant library
             implementation(project(":grant-core"))
+            implementation(project(":grant-core-koin"))
             implementation(project(":grant-compose"))
         }
 

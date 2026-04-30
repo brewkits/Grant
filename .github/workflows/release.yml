@@ -52,11 +52,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Publish to Maven Central
+      - name: Create Maven Central Bundle
         if: startsWith(github.ref, 'refs/tags/')
-        run: ./gradlew publishAllPublicationsToCentralPortal
+        run: ./create-grant-maven-bundle-auto.sh
         env:
-          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_USERNAME }}
-          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_PASSWORD }}
-          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_KEY }}
-          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}
+          GPG_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
+          GPG_PASSPHRASE: ${{ secrets.SIGNING_PASSWORD }}
+
+      - name: Upload Maven Bundle Artifact
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@v4
+        with:
+          name: maven-central-bundle
+          path: maven-central-artifacts/

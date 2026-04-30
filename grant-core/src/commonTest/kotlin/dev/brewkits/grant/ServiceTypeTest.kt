@@ -9,7 +9,7 @@ class ServiceTypeTest {
     @Test
     fun testAllServiceTypesExist() {
         val services = ServiceType.entries
-        assertEquals(5, services.size, "Expected 5 service types")
+        assertEquals(6, services.size, "Expected 6 service types")
     }
 
     @Test
@@ -21,6 +21,7 @@ class ServiceTypeTest {
         assertTrue(services.contains(ServiceType.WIFI), "WIFI service should exist")
         assertTrue(services.contains(ServiceType.NFC), "NFC service should exist")
         assertTrue(services.contains(ServiceType.CAMERA_HARDWARE), "CAMERA_HARDWARE service should exist")
+        assertTrue(services.contains(ServiceType.HEALTH), "HEALTH service should exist")
     }
 
     @Test
@@ -30,6 +31,7 @@ class ServiceTypeTest {
         assertEquals("WIFI", ServiceType.WIFI.name)
         assertEquals("NFC", ServiceType.NFC.name)
         assertEquals("CAMERA_HARDWARE", ServiceType.CAMERA_HARDWARE.name)
+        assertEquals("HEALTH", ServiceType.HEALTH.name)
     }
 
     @Test
@@ -39,6 +41,7 @@ class ServiceTypeTest {
         assertEquals(2, ServiceType.WIFI.ordinal)
         assertEquals(3, ServiceType.NFC.ordinal)
         assertEquals(4, ServiceType.CAMERA_HARDWARE.ordinal)
+        assertEquals(5, ServiceType.HEALTH.ordinal)
     }
 
     @Test
@@ -48,5 +51,6 @@ class ServiceTypeTest {
         assertEquals(ServiceType.WIFI, ServiceType.valueOf("WIFI"))
         assertEquals(ServiceType.NFC, ServiceType.valueOf("NFC"))
         assertEquals(ServiceType.CAMERA_HARDWARE, ServiceType.valueOf("CAMERA_HARDWARE"))
+        assertEquals(ServiceType.HEALTH, ServiceType.valueOf("HEALTH"))
     }
 }

@@ -23,7 +23,7 @@ jobs:
 
       # 1. Run Kotlin Multiplatform Tests & Coverage (Android & iOS Simulator)
       - name: Run KMP Coverage (Kover)
-        run: ./gradlew koverHtmlReport koverVerify
+        run: ./gradlew :grant-core:koverHtmlReport :grant-core:koverVerify :grant-compose:koverHtmlReport
 
       # 2. Run Native iOS App Tests & Coverage (Slather)
       - name: Install Slather

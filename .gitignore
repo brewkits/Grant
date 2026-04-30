@@ -88,3 +88,8 @@ SUMMARY_UPDATES.md
 REDDIT_POST.md
 create-maven-bundle*.sh
 create-grant-maven-bundle*.sh
+
+.claude
+CLAUDE.md
+GEMINI.md
+
