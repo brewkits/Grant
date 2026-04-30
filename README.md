@@ -26,14 +26,14 @@ Grant is not just another permission library. It is a **production-hardened engi
 ## 🚀 Killer Features
 
 - **🎯 Pure Logic-First API** — Works anywhere: ViewModels, Repositories, or Composables. **No Activity or Fragment references required.**
-- **🍎 iOS Framework Isolation** — **NEW in v1.3.0** — Advanced architecture prevents linking unused sensitive frameworks (Location, Bluetooth, etc.), keeping your binary size small and App Store reviewers happy.
+- **🍎 iOS Framework Isolation** — Each permission type is isolated to its own handler, preventing unused Apple frameworks (Location, Bluetooth, Motion, etc.) from being linked into your binary. No more phantom `NSUsageDescription` requirements.
 - **🛡️ iOS Crash-Guard** — Automatically validates `Info.plist` keys before requesting, preventing the dreaded `SIGABRT` production crashes.
 - **🔄 Android Process-Death Resilience** — The only library that handles system-initiated process death gracefully with zero timeouts.
 - **⚡ iOS Deadlock Fix** — Built-in protection against the infamous Camera/Microphone first-request deadlock.
-- **📦 17+ Native Permissions** — Deep, native integration for Camera, Gallery (Partial access!), Location, Bluetooth, Motion, and more.
-- **🛠️ Service Intelligence** — Don't just check permissions; check if services (GPS, Bluetooth) are actually enabled.
-- **🧩 Custom Extensibility** — Use `RawPermission` to support new OS versions (Android 15+, iOS 18+) instantly without library updates.
-- **🧪 Ultra-Robust Testing** — **430+ automated tests** covering every platform edge case (Android 14+, iOS 18+), state invariant, and UI interaction. 100% pass rate.
+- **📦 17 Native Permissions** — Deep, native integration for Camera, Gallery (Partial access!), Location, Bluetooth, Motion, Health, and more.
+- **🛠️ Service Intelligence** — Don't just check permissions; check if services (GPS, Bluetooth, Health) are actually enabled.
+- **🧩 Custom Extensibility** — Use `RawPermission` to support new OS permissions (Android 15+, iOS 18+) instantly without library updates.
+- **🧪 Ultra-Robust Testing** — **782 automated tests** (423 Android + 359 iOS Simulator) covering every platform edge case, state invariant, and UI interaction. 100% pass rate.
 
 ---
 
@@ -42,7 +42,6 @@ Grant is not just another permission library. It is a **production-hardened engi
 ### 1️⃣ Define your logic (Logic Layer)
 ```kotlin
 class CameraViewModel(private val grantManager: GrantManager) : ViewModel() {
-    // 💡 Works in pure common code!
     val cameraGrant = GrantHandler(
         grantManager = grantManager,
         grant = AppGrant.CAMERA,
@@ -51,7 +50,7 @@ class CameraViewModel(private val grantManager: GrantManager) : ViewModel() {
 
     fun capturePhoto() {
         cameraGrant.request {
-            // ✅ Only runs when permission is FULLY granted
+            // Only runs when permission is FULLY granted
             cameraEngine.startCapture()
         }
     }
@@ -62,7 +61,7 @@ class CameraViewModel(private val grantManager: GrantManager) : ViewModel() {
 ```kotlin
 @Composable
 fun CameraScreen(viewModel: CameraViewModel) {
-    // 💡 Handles Rationale, Denied, and Settings dialogs automatically
+    // Handles Rationale, Denied, and Settings dialogs automatically
     GrantDialog(handler = viewModel.cameraGrant)
 
     IconButton(onClick = { viewModel.capturePhoto() }) {
@@ -75,7 +74,7 @@ fun CameraScreen(viewModel: CameraViewModel) {
 Permission is only half the battle. In production, you also need to check if the hardware service (GPS, Bluetooth) is actually enabled.
 
 ```kotlin
-// 💡 Use GrantAndServiceChecker to combine both worlds
+// Use GrantAndServiceChecker to combine both worlds
 class LocationViewModel(
     private val checker: GrantAndServiceChecker,
     private val grantManager: GrantManager
@@ -84,10 +83,10 @@ class LocationViewModel(
     fun startTracking() {
         viewModelScope.launch {
             when (val status = checker.checkLocationReady()) {
-                LocationReadyStatus.Ready -> sensor.start()
+                LocationReadyStatus.Ready          -> sensor.start()
                 LocationReadyStatus.ServiceDisabled -> _uiState.showEnableGPS()
-                LocationReadyStatus.GrantDenied -> requestPermission() // Use GrantHandler
-                LocationReadyStatus.BothRequired -> _uiState.showTotalFailure()
+                LocationReadyStatus.GrantDenied    -> requestPermission()
+                LocationReadyStatus.BothRequired   -> _uiState.showTotalFailure()
             }
         }
     }
@@ -105,33 +104,51 @@ Most KMP permission libraries are simple wrappers around native APIs. Grant is a
 | **No Lifecycle Binding** | ✅ | ❌ (needs BindEffect) | ❌ (needs Activity) |
 | **ViewModel Support** | **Full** | Partial | ❌ |
 | **iOS Crash Prevention** | ✅ | ❌ | ❌ |
+| **iOS Framework Isolation** | ✅ | ❌ | N/A |
 | **Android Deadlock Fix** | ✅ | ❌ | ❌ |
 | **Process Death Recovery** | **Native** | ❌ | Manual |
-| **Service Checks (GPS/BT)** | ✅ | ❌ | ❌ |
+| **Service Checks (GPS/BT/Health)** | ✅ | ❌ | ❌ |
 | **Android 14 Partial Access** | ✅ | Partial | ✅ |
-| **iOS Deadlock Fix** | ✅ | ❌ | N/A |
 | **Custom Permissions** | ✅ | Limited | Limited |
 
 ---
 
 ## 🗺️ Platform Support & Coverage
 
-| Permission | Android | iOS | Production Notes |
+| Permission | Android | iOS | Notes |
 | :--- | :---: | :---: | :--- |
-| **Camera** | ✅ | ✅ | iOS Main-thread safe + Deadlock fix |
-| **Gallery** | ✅ | ✅ | Full Android 14+ Partial Access support |
-| **Location** | ✅ | ✅ | Intelligent GPS service check included |
-| **Notifications** | ✅ | ✅ | Handles Android 13+ and legacy flows |
-| **Bluetooth** | ✅ | ✅ | Service status check + Scan/Adv support |
-| **Contacts** | ✅ | ✅ | Support for read-only vs full access |
-| **Calendar** | ✅ | ✅ | iOS 17+ Privacy Manifest compliant |
-| **Motion** | ✅ | ✅ | Simulator-ready (returns mock on Sim) |
+| **Camera** | ✅ | ✅ | iOS main-thread safe + deadlock fix |
+| **Microphone** | ✅ | ✅ | Shares AVFoundation handler with Camera |
+| **Gallery (full)** | ✅ | ✅ | Android 14+ partial access (`PARTIAL_GRANTED`) |
+| **Gallery (images only)** | ✅ | ✅ | `AppGrant.GALLERY_IMAGES_ONLY` |
+| **Gallery (video only)** | ✅ | ✅ | `AppGrant.GALLERY_VIDEO_ONLY` |
+| **Storage (legacy)** | ✅ | ✅ | Pre-API 33 fallback |
+| **Location (when in use)** | ✅ | ✅ | Intelligent GPS service check included |
+| **Location (always)** | ✅ | ✅ | Android 2-step background flow handled |
+| **Notifications** | ✅ | ✅ | Android 13+ and legacy flows |
+| **Bluetooth** | ✅ | ✅ | Service status check + Scan/Connect |
+| **Bluetooth Advertise** | ✅ | ✅ | `AppGrant.BLUETOOTH_ADVERTISE` |
+| **Contacts (full)** | ✅ | ✅ | Read + Write access |
+| **Contacts (read-only)** | ✅ | ✅ | `AppGrant.READ_CONTACTS` |
+| **Calendar (full)** | ✅ | ✅ | iOS 17+ `FullAccess` / `WriteOnly` mapped correctly |
+| **Calendar (read-only)** | ✅ | ✅ | `AppGrant.READ_CALENDAR` |
+| **Motion / Activity** | ✅ | ✅ | Simulator-aware (safe mock on Simulator) |
+| **Schedule Exact Alarm** | ✅ | ✅ | Android 12+ `SCHEDULE_EXACT_ALARM` |
+
+### Service Checks (`ServiceType`)
+
+| Service | Android | iOS |
+| :--- | :---: | :---: |
+| **GPS / Location** | ✅ | ✅ |
+| **Bluetooth** | ✅ | ✅ |
+| **Wi-Fi** | ✅ | ✅ |
+| **NFC** | ✅ | — |
+| **Camera hardware** | ✅ | ✅ |
+| **Health Connect / HealthKit** | ✅ | ✅ |
 
 ---
 
 ## 📦 Installation
-
-Add the ultimate permission engine to your `commonMain`:
 
 ```kotlin
 // shared/build.gradle.kts
@@ -139,25 +156,32 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation("dev.brewkits:grant-core:1.3.0")
-            implementation("dev.brewkits:grant-compose:1.3.0") // Optional UI pack
-            implementation("dev.brewkits:grant-core-koin:1.3.0") // Optional Koin DI support
+            implementation("dev.brewkits:grant-compose:1.3.0")    // Optional: Compose dialogs
+            implementation("dev.brewkits:grant-core-koin:1.3.0")  // Optional: Koin DI support
         }
     }
 }
 ```
 
 > [!IMPORTANT]
-> For projects targeting **Web (JS)** or **Desktop (JVM)**, please use an intermediate `mobileMain` source set. [Read the Guide](docs/DEPENDENCY_MANAGEMENT.md).
+> For projects targeting **Web (JS)** or **Desktop (JVM)**, use an intermediate `mobileMain` source set to avoid linking iOS/Android dependencies on unsupported platforms. [Read the Guide](docs/DEPENDENCY_MANAGEMENT.md).
+
+> [!NOTE]
+> **Koin users**: The Koin integration was moved to `grant-core-koin` in v1.3.0. Add the new artifact alongside `grant-core` and replace `GrantPlatformModule` imports. See the [Migration Guide](docs/MIGRATION_GUIDE.md).
 
 ---
 
 ## 📖 Deep Dives
 
-*   [**Architecture Guide**](docs/grant-core/ARCHITECTURE.md) - How we handle concurrency and state.
-*   [**iOS Setup**](docs/platform-specific/ios/info-plist.md) - Critical Info.plist configuration.
-*   [**Android Reliability**](docs/FIX_DEAD_CLICK_ANDROID.md) - How we fix "Dead Clicks".
-*   [**Service Checking**](docs/grant-core/SERVICES.md) - Beyond just permissions.
-*   [**Manual Injection**](docs/MANUAL_INJECTION.md) - Using Grant without Koin/DI.
+| Guide | Description |
+| :--- | :--- |
+| [Architecture](docs/grant-core/ARCHITECTURE.md) | How concurrency, state machines, and the mutex flow work |
+| [iOS Setup](docs/platform-specific/ios/info-plist.md) | Critical `Info.plist` configuration — read before shipping |
+| [Migration Guide](docs/MIGRATION_GUIDE.md) | Upgrading from v1.2.x to v1.3.0 |
+| [Service Checking](docs/grant-core/SERVICES.md) | Combining permission + hardware service checks |
+| [Manual Injection](docs/MANUAL_INJECTION.md) | Using Grant without any DI framework |
+| [Android Reliability](docs/FIX_DEAD_CLICK_ANDROID.md) | How we fix "Dead Clicks" on Android |
+| [Best Practices](docs/BEST_PRACTICES.md) | Patterns for production apps |
 
 ---
 
@@ -168,6 +192,7 @@ We are on a mission to make permissions a "solved problem" for KMP. Join us!
 1. Check out [CONTRIBUTING.md](CONTRIBUTING.md).
 2. Run `./gradlew :grant-core:allTests` to ensure stability.
 3. Submit your PR.
+
 ---
 
 ## ⚖️ License
