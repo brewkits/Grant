@@ -10,7 +10,7 @@ plugins {
 subprojects {
     configurations.all {
         resolutionStrategy {
-            force("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0")
+            force("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
         }
     }
 }
