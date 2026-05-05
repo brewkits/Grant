@@ -1,6 +1,6 @@
 # Migration Guide to Grant
 
-**Version:** 1.3.0
+**Version:** 1.3.1
 **Last Updated:** April 29, 2026
 
 This guide helps you migrate from previous versions of Grant or other permission libraries.
@@ -9,7 +9,7 @@ This guide helps you migrate from previous versions of Grant or other permission
 
 ## 📚 Table of Contents
 
-1. [Upgrading from Grant 1.2.x to 1.3.0](#upgrading-from-grant-12x-to-130)
+1. [Upgrading from Grant 1.2.x to 1.3.1](#upgrading-from-grant-12x-to-130)
 2. [From moko-permissions](#from-moko-permissions)
 3. [From Google Accompanist](#from-google-accompanist)
 4. [From Custom Implementation](#from-custom-implementation)
@@ -19,11 +19,11 @@ This guide helps you migrate from previous versions of Grant or other permission
 
 ---
 
-## 1️⃣ Upgrading from Grant 1.2.x to 1.3.0
+## 1️⃣ Upgrading from Grant 1.2.x to 1.3.1
 
 ### Overview
 
-Version 1.3.0 is a major release focusing on architectural purity and iOS stability. The biggest change is the extraction of Koin into its own module.
+Version 1.3.1 is a major release focusing on architectural purity and iOS stability. The biggest change is the extraction of Koin into its own module.
 
 ### What Changed?
 
@@ -34,7 +34,7 @@ Version 1.3.0 is a major release focusing on architectural purity and iOS stabil
 ### Step-by-Step Upgrade
 
 #### 1. Update Version
-Update your `build.gradle.kts` to version `1.3.0`.
+Update your `build.gradle.kts` to version `1.3.1`.
 
 #### 2. Handle Koin (If you use it)
 If you were using `grantModule` or `grantPlatformModule`, you must now add the `grant-core-koin` dependency:
@@ -42,8 +42,8 @@ If you were using `grantModule` or `grantPlatformModule`, you must now add the `
 ```kotlin
 // shared/build.gradle.kts
 commonMain.dependencies {
-    implementation("dev.brewkits:grant-core:1.3.0")
-    implementation("dev.brewkits:grant-core-koin:1.3.0") // New module!
+    implementation("dev.brewkits:grant-core:1.3.1")
+    implementation("dev.brewkits:grant-core-koin:1.3.1") // New module!
 }
 ```
 

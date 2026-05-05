@@ -1,3 +1,10 @@
+## [1.3.1] - 2026-05-05
+
+### 🛡️ Hotfix: iOS Mutex Deadlock (Issue #29)
+- **CRITICAL**: Fixed a deadlock on iOS where calling `request()` would hang indefinitely without showing a system dialog. This was caused by a non-reentrant Mutex acquisition pattern in `PlatformGrantDelegate`.
+- **Improved iOS Stability**: Unified internal status checking to bypass public locks, ensuring re-entrant calls within the platform delegates are safe.
+- **Regression Tests**: Integrated a new test suite that validates sequential and concurrent permission requests on iOS to prevent future regressions.
+
 ## [1.3.0] - 2026-04-28
 
 ### 🛡️ Production Stabilization & Quality

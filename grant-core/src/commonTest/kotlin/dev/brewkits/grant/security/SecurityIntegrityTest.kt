@@ -102,4 +102,26 @@ class SecurityIntegrityTest {
         
         assertFalse(invoked, "Callback should have been cleared after dismissal")
     }
+
+    /**
+     * SEC-004: Data Isolation in Store
+     * Ensures that clearing one permission does not impact others.
+     */
+    @Test
+    fun `should maintain strict isolation between different permission records`() = runTest {
+        val store = InMemoryGrantStore()
+        
+        store.setStatus(AppGrant.CAMERA, GrantStatus.GRANTED)
+        store.setRequested(AppGrant.CAMERA)
+        
+        store.setStatus(AppGrant.LOCATION, GrantStatus.DENIED)
+        
+        // Act: Clear CAMERA
+        store.clear(AppGrant.CAMERA)
+        
+        // Verify: CAMERA is gone, LOCATION remains
+        assertNull(store.getStatus(AppGrant.CAMERA))
+        assertFalse(store.isRequestedBefore(AppGrant.CAMERA))
+        assertEquals(GrantStatus.DENIED, store.getStatus(AppGrant.LOCATION))
+    }
 }

@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.3.1] - 2026-05-05
+
+### 🛡️ Critical Bug Fix: iOS Deadlock
+- **iOS Mutex Re-entrancy Fix**: Resolved a critical deadlock in `PlatformGrantDelegate.ios.kt` where calling `request()` would hang indefinitely. This occurred because `requestInternal()` incorrectly called the public `checkStatus()` (which acquires a per-permission Mutex) while the same Mutex was already held by the parent `request()` call.
+- **Regression Safety**: Added `Issue29IosMutexDeadlockTest` to ensure this class of deadlock is automatically detected in the future using `withTimeout` guards.
+
 ## [1.3.0] - 2026-04-29
 
 ### 🚀 Major Architectural Shift: Koin Decoupling

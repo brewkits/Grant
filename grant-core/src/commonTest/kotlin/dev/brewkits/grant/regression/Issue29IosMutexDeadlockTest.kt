@@ -12,7 +12,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * Regression tests for Issue #29: iOS request() deadlock in v1.3.0.
+ * Regression tests for Issue #29: iOS request() deadlock in v1.3.0 (Fixed in v1.3.1).
  *
  * Root cause
  * ----------
