@@ -1,6 +1,7 @@
 package dev.brewkits.grant
 
 import dev.brewkits.grant.impl.PlatformGrantDelegate
+import kotlinx.coroutines.withTimeout
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -248,5 +249,89 @@ class IosGrantDelegateTest {
         assertTrue(GrantStatus.DENIED in GrantStatus.entries)
         assertTrue(GrantStatus.DENIED_ALWAYS in GrantStatus.entries)
         assertTrue(GrantStatus.NOT_DETERMINED in GrantStatus.entries)
+    }
+
+    // ====================================================================
+    // Group F: request() must not deadlock — regression guard for Issue #29
+    //
+    // Root cause: requestInternal() called the public checkStatus() while holding
+    // the per-permission Mutex. Since Kotlin Mutex is non-reentrant, every call
+    // to request() deadlocked silently on iOS. The fix calls checkStatusInternal()
+    // directly. These tests use withTimeout to convert a deadlock into a test failure
+    // rather than a hung test runner.
+    //
+    // Test selection rationale (simulator-safe, no system dialog):
+    //   - SCHEDULE_EXACT_ALARM: always GRANTED via AlwaysGrantedHandler, no plist needed
+    //   - Permissions missing their Info.plist key: handler returns DENIED_ALWAYS
+    //     immediately, before any system dialog is shown. The deadlock would have
+    //     occurred before this early-return, so these tests are a valid regression guard.
+    // ====================================================================
+
+    @Test
+    fun `request SCHEDULE_EXACT_ALARM does not deadlock`() = kotlinx.coroutines.test.runTest {
+        val result = withTimeout(3_000L) { delegate.request(AppGrant.SCHEDULE_EXACT_ALARM) }
+        assertEquals(GrantStatus.GRANTED, result, "SCHEDULE_EXACT_ALARM must return GRANTED on iOS")
+    }
+
+    @Test
+    fun `request CAMERA does not deadlock on simulator`() = kotlinx.coroutines.test.runTest {
+        // No NSCameraUsageDescription in test environment → handler returns DENIED_ALWAYS.
+        // The deadlock from Issue #29 occurred before this early-return, making this a valid guard.
+        val result = withTimeout(3_000L) { delegate.request(AppGrant.CAMERA) }
+        assertTrue(result in validStatuses, "request(CAMERA) must complete and return a valid status")
+    }
+
+    @Test
+    fun `request MICROPHONE does not deadlock on simulator`() = kotlinx.coroutines.test.runTest {
+        val result = withTimeout(3_000L) { delegate.request(AppGrant.MICROPHONE) }
+        assertTrue(result in validStatuses, "request(MICROPHONE) must complete and return a valid status")
+    }
+
+    @Test
+    fun `request GALLERY does not deadlock on simulator`() = kotlinx.coroutines.test.runTest {
+        val result = withTimeout(3_000L) { delegate.request(AppGrant.GALLERY) }
+        assertTrue(result in validStatuses, "request(GALLERY) must complete and return a valid status")
+    }
+
+    @Test
+    fun `request LOCATION does not deadlock on simulator`() = kotlinx.coroutines.test.runTest {
+        val result = withTimeout(3_000L) { delegate.request(AppGrant.LOCATION) }
+        assertTrue(result in validStatuses, "request(LOCATION) must complete and return a valid status")
+    }
+
+    @Test
+    fun `request CONTACTS does not deadlock on simulator`() = kotlinx.coroutines.test.runTest {
+        val result = withTimeout(3_000L) { delegate.request(AppGrant.CONTACTS) }
+        assertTrue(result in validStatuses, "request(CONTACTS) must complete and return a valid status")
+    }
+
+    @Test
+    fun `request BLUETOOTH does not deadlock on simulator`() = kotlinx.coroutines.test.runTest {
+        val result = withTimeout(3_000L) { delegate.request(AppGrant.BLUETOOTH) }
+        assertTrue(result in validStatuses, "request(BLUETOOTH) must complete and return a valid status")
+    }
+
+    @Test
+    fun `request batch of permissions does not deadlock`() = kotlinx.coroutines.test.runTest {
+        val grants = listOf(
+            AppGrant.SCHEDULE_EXACT_ALARM,
+            AppGrant.CAMERA,
+            AppGrant.MICROPHONE,
+            AppGrant.LOCATION
+        )
+        val results = withTimeout(5_000L) { delegate.request(grants) }
+        assertEquals(grants.size, results.size, "Batch request must return a result for every permission")
+        results.values.forEach { status ->
+            assertTrue(status in validStatuses, "Each result must be a valid GrantStatus, got: $status")
+        }
+    }
+
+    @Test
+    fun `checkStatus followed immediately by request does not deadlock`() = kotlinx.coroutines.test.runTest {
+        withTimeout(5_000L) {
+            delegate.checkStatus(AppGrant.SCHEDULE_EXACT_ALARM)
+            delegate.request(AppGrant.SCHEDULE_EXACT_ALARM)
+            delegate.checkStatus(AppGrant.SCHEDULE_EXACT_ALARM)
+        }
     }
 }

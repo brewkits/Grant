@@ -2,7 +2,7 @@
 
 > **Related:** Issue #25 — *"Apple wants me to add why I have used them, but I have not used them"*  
 > **Severity:** 🔴 Critical (causes App Store rejection)  
-> **Status:** ✅ RESOLVED in v1.3.0
+> **Status:** ✅ RESOLVED in v1.3.1
 
 ---
 
@@ -87,7 +87,7 @@ Grant currently bundles **all 17 permissions** into a single `grant-core` module
 ```
 User only needs CAMERA + MICROPHONE
        ↓
-Add dependency: implementation("dev.brewkits:grant-core:1.3.0")
+Add dependency: implementation("dev.brewkits:grant-core:1.3.1")
        ↓
 Binary ships with: CoreLocation + EventKit + CoreMotion + CoreBluetooth + ...
        ↓

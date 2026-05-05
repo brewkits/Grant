@@ -53,9 +53,9 @@ This document explains the architectural decisions behind KMP Grant library and 
 └──────────────────┘           └──────────────────┘
 ```
 
-## 🍎 iOS Framework Isolation (NEW in v1.3.0)
+## 🍎 iOS Framework Isolation (NEW in v1.3.1)
 
-To avoid Apple App Store rejections due to "unused sensitive permissions" (e.g., your app doesn't use Location but the library contains Location code), Grant v1.3.0 introduced a strict isolation architecture.
+To avoid Apple App Store rejections due to "unused sensitive permissions" (e.g., your app doesn't use Location but the library contains Location code), Grant v1.3.1 introduced a strict isolation architecture.
 
 ### The Problem
 Kotlin/Native's dead code elimination (DCE) sometimes fails to remove framework linkages if they are referenced in a large, monolithic platform delegate. This causes the App Store static scanner to detect frameworks like `CoreLocation` or `CoreBluetooth` even if your app never requests them.

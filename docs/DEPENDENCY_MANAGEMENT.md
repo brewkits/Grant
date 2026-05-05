@@ -13,7 +13,7 @@ Grant library has the following dependencies:
 - **AndroidX Activity Compose** `1.12.1` (Android only) - For permission requests
 
 ### Optional Dependencies
-- **Koin** `4.1.1` - For dependency injection (OPTIONAL). Use `dev.brewkits:grant-core-koin:1.3.0`.
+- **Koin** `4.1.1` - For dependency injection (OPTIONAL). Use `dev.brewkits:grant-core-koin:1.3.1`.
 
 ---
 
@@ -26,7 +26,7 @@ Grant library uses **Koin 4.1.1** for optional dependency injection support.
 
 ✅ **Koin is OPTIONAL** - You don't need Koin to use Grant library!
 
-As of version **1.3.0**, Koin support has been moved to a separate module to ensure `grant-core` remains a pure, dependency-free artifact.
+As of version **1.3.1**, Koin support has been moved to a separate module to ensure `grant-core` remains a pure, dependency-free artifact.
 
 1. **Manual Creation (Recommended)** - Use `grant-core`
 2. **Koin DI Modules** - Use `grant-core-koin`
