@@ -215,7 +215,10 @@ actual class PlatformGrantDelegate(
     private suspend fun requestInternal(grant: GrantPermission): GrantStatus {
         mapsMutex.withLock { statusCacheMap.remove(grant.identifier) }
 
-        val currentStatus = checkStatus(grant)
+        // Must call checkStatusInternal directly — calling the public checkStatus() here would
+        // attempt to re-acquire the same per-permission mutex already held by request(), causing
+        // a permanent deadlock on iOS (Kotlin Mutex is non-reentrant).
+        val currentStatus = checkStatusInternal(grant)
         if (currentStatus == GrantStatus.GRANTED || currentStatus == GrantStatus.PARTIAL_GRANTED) {
             return currentStatus
         }
