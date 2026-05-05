@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "dev.brewkits"
-version = "1.3.0"
+version = "1.3.1"
 
 kotlin {
     androidTarget {
@@ -105,7 +105,7 @@ publishing {
     publications.configureEach {
         (this as? MavenPublication)?.let {
             groupId = "dev.brewkits"
-            version = "1.3.0"
+            version = "1.3.1"
 
             pom {
                 name.set("KMP Grant Compose")
