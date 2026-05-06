@@ -55,13 +55,53 @@ kotlin {
 android {
     namespace = "dev.brewkits.grant.koin"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
+compileOptions {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+}
 
-    defaultConfig {
-        minSdk = libs.versions.android.minSdk.get().toInt()
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+publishing {
+repositories {
+    maven {
+        name = "MavenCentralLocal"
+        url = uri(layout.buildDirectory.dir("maven-central-staging"))
     }
 }
+
+publications.configureEach {
+    (this as? MavenPublication)?.let {
+        groupId = "dev.brewkits"
+        version = "1.3.1"
+
+        pom {
+            name.set("KMP Grant Koin")
+            description.set("Koin dependency injection support for KMP Grant")
+            url.set("https://github.com/brewkits/grant")
+
+            licenses {
+                license {
+                    name.set("The Apache License, Version 2.0")
+                    url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
+                }
+            }
+
+            developers {
+                developer {
+                    id.set("brewkits")
+                    name.set("Brewkits")
+                    email.set("vietnguyentuan@gmail.com")
+                }
+            }
+
+            scm {
+                connection.set("scm:git:git://github.com/brewkits/Grant.git")
+                developerConnection.set("scm:git:ssh://github.com/brewkits/Grant.git")
+                url.set("https://github.com/brewkits/Grant")
+            }
+        }
+    }
+}
+}
+
+

@@ -6,7 +6,7 @@
 
 set -e
 
-VERSION="1.3.0"
+VERSION="1.3.1"
 GROUP_PATH="dev/brewkits"
 BUNDLE_NAME="grant-v${VERSION}-bundle.jar"
 OUTPUT_DIR="maven-central-artifacts/v${VERSION}"
@@ -36,7 +36,7 @@ echo ""
 # Step 1: Build and publish
 echo "🔨 Building artifacts..."
 ./gradlew clean
-./gradlew :grant-core:build :grant-compose:build
+./gradlew :grant-core:build :grant-compose:build :grant-core-koin:build
 ./gradlew publishAllPublicationsToMavenCentralLocalRepository
 
 echo "✅ Build complete"
@@ -101,6 +101,32 @@ find . -type f \( -name "*.jar" -o -name "*.pom" -o -name "*.module" \
     [ ! -f "$file.asc" ] && gpg --batch --yes --pinentry-mode loopback --armor --detach-sign "$file" 2>/dev/null
 done
 
+# Process grant-core-koin
+cd "$ROOT_DIR/grant-core-koin/build/maven-central-staging/$GROUP_PATH"
+
+find . -type f \( -name "*.jar" -o -name "*.pom" -o -name "*.module" \
+    -o -name "*.klib" -o -name "*.aar" -o -name "*.json" -o -name "*.zip" \) \
+    ! -name "*.asc" ! -name "*.md5" ! -name "*.sha1" | while read file; do
+
+    filename=$(basename "$file")
+    echo "  Processing: $filename"
+
+    # MD5
+    [ ! -f "$file.md5" ] && (md5 -q "$file" 2>/dev/null || md5sum "$file" | awk '{print $1}') > "$file.md5"
+
+    # SHA1
+    [ ! -f "$file.sha1" ] && shasum -a 1 "$file" | awk '{print $1}' > "$file.sha1"
+
+    # SHA256
+    [ ! -f "$file.sha256" ] && shasum -a 256 "$file" | awk '{print $1}' > "$file.sha256"
+
+    # SHA512
+    [ ! -f "$file.sha512" ] && shasum -a 512 "$file" | awk '{print $1}' > "$file.sha512"
+
+    # GPG signature
+    [ ! -f "$file.asc" ] && gpg --batch --yes --pinentry-mode loopback --armor --detach-sign "$file" 2>/dev/null
+done
+
 cd "$ROOT_DIR"
 
 echo ""
@@ -129,6 +155,14 @@ done
 # Copy grant-compose artifacts
 echo "  Copying: grant-compose"
 find grant-compose/build/maven-central-staging/$GROUP_PATH -mindepth 1 -maxdepth 1 -type d | while read variant; do
+    variant_name=$(basename "$variant")
+    mkdir -p "$TEMP_BUNDLE/$GROUP_PATH/$variant_name/$VERSION"
+    cp -r "$variant/$VERSION/"* "$TEMP_BUNDLE/$GROUP_PATH/$variant_name/$VERSION/" 2>/dev/null || true
+done
+
+# Copy grant-core-koin artifacts
+echo "  Copying: grant-core-koin"
+find grant-core-koin/build/maven-central-staging/$GROUP_PATH -mindepth 1 -maxdepth 1 -type d | while read variant; do
     variant_name=$(basename "$variant")
     mkdir -p "$TEMP_BUNDLE/$GROUP_PATH/$variant_name/$VERSION"
     cp -r "$variant/$VERSION/"* "$TEMP_BUNDLE/$GROUP_PATH/$variant_name/$VERSION/" 2>/dev/null || true
