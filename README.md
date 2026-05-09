@@ -28,12 +28,12 @@ Grant is not just another permission library. It is a **production-hardened engi
 - **🎯 Pure Logic-First API** — Works anywhere: ViewModels, Repositories, or Composables. **No Activity or Fragment references required.**
 - **🍎 iOS Framework Isolation** — Each permission type is isolated to its own handler, preventing unused Apple frameworks (Location, Bluetooth, Motion, etc.) from being linked into your binary. No more phantom `NSUsageDescription` requirements.
 - **🛡️ iOS Crash-Guard** — Automatically validates `Info.plist` keys before requesting, preventing the dreaded `SIGABRT` production crashes.
-- **🔄 Android Process-Death Resilience** — The only library that handles system-initiated process death gracefully with zero timeouts.
-- **⚡ iOS Deadlock Fix** — Built-in protection against the infamous Camera/Microphone first-request deadlock.
-- **📦 17 Native Permissions** — Deep, native integration for Camera, Gallery (Partial access!), Location, Bluetooth, Motion, Health, and more.
-- **🛠️ Service Intelligence** — Don't just check permissions; check if services (GPS, Bluetooth, Health) are actually enabled.
-- **🧩 Custom Extensibility** — Use `RawPermission` to support new OS permissions (Android 15+, iOS 18+) instantly without library updates.
-- **🧪 Ultra-Robust Testing** — **782 automated tests** (423 Android + 359 iOS Simulator) covering every platform edge case, state invariant, and UI interaction. 100% pass rate.
+- **🔄 Android Process-Death Resilience** — The only library that handles system-initiated process death gracefully with zero timeouts (via `SavedStateHandle`).
+- **⚡ Reentrant Locking** — Custom `ReentrantMutex` prevents deadlocks in complex nested permission flows.
+- **📦 18 Native Permissions** — Deep, native integration for Camera, Gallery, Location, Bluetooth, NEARBY_WIFI_DEVICES, and more.
+- **🎨 Modern M3 UI** — Out-of-the-box support for Material 3 `BasicAlertDialog` in the Compose module.
+- **🧩 Custom Extensibility** — Register your own iOS handlers via `IosPermissionHandlerRegistry` or use `RawPermission`.
+- **🧪 Ultra-Robust Testing** — **800+ automated tests** covering every platform edge case, state invariant, and UI interaction. 100% pass rate.
 
 ---
 
@@ -48,24 +48,43 @@ class CameraViewModel(private val grantManager: GrantManager) : ViewModel() {
         scope = viewModelScope
     )
 
-    fun capturePhoto() {
-        cameraGrant.request {
-            // Only runs when permission is FULLY granted
-            cameraEngine.startCapture()
+    // Option A: Suspend function (Modern Coroutines)
+    suspend fun startCapture() {
+        val status = cameraGrant.requestSuspend()
+        if (status == GrantStatus.GRANTED) {
+            cameraEngine.start()
         }
+    }
+
+    // Option B: Flow-based (Reactive)
+    val captureFlow = cameraGrant.requestFlow()
+        .filter { it == GrantStatus.GRANTED }
+        .onEach { cameraEngine.start() }
+}
+```
+
+### 2️⃣ Orchestrate Sequential Flows (GrantFlow DSL)
+```kotlin
+val scanFlow = grantFlow {
+    // 1. First, we need Bluetooth
+    val btStatus = bluetoothHandler.requestSuspend()
+    
+    // 2. If granted, we need Location (for scanning on some Android versions)
+    if (btStatus == GrantStatus.GRANTED) {
+        locationHandler.requestSuspend()
     }
 }
 ```
 
-### 2️⃣ Drop in the UI (Presentation Layer)
+### 3️⃣ Drop in the UI (Presentation Layer)
 ```kotlin
 @Composable
 fun CameraScreen(viewModel: CameraViewModel) {
-    // Handles Rationale, Denied, and Settings dialogs automatically
+    // Automatically uses Material 3 BasicAlertDialog for a modern look
     GrantDialog(handler = viewModel.cameraGrant)
 
-    IconButton(onClick = { viewModel.capturePhoto() }) {
-        Icon(Icons.Default.Camera, contentDescription = "Capture")
+    Button(onClick = { viewModel.viewModelScope.launch { viewModel.startCapture() } }) {
+        Text("Start Camera")
     }
 }
 ```
