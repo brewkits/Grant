@@ -9,7 +9,7 @@ class GrantTypeTest {
     @Test
     fun testAllGrantTypesExist() {
         val grants = AppGrant.entries
-        assertEquals(17, grants.size, "Expected 17 grant types")
+        assertEquals(18, grants.size, "Expected 18 grant types")
     }
 
     @Test
@@ -33,6 +33,7 @@ class GrantTypeTest {
         assertTrue(grants.contains(AppGrant.MOTION), "MOTION grant should exist")
         assertTrue(grants.contains(AppGrant.CALENDAR), "CALENDAR grant should exist")
         assertTrue(grants.contains(AppGrant.READ_CALENDAR), "READ_CALENDAR grant should exist")
+        assertTrue(grants.contains(AppGrant.NEARBY_WIFI_DEVICES), "NEARBY_WIFI_DEVICES grant should exist")
     }
 
     @Test
@@ -54,6 +55,7 @@ class GrantTypeTest {
         assertEquals("MOTION", AppGrant.MOTION.name)
         assertEquals("CALENDAR", AppGrant.CALENDAR.name)
         assertEquals("READ_CALENDAR", AppGrant.READ_CALENDAR.name)
+        assertEquals("NEARBY_WIFI_DEVICES", AppGrant.NEARBY_WIFI_DEVICES.name)
     }
 
     @Test
@@ -75,6 +77,7 @@ class GrantTypeTest {
         assertEquals(14, AppGrant.MOTION.ordinal)
         assertEquals(15, AppGrant.CALENDAR.ordinal)
         assertEquals(16, AppGrant.READ_CALENDAR.ordinal)
+        assertEquals(17, AppGrant.NEARBY_WIFI_DEVICES.ordinal)
     }
 
     @Test
@@ -96,5 +99,6 @@ class GrantTypeTest {
         assertEquals(AppGrant.MOTION, AppGrant.valueOf("MOTION"))
         assertEquals(AppGrant.CALENDAR, AppGrant.valueOf("CALENDAR"))
         assertEquals(AppGrant.READ_CALENDAR, AppGrant.valueOf("READ_CALENDAR"))
+        assertEquals(AppGrant.NEARBY_WIFI_DEVICES, AppGrant.valueOf("NEARBY_WIFI_DEVICES"))
     }
 }

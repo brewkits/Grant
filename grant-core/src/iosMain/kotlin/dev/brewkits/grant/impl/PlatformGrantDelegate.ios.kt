@@ -16,6 +16,7 @@ import dev.brewkits.grant.handlers.LocationPermissionHandler
 import dev.brewkits.grant.handlers.MotionPermissionHandler
 import dev.brewkits.grant.handlers.NotificationPermissionHandler
 import dev.brewkits.grant.handlers.PhotoPermissionHandler
+import dev.brewkits.grant.handlers.IosPermissionHandlerRegistry
 import dev.brewkits.grant.utils.GrantLogger
 import dev.brewkits.grant.utils.hasInfoPlistKey
 import dev.brewkits.grant.utils.runOnMain
@@ -30,6 +31,8 @@ import platform.darwin.dispatch_get_main_queue
 import platform.Foundation.NSBundle
 import platform.Foundation.NSClassFromString
 import platform.Foundation.valueForKey
+
+import dev.brewkits.grant.utils.ReentrantMutex
 
 private const val TAG = "iOSGrantDelegate"
 
@@ -71,7 +74,7 @@ actual class PlatformGrantDelegate(
 
     /** Protects all map structures (mutexMapInternal, statusCacheMap). */
     private val mapsMutex = Mutex()
-    private val mutexMapInternal = mutableMapOf<String, Mutex>()
+    private val mutexMapInternal = mutableMapOf<String, ReentrantMutex>()
     private val statusCacheMap = mutableMapOf<String, Pair<GrantStatus, Long>>()
 
     private companion object {
@@ -79,8 +82,8 @@ actual class PlatformGrantDelegate(
         const val STATUS_CACHE_TTL_MS = 200L
     }
 
-    private suspend fun getMutexFor(identifier: String): Mutex =
-        mapsMutex.withLock { mutexMapInternal.getOrPut(identifier) { Mutex() } }
+    private suspend fun getMutexFor(identifier: String): ReentrantMutex =
+        mapsMutex.withLock { mutexMapInternal.getOrPut(identifier) { ReentrantMutex() } }
 
     private fun getMonotonicTimeMillis(): Long =
         (NSProcessInfo.processInfo.systemUptime * 1000).toLong()
@@ -119,7 +122,19 @@ actual class PlatformGrantDelegate(
                     if (getMonotonicTimeMillis() - timestamp < STATUS_CACHE_TTL_MS) return@withLock cachedStatus
                 }
             }
-            val status = checkStatusInternal(grant)
+            
+            // Perform actual status check logic inline
+            val status = if (grant is RawPermission) {
+                val iosKey = grant.iosUsageKey
+                if (iosKey != null && !hasInfoPlistKey(iosKey)) GrantStatus.DENIED_ALWAYS
+                else if (store.isRawPermissionRequested(grant.identifier)) GrantStatus.DENIED
+                else GrantStatus.NOT_DETERMINED
+            } else if ((grant as AppGrant) == AppGrant.NOTIFICATION) {
+                notificationHandler.checkStatusAsync()
+            } else {
+                runOnMain { handlerFor(grant).checkStatus() }
+            }
+
             mapsMutex.withLock { statusCacheMap[identifier] = status to getMonotonicTimeMillis() }
             status
         }
@@ -181,44 +196,15 @@ actual class PlatformGrantDelegate(
     }
 
     // ====================================================================
-    // STATUS CHECKS
-    // ====================================================================
-
-    /**
-     * NOTIFICATION requires its own async path. Calling `runOnMain` around
-     * `getNotificationSettingsWithCompletionHandler` causes nested dispatch_async,
-     * which can deadlock when already on the main thread.
-     */
-    private suspend fun checkStatusInternal(grant: GrantPermission): GrantStatus {
-        if (grant is RawPermission) {
-            val iosKey = grant.iosUsageKey
-            if (iosKey != null && !hasInfoPlistKey(iosKey)) return GrantStatus.DENIED_ALWAYS
-            
-            // On iOS we don't have generic status check API for raw keys,
-            // so we rely on the internal GrantStore to track if user previously denied it
-            if (store.isRawPermissionRequested(grant.identifier)) return GrantStatus.DENIED
-            
-            return GrantStatus.NOT_DETERMINED
-        }
-
-        if ((grant as AppGrant) == AppGrant.NOTIFICATION) {
-            return notificationHandler.checkStatusAsync()
-        }
-
-        return runOnMain { handlerFor(grant).checkStatus() }
-    }
-
-    // ====================================================================
     // REQUEST LOGIC
     // ====================================================================
 
     private suspend fun requestInternal(grant: GrantPermission): GrantStatus {
         mapsMutex.withLock { statusCacheMap.remove(grant.identifier) }
 
-        // Must call checkStatusInternal directly — calling the public checkStatus() here would
-        // attempt to re-acquire the same per-permission mutex already held by request(), causing
-        // a permanent deadlock on iOS (Kotlin Mutex is non-reentrant).
-        val currentStatus = checkStatusInternal(grant)
+        // Since getMutexFor() returns a ReentrantMutex, calling the public checkStatus() 
+        // here is now safe and will not deadlock.
+        val currentStatus = checkStatus(grant)
         if (currentStatus == GrantStatus.GRANTED || currentStatus == GrantStatus.PARTIAL_GRANTED) {
             return currentStatus
         }
@@ -228,8 +214,15 @@ actual class PlatformGrantDelegate(
         }
 
         if (grant is RawPermission) {
+            val customHandler = IosPermissionHandlerRegistry.get(grant.identifier)
+            if (customHandler != null) {
+                val result = customHandler.request()
+                mapsMutex.withLock { statusCacheMap.remove(grant.identifier) }
+                return result
+            }
+            
             GrantLogger.w(TAG, "RawPermission '${grant.identifier}' on iOS: no generic request API available. " +
-                "Implement a custom IosPermissionHandler for this permission.")
+                "Implement a custom IosPermissionHandler for this permission and register it via IosPermissionHandlerRegistry.")
             return GrantStatus.NOT_DETERMINED
         }
 
@@ -277,7 +270,8 @@ actual class PlatformGrantDelegate(
         AppGrant.BLUETOOTH,
         AppGrant.BLUETOOTH_ADVERTISE  -> bluetoothHandler
 
-        AppGrant.SCHEDULE_EXACT_ALARM -> AlwaysGrantedHandler
+        AppGrant.SCHEDULE_EXACT_ALARM,
+        AppGrant.NEARBY_WIFI_DEVICES  -> AlwaysGrantedHandler
     }
 
     // ====================================================================

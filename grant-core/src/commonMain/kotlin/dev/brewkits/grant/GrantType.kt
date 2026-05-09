@@ -149,7 +149,14 @@ enum class AppGrant : GrantPermission {
      * - **iOS**: `NSCalendarsUsageDescription`.
      */
     READ_CALENDAR,
-    ;
+
+    /**
+     * Permission to scan for nearby Wi-Fi devices.
+     *
+     * - **Android**: Maps to `NEARBY_WIFI_DEVICES` (API 33+) or `ACCESS_FINE_LOCATION` (API < 33).
+     * - **iOS**: No-op (always GRANTED).
+     */
+    NEARBY_WIFI_DEVICES;
 
     /**
      * Unique identifier for this permission.

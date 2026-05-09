@@ -17,7 +17,7 @@ import dev.brewkits.grant.GrantStatus
  * See [APPLE_FRAMEWORK_LINKING_ISSUE.md](docs/ios/APPLE_FRAMEWORK_LINKING_ISSUE.md)
  * for the architectural rationale behind this design.
  */
-internal interface IosPermissionHandler {
+interface IosPermissionHandler {
     /**
      * Returns the current authorization status for this permission.
      * Must be called on the main thread.

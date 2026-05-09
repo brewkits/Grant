@@ -111,7 +111,8 @@ private object IosHandlerDispatchValidator {
         AppGrant.BLUETOOTH,
         AppGrant.BLUETOOTH_ADVERTISE  -> stubHandler("BLUETOOTH")
 
-        AppGrant.SCHEDULE_EXACT_ALARM -> stubHandler("ALWAYS_GRANTED")
+        AppGrant.SCHEDULE_EXACT_ALARM,
+        AppGrant.NEARBY_WIFI_DEVICES  -> stubHandler("ALWAYS_GRANTED")
     }
 
     private fun stubHandler(name: String) = object : IosPermissionHandler {

@@ -22,6 +22,8 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
 import java.util.concurrent.ConcurrentHashMap
 
+import dev.brewkits.grant.utils.ReentrantMutex
+
 actual class PlatformGrantDelegate(
     private val context: Context,
     private val store: GrantStore
@@ -30,11 +32,11 @@ actual class PlatformGrantDelegate(
      * Protects all map structures (mutexMapInternal, statusCacheMap).
      */
     private val mapsMutex = Mutex()
-    private val mutexMapInternal = ConcurrentHashMap<String, Mutex>()
+    private val mutexMapInternal = ConcurrentHashMap<String, ReentrantMutex>()
 
-    private suspend fun getMutexFor(identifier: String): Mutex {
+    private suspend fun getMutexFor(identifier: String): ReentrantMutex {
         return mapsMutex.withLock {
-            mutexMapInternal.getOrPut(identifier) { Mutex() }
+            mutexMapInternal.getOrPut(identifier) { ReentrantMutex() }
         }
     }
 
@@ -59,98 +61,91 @@ actual class PlatformGrantDelegate(
     actual suspend fun checkStatus(grant: GrantPermission): GrantStatus {
         val identifier = grant.identifier
         
-        // Protect statusCacheMap reads through mapsMutex (like iOS)
-        mapsMutex.withLock {
-            statusCacheMap[identifier]?.let { (cachedStatus, timestamp) ->
-                if (SystemClock.elapsedRealtime() - timestamp < STATUS_CACHE_TTL_MS) {
-                    return@withLock cachedStatus
-                }
-            }
-        }
-
-        // Perform actual check WITHOUT holding the per-permission mutex to avoid deadlock
-        val status = checkStatusInternal(grant)
-
-        // Protect statusCacheMap writes through mapsMutex
-        mapsMutex.withLock {
-            statusCacheMap[identifier] = status to SystemClock.elapsedRealtime()
-        }
-        return status
-    }
-
-    private suspend fun checkStatusInternal(grant: GrantPermission): GrantStatus {
-        if (grant is RawPermission) {
-            val androidPermissions = grant.androidPermissions
-            val allGranted = androidPermissions.all { 
-                ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED 
-            }
-            if (allGranted) return GrantStatus.GRANTED
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                if (ContextCompat.checkSelfPermission(context, READ_MEDIA_VISUAL_USER_SELECTED) == PackageManager.PERMISSION_GRANTED) {
-                    return GrantStatus.PARTIAL_GRANTED
+        return getMutexFor(identifier).withLock {
+            // Protect statusCacheMap reads through mapsMutex (like iOS)
+            mapsMutex.withLock {
+                statusCacheMap[identifier]?.let { (cachedStatus, timestamp) ->
+                    if (SystemClock.elapsedRealtime() - timestamp < STATUS_CACHE_TTL_MS) {
+                        return@withLock cachedStatus
+                    }
                 }
             }
 
-            if (!store.isRawPermissionRequested(grant.identifier)) return GrantStatus.NOT_DETERMINED
-
-            val activeActivity = PlatformConfig.activity ?: (context as? android.app.Activity)
-            
-            return if (activeActivity != null) {
-                val anyCanShowRationale = androidPermissions.any { activeActivity.shouldShowRequestPermissionRationale(it) }
-                if (anyCanShowRationale) GrantStatus.DENIED else GrantStatus.DENIED_ALWAYS
-            } else {
-                GrantLogger.w(TAG, "checkStatus() called without an Activity context. Cannot accurately distinguish between DENIED and DENIED_ALWAYS. Falling back to DENIED to allow rationale display. Set PlatformConfig.activity for better accuracy.")
-                GrantStatus.DENIED
-            }
-        }
-
-        val appGrant = grant as AppGrant
-        getGrantStatusOverride(appGrant)?.let { return it }
-
-        if (appGrant == AppGrant.LOCATION_ALWAYS && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val hasForeground = listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION).all {
-                ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
-            }
-            val hasBackground = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
-
-            return when {
-                hasBackground -> GrantStatus.GRANTED
-                hasForeground -> GrantStatus.PARTIAL_GRANTED
-                store.isRequestedBefore(appGrant) -> {
+            val status = if (grant is RawPermission) {
+                val androidPermissions = grant.androidPermissions
+                val allGranted = androidPermissions.all { 
+                    ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED 
+                }
+                if (allGranted) GrantStatus.GRANTED
+                else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && ContextCompat.checkSelfPermission(context, READ_MEDIA_VISUAL_USER_SELECTED) == PackageManager.PERMISSION_GRANTED) {
+                    GrantStatus.PARTIAL_GRANTED
+                } else if (!store.isRawPermissionRequested(grant.identifier)) {
+                    GrantStatus.NOT_DETERMINED
+                } else {
                     val activeActivity = PlatformConfig.activity ?: (context as? android.app.Activity)
                     if (activeActivity != null) {
-                        val canShowRationale = activeActivity.shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                        if (canShowRationale) GrantStatus.DENIED else GrantStatus.DENIED_ALWAYS
-                    } else GrantStatus.DENIED
+                        val anyCanShowRationale = androidPermissions.any { activeActivity.shouldShowRequestPermissionRationale(it) }
+                        if (anyCanShowRationale) GrantStatus.DENIED else GrantStatus.DENIED_ALWAYS
+                    } else {
+                        GrantLogger.w(TAG, "checkStatus() called without an Activity context. Cannot accurately distinguish between DENIED and DENIED_ALWAYS. Falling back to DENIED to allow rationale display. Set PlatformConfig.activity for better accuracy.")
+                        GrantStatus.DENIED
+                    }
                 }
-                else -> GrantStatus.NOT_DETERMINED
+            } else {
+                val appGrant = grant as AppGrant
+                val overrideStatus = getGrantStatusOverride(appGrant)
+                if (overrideStatus != null) {
+                    overrideStatus
+                } else if (appGrant == AppGrant.LOCATION_ALWAYS && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    val hasForeground = listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION).all {
+                        ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+                    }
+                    val hasBackground = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
+
+                    when {
+                        hasBackground -> GrantStatus.GRANTED
+                        hasForeground -> GrantStatus.PARTIAL_GRANTED
+                        store.isRequestedBefore(appGrant) -> {
+                            val activeActivity = PlatformConfig.activity ?: (context as? android.app.Activity)
+                            if (activeActivity != null) {
+                                val canShowRationale = activeActivity.shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                                if (canShowRationale) GrantStatus.DENIED else GrantStatus.DENIED_ALWAYS
+                            } else GrantStatus.DENIED
+                        }
+                        else -> GrantStatus.NOT_DETERMINED
+                    }
+                } else {
+                    val androidGrants = appGrant.toAndroidGrants()
+                    if (androidGrants.isEmpty()) GrantStatus.GRANTED
+                    else {
+                        val allGranted = androidGrants.all { 
+                            ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED 
+                        }
+                        if (allGranted) GrantStatus.GRANTED
+                        else if ((appGrant == AppGrant.GALLERY || appGrant == AppGrant.GALLERY_IMAGES_ONLY || appGrant == AppGrant.GALLERY_VIDEO_ONLY) && isPartialGalleryAccessGranted()) {
+                            GrantStatus.PARTIAL_GRANTED
+                        } else {
+                            val storedStatus = store.getStatus(appGrant)
+                            if (storedStatus == GrantStatus.DENIED || storedStatus == GrantStatus.DENIED_ALWAYS) {
+                                storedStatus
+                            } else if (store.isRequestedBefore(appGrant)) {
+                                val activeActivity = PlatformConfig.activity ?: (context as? android.app.Activity)
+                                if (activeActivity != null) {
+                                    val anyCanShowRationale = androidGrants.any { activeActivity.shouldShowRequestPermissionRationale(it) }
+                                    if (anyCanShowRationale) GrantStatus.DENIED else GrantStatus.DENIED_ALWAYS
+                                } else GrantStatus.DENIED
+                            } else GrantStatus.NOT_DETERMINED
+                        }
+                    }
+                }
             }
+
+            // Protect statusCacheMap writes through mapsMutex
+            mapsMutex.withLock {
+                statusCacheMap[identifier] = status to SystemClock.elapsedRealtime()
+            }
+            status
         }
-
-        val androidGrants = appGrant.toAndroidGrants()
-        if (androidGrants.isEmpty()) return GrantStatus.GRANTED
-
-        val allGranted = androidGrants.all { 
-            ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED 
-        }
-        if (allGranted) return GrantStatus.GRANTED
-
-        if (appGrant == AppGrant.GALLERY || appGrant == AppGrant.GALLERY_IMAGES_ONLY || appGrant == AppGrant.GALLERY_VIDEO_ONLY) {
-            if (isPartialGalleryAccessGranted()) return GrantStatus.PARTIAL_GRANTED
-        }
-
-        store.getStatus(appGrant)?.let { if (it == GrantStatus.DENIED || it == GrantStatus.DENIED_ALWAYS) return it }
-
-        if (store.isRequestedBefore(appGrant)) {
-            val activeActivity = PlatformConfig.activity ?: (context as? android.app.Activity)
-            return if (activeActivity != null) {
-                val anyCanShowRationale = androidGrants.any { activeActivity.shouldShowRequestPermissionRationale(it) }
-                if (anyCanShowRationale) GrantStatus.DENIED else GrantStatus.DENIED_ALWAYS
-            } else GrantStatus.DENIED
-        }
-        
-        return GrantStatus.NOT_DETERMINED
     }
 
     actual suspend fun request(grant: GrantPermission): GrantStatus {
@@ -387,6 +382,7 @@ actual class PlatformGrantDelegate(
             AppGrant.CALENDAR -> listOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR)
             AppGrant.READ_CALENDAR -> listOf(Manifest.permission.READ_CALENDAR)
             AppGrant.MOTION -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) listOf(Manifest.permission.ACTIVITY_RECOGNITION) else listOf("com.google.android.gms.permission.ACTIVITY_RECOGNITION")
+            AppGrant.NEARBY_WIFI_DEVICES -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) listOf(Manifest.permission.NEARBY_WIFI_DEVICES) else listOf(Manifest.permission.ACCESS_FINE_LOCATION)
         }
     }
 }
