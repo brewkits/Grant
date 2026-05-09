@@ -10,20 +10,20 @@
 *Focus: Resilience against Process Death, Performance at Scale, and Architectural Purity.*
 
 **1. Resilience (Android)**
-- [ ] **Process Death Recovery**: Implement `SavedStateHandle` support in `GrantRequestActivity`. Ensure active permission requests survive when the OS kills the app in the background.
-- [ ] **Activity Launch Guard**: Prevent multiple `GrantRequestActivity` instances from overlapping during rapid concurrent calls.
+- [x] **Process Death Recovery**: Implement `SavedStateHandle` support in `GrantRequestActivity`. Ensure active permission requests survive when the OS kills the app in the background.
+- [x] **Activity Launch Guard**: Prevent multiple `GrantRequestActivity` instances from overlapping during rapid concurrent calls.
 
 **2. Extensibility (iOS)**
-- [ ] **Handler Registry**: Allow developers to register custom `IosPermissionHandler` implementations for `RawPermission`. No more "Not Implemented" dead-ends on iOS.
-- [ ] **Modern iOS API Support**: Guidelines and helpers for `PHPicker` (no-permission photo selection) and `NSLocationTemporaryFullAccuracyUsageDescriptionKey`.
+- [x] **Handler Registry**: Allow developers to register custom `IosPermissionHandler` implementations for `RawPermission`. No more "Not Implemented" dead-ends on iOS.
+- [x] **Modern iOS API Support**: Guidelines and helpers for `PHPicker` (no-permission photo selection) and `NSLocationTemporaryFullAccuracyUsageDescriptionKey`.
 
 **3. Performance & UI**
-- [ ] **Parallel Status Checks**: Refactor `GrantGroupHandler` to use `async/awaitAll` for status verification, eliminating "UI Jank" when checking 10+ permissions.
-- [ ] **Emission Throttling**: Use `distinctUntilChanged` on internal flows to prevent redundant UI re-compositions.
+- [x] **Parallel Status Checks**: Refactor `GrantGroupHandler` to use `async/awaitAll` for status verification, eliminating "UI Jank" when checking 10+ permissions.
+- [x] **Emission Throttling**: Use `distinctUntilChanged` on internal flows to prevent redundant UI re-compositions.
 
 **4. Core Architecture**
-- [ ] **Robust Locking**: Replace the brittle `checkStatusInternal` pattern with a cleaner internal/external separation or a re-entrant safe locking strategy.
-- [ ] **Atomic Store Operations**: Ensure `GrantStore` updates are atomic across all platforms to prevent race conditions during rapid state changes.
+- [x] **Robust Locking**: Replace the brittle `checkStatusInternal` pattern with a cleaner internal/external separation or a re-entrant safe locking strategy.
+- [x] **Atomic Store Operations**: Ensure `GrantStore` updates are atomic across all platforms to prevent race conditions during rapid state changes.
 
 ## ✅ Released
 
@@ -72,11 +72,11 @@
 
 ### Android
 - [ ] Android 16 photo picker integration (`PICK_IMAGES` intent as fallback to `READ_MEDIA_*`)
-- [ ] `NEARBY_WIFI_DEVICES` permission support (Android 13+)
+- [x] `NEARBY_WIFI_DEVICES` permission support (Android 13+)
 - [ ] `UsbManager` permission support via `RawPermission` recipe in docs
 
 ### iOS
-- [ ] `NSLocationTemporaryFullAccuracyUsageDescriptionKey` (precision location upgrade)
+- [x] `NSLocationTemporaryFullAccuracyUsageDescriptionKey` (precision location upgrade)
 - [ ] iOS 18 `PHPickerViewController` contacts access permission
 - [ ] Swift Package Manager distribution alongside Maven Central
 

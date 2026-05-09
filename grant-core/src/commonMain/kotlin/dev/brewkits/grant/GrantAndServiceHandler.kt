@@ -1,6 +1,8 @@
 package dev.brewkits.grant
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -234,32 +236,41 @@ class GrantAndServiceHandler(
         rationale: String? = null,
         permSettings: String? = null,
         svcSettings: String? = null
-    ) {
-        // 1. Check Permission
-        val permStatus = grantManager.checkStatus(grant)
+    ) = coroutineScope {
+        // 1. Check Permission and Service concurrently
+        val permStatusDef = async { grantManager.checkStatus(grant) }
+        val svcStatusDef = async { serviceManager.checkServiceStatus(serviceType) }
+
+        val permStatus = permStatusDef.await()
+        val svcStatus = svcStatusDef.await()
+
         if (permStatus == GrantStatus.NOT_DETERMINED) {
             val result = grantManager.request(grant)
             if (result == GrantStatus.GRANTED || result == GrantStatus.PARTIAL_GRANTED) {
-                checkServiceAndFinish(svcSettings)
+                checkServiceAndFinishWithStatus(svcStatus, svcSettings)
             } else {
                 // First system request denied — don't show rationale yet (matches GrantHandler UX).
                 resetState()
                 onReadyCallback = null
             }
-            return
+            return@coroutineScope
         }
 
         if (permStatus != GrantStatus.GRANTED && permStatus != GrantStatus.PARTIAL_GRANTED) {
             handlePermissionStatus(permStatus, rationale, permSettings)
-            return
+            return@coroutineScope
         }
 
-        // 2. Check Service
-        checkServiceAndFinish(svcSettings)
+        // 2. Permission is OK, check Service
+        checkServiceAndFinishWithStatus(svcStatus, svcSettings)
     }
 
     private suspend fun checkServiceAndFinish(svcSettings: String?) {
         val svcStatus = serviceManager.checkServiceStatus(serviceType)
+        checkServiceAndFinishWithStatus(svcStatus, svcSettings)
+    }
+
+    private fun checkServiceAndFinishWithStatus(svcStatus: ServiceStatus, svcSettings: String?) {
         if (svcStatus != ServiceStatus.ENABLED) {
             _state.update {
                 it.copy(
@@ -305,12 +316,15 @@ class GrantAndServiceHandler(
         }
     }
 
-    private suspend fun checkInternal(): Boolean {
-        val permOk = grantManager.checkStatus(grant).let { 
-            it == GrantStatus.GRANTED || it == GrantStatus.PARTIAL_GRANTED 
-        }
-        val svcOk = serviceManager.checkServiceStatus(serviceType) == ServiceStatus.ENABLED
-        return permOk && svcOk
+    private suspend fun checkInternal(): Boolean = coroutineScope {
+        val permStatusDef = async { grantManager.checkStatus(grant) }
+        val svcStatusDef = async { serviceManager.checkServiceStatus(serviceType) }
+        
+        val permStatus = permStatusDef.await()
+        val permOk = permStatus == GrantStatus.GRANTED || permStatus == GrantStatus.PARTIAL_GRANTED 
+        
+        val svcOk = svcStatusDef.await() == ServiceStatus.ENABLED
+        return@coroutineScope permOk && svcOk
     }
 
     private fun resetState() {
