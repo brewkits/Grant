@@ -1,12 +1,20 @@
 package dev.brewkits.grant.compose
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -14,6 +22,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import dev.brewkits.grant.GrantAndServiceHandler
@@ -184,6 +193,7 @@ fun GrantAndServiceDialog(
 /**
  * Rationale Dialog with support for long text (scrollable) and accessibility.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GrantRationaleDialog(
     message: String,
@@ -193,48 +203,53 @@ fun GrantRationaleDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { 
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineSmall
-            ) 
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()) // Compatibility: support small screens & large fonts
-            ) {
+    BasicAlertDialog(
+        onDismissRequest = onDismiss
+    ) {
+        Surface(
+            shape = MaterialTheme.shapes.extraLarge,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh
+        ) {
+            Column(modifier = Modifier.padding(24.dp)) {
                 Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodyMedium
+                    text = title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = onConfirm,
-                modifier = Modifier.semantics { contentDescription = confirmText }
-            ) {
-                Text(text = confirmText)
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = onDismiss,
-                modifier = Modifier.semantics { contentDescription = dismissText }
-            ) {
-                Text(text = dismissText)
+                Spacer(modifier = Modifier.height(16.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss, modifier = Modifier.semantics { contentDescription = dismissText }) {
+                        Text(text = dismissText)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(onClick = onConfirm, modifier = Modifier.semantics { contentDescription = confirmText }) {
+                        Text(text = confirmText)
+                    }
+                }
             }
         }
-    )
+    }
 }
 
 /**
  * Settings Guide Dialog with support for long text (scrollable) and accessibility.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GrantSettingsDialog(
     message: String,
@@ -244,41 +259,45 @@ fun GrantSettingsDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { 
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineSmall
-            ) 
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-            ) {
+    BasicAlertDialog(
+        onDismissRequest = onDismiss
+    ) {
+        Surface(
+            shape = MaterialTheme.shapes.extraLarge,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh
+        ) {
+            Column(modifier = Modifier.padding(24.dp)) {
                 Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodyMedium
+                    text = title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = onConfirm,
-                modifier = Modifier.semantics { contentDescription = confirmText }
-            ) {
-                Text(text = confirmText)
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = onDismiss,
-                modifier = Modifier.semantics { contentDescription = dismissText }
-            ) {
-                Text(text = dismissText)
+                Spacer(modifier = Modifier.height(16.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss, modifier = Modifier.semantics { contentDescription = dismissText }) {
+                        Text(text = dismissText)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(onClick = onConfirm, modifier = Modifier.semantics { contentDescription = confirmText }) {
+                        Text(text = confirmText)
+                    }
+                }
             }
         }
-    )
+    }
 }

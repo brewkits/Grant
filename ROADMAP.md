@@ -98,7 +98,7 @@
 - **Android TV / large screen** — `requestWithCustomUi()` examples for non-phone form factors
 - **Windows/Linux/macOS targets** — stubs only, for KMP Desktop apps that share ViewModel code
 - **Analytics hooks** — optional `GrantEventListener` for tracking permission funnel drop-off
-- **Compose Multiplatform Material3 dialogs** — replace `AlertDialog` with M3 `BasicAlertDialog`
+- [x] **Compose Multiplatform Material3 dialogs** — replace `AlertDialog` with M3 `BasicAlertDialog`
 
 ---
 
