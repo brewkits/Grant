@@ -73,7 +73,7 @@ koverReport {
     defaults {
         verify {
             rule {
-                minBound(80)
+                minBound(85)
             }
         }
     }

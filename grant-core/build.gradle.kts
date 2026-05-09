@@ -90,14 +90,14 @@ koverReport {
     defaults {
         verify {
             rule {
-                minBound(82)
+                minBound(85)
             }
         }
     }
     androidReports("debug") {
         verify {
             rule {
-                minBound(82)
+                minBound(85)
             }
         }
     }
