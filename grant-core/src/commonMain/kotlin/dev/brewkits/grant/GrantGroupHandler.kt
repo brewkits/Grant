@@ -138,14 +138,29 @@ class GrantGroupHandler(
                 }.awaitAll().toMap()
             }
 
-            val grantedSet = statusMap.filter {
-                it.value == GrantStatus.GRANTED || it.value == GrantStatus.PARTIAL_GRANTED
-            }.keys
+            val grantedSet = statusMap.filter { isFullyGranted(it.key, it.value) }.keys
 
             _statuses.value = statusMap
             _state.update { it.copy(grantedGrants = grantedSet) }
         }
     }
+
+    /**
+     * Whether a (grant, status) pair represents a satisfied permission for the
+     * purposes of this group.
+     *
+     * Most permissions accept PARTIAL_GRANTED as a success state, but permissions
+     * that require a background upgrade (e.g. LOCATION_ALWAYS) need full
+     * background access — PARTIAL_GRANTED for those grants means foreground
+     * was granted but background was denied, so the user still needs to be
+     * directed to settings.
+     */
+    private fun isFullyGranted(grant: GrantPermission, status: GrantStatus): Boolean =
+        when (status) {
+            GrantStatus.GRANTED -> true
+            GrantStatus.PARTIAL_GRANTED -> !grant.requiresBackgroundUpgrade
+            else -> false
+        }
 
     /**
      * Initiates the group permission request flow.
@@ -159,13 +174,13 @@ class GrantGroupHandler(
         settingsMessages: Map<GrantPermission, String> = emptyMap(),
         onAllGranted: () -> Unit
     ) {
-        if (!requestMutex.tryLock()) return
+        scope.launch {
+            if (!requestMutex.tryLock()) return@launch
 
-        this.onAllGrantedCallback = onAllGranted
-        this.currentRationaleMessages = rationaleMessages
-        this.currentSettingsMessages = settingsMessages
+            this@GrantGroupHandler.onAllGrantedCallback = onAllGranted
+            this@GrantGroupHandler.currentRationaleMessages = rationaleMessages
+            this@GrantGroupHandler.currentSettingsMessages = settingsMessages
 
-        val job = scope.launch {
             try {
                 val currentStatuses = coroutineScope {
                     grants.map { grant ->
@@ -173,15 +188,19 @@ class GrantGroupHandler(
                     }.awaitAll().toMap()
                 }
 
-                val deniedGrants = currentStatuses.filter {
-                    it.value != GrantStatus.GRANTED && it.value != GrantStatus.PARTIAL_GRANTED
-                }.keys.toList()
+                val deniedGrants = currentStatuses
+                    .filter { !isFullyGranted(it.key, it.value) }
+                    .keys.toList()
 
                 _statuses.update { it + currentStatuses }
 
+                val initiallyGranted = currentStatuses
+                    .filter { isFullyGranted(it.key, it.value) }
+                    .keys
+
                 if (deniedGrants.isEmpty()) {
                     resetState()
-                    _state.update { it.copy(grantedGrants = grants.toSet()) }
+                    _state.update { it.copy(grantedGrants = initiallyGranted) }
                     val callback = onAllGrantedCallback
                     onAllGrantedCallback = null
                     callback?.invoke()
@@ -191,10 +210,10 @@ class GrantGroupHandler(
                 val results = grantManager.request(deniedGrants)
                 _statuses.update { it + results }
 
-                val newlyGranted = results.filter { it.value == GrantStatus.GRANTED || it.value == GrantStatus.PARTIAL_GRANTED }.keys
+                val newlyGranted = results.filter { isFullyGranted(it.key, it.value) }.keys
                 _state.update { it.copy(grantedGrants = it.grantedGrants + newlyGranted) }
 
-                val stillDenied = results.filter { it.value != GrantStatus.GRANTED && it.value != GrantStatus.PARTIAL_GRANTED }
+                val stillDenied = results.filter { !isFullyGranted(it.key, it.value) }
 
                 if (stillDenied.isEmpty()) {
                     resetState()
@@ -209,10 +228,6 @@ class GrantGroupHandler(
                 requestMutex.unlock()
             }
         }
-
-        if (!job.isActive) {
-            requestMutex.unlock()
-        }
     }
 
     /**
@@ -220,32 +235,30 @@ class GrantGroupHandler(
      * that specific permission again.
      */
     fun onRationaleConfirmed() {
-        if (!requestMutex.tryLock()) return
-
-        val job = scope.launch {
+        scope.launch {
+            if (!requestMutex.tryLock()) return@launch
             try {
                 val currentPerm = _state.value.currentGrant ?: return@launch
                 val newStatus = grantManager.request(currentPerm)
                 _statuses.update { it + (currentPerm to newStatus) }
 
-                if (newStatus == GrantStatus.GRANTED || newStatus == GrantStatus.PARTIAL_GRANTED) {
+                if (isFullyGranted(currentPerm, newStatus)) {
                     val currentStatuses = coroutineScope {
                         grants.map { g ->
                             async { g to grantManager.checkStatus(g) }
                         }.awaitAll().toMap()
                     }
                     _statuses.update { currentStatuses }
-                    
-                    val grantedSet = currentStatuses.filter { 
-                        it.value == GrantStatus.GRANTED || it.value == GrantStatus.PARTIAL_GRANTED 
-                    }.keys
-                    
+
+                    val grantedSet = currentStatuses
+                        .filter { isFullyGranted(it.key, it.value) }
+                        .keys
+
                     _state.update { it.copy(grantedGrants = grantedSet) }
-                    
-                    val stillDenied = currentStatuses.filter { 
-                        it.value != GrantStatus.GRANTED && it.value != GrantStatus.PARTIAL_GRANTED 
-                    }
-                    
+
+                    val stillDenied = currentStatuses
+                        .filter { !isFullyGranted(it.key, it.value) }
+
                     if (stillDenied.isEmpty()) {
                         resetState()
                         val callback = onAllGrantedCallback
@@ -261,10 +274,6 @@ class GrantGroupHandler(
             } finally {
                 requestMutex.unlock()
             }
-        }
-
-        if (!job.isActive) {
-            requestMutex.unlock()
         }
     }
 
@@ -297,7 +306,26 @@ class GrantGroupHandler(
 
     private fun handleStatus(grant: GrantPermission, status: GrantStatus): Boolean {
         return when (status) {
-            GrantStatus.GRANTED, GrantStatus.PARTIAL_GRANTED -> true
+            GrantStatus.GRANTED -> true
+
+            GrantStatus.PARTIAL_GRANTED -> {
+                if (!grant.requiresBackgroundUpgrade) {
+                    true
+                } else {
+                    // Foreground granted but background denied; route the user
+                    // to settings, consistent with single-permission handling.
+                    _state.update {
+                        it.copy(
+                            isVisible        = true,
+                            currentGrant     = grant,
+                            showRationale    = false,
+                            showSettingsGuide = true,
+                            settingsMessage  = currentSettingsMessages[grant]
+                        )
+                    }
+                    false
+                }
+            }
 
             GrantStatus.NOT_DETERMINED, GrantStatus.DENIED -> {
                 _state.update {

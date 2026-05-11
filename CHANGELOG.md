@@ -6,6 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.0] - 2026-05-09
+
+### 🚀 Enterprise Hardening & Extensibility
+- **Process Death Recovery**: `GrantRequestActivity` now integrates `SavedStateHandle` to preserve active permission requests if the Android OS kills the app in the background.
+- **Activity Launch Guard**: Prevents multiple overlapping `GrantRequestActivity` instances during rapid concurrent calls.
+- **Robust Locking Strategy**: Introduced a custom `ReentrantMutex` across iOS and Android delegates to resolve edge-case deadlocks globally.
+- **IosPermissionHandlerRegistry**: Developers can now register custom implementations for `RawPermission` on iOS, eliminating "Not Implemented" limitations.
+
+### ✨ New APIs & Features
+- **Core APIs**: Introduced `requestSuspend()` and `requestFlow()` to provide non-callback alternatives perfectly tailored for modern Kotlin Coroutines.
+- **GrantFlow DSL**: A new builder DSL (`grantFlow { ... }`) allows you to fluently orchestrate complex, multi-step sequential permission flows.
+- **NEARBY_WIFI_DEVICES**: Full support for Android 13+ nearby Wi-Fi hardware permissions.
+- **iOS Location Precision**: Added support for `NSLocationTemporaryFullAccuracyUsageDescriptionKey` via `LocationTemporaryFullAccuracyHandler`.
+- **Material 3 Dialogs**: Upgraded `GrantRationaleDialog` and `GrantSettingsDialog` in `grant-compose` to use the new Compose Multiplatform `BasicAlertDialog`, adhering strictly to Material 3 design guidelines.
+
+### 🛠️ Performance & Quality
+- **Parallel Status Checks**: `GrantAndServiceChecker` and handlers now check OS permissions and hardware services concurrently using `async`/`awaitAll`, minimizing UI latency.
+- **SPM Support**: Added a `Package.swift` configuration to support distributing the library via Swift Package Manager.
+- **Expanded Documentation**: New recipes added for Android 16 Photo Picker, `UsbManager`, and iOS 18 Limited Contacts (`CNContactPickerViewController`).
+- **Testing**: Raised Kover minimum coverage threshold to 85% and added new Robolectric suites for Android 10 `LOCATION_ALWAYS` 2-step flows.
+
 ## [1.3.1] - 2026-05-05
 
 ### 🛡️ Critical Bug Fix: iOS Deadlock

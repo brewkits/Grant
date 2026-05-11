@@ -69,10 +69,20 @@ Grant refactored `PlatformGrantDelegate.ios.kt` to move framework-specific logic
 
 These handlers are only linked if the corresponding `AppGrant` enum is referenced in your code. This ensures a zero-overhead binary and a smooth App Store review process.
 
+### Custom Registry (NEW in v1.4.0)
+For permissions not natively supported by the core library, or for developers wanting to override default behavior, v1.4.0 introduced the `IosPermissionHandlerRegistry`. This allows runtime registration of custom `IosPermissionHandler` implementations for any `RawPermission` identifier.
+
+## 🔒 Robust Concurrency (Reentrant Locking)
+
+Mobile permission flows are notoriously prone to race conditions and deadlocks, especially when multiple requests are triggered rapidly or when a status check is nested within a request flow.
+
+### ReentrantMutex
+Standard Kotlin `Mutex` is non-reentrant. In v1.4.0, Grant introduced a custom `ReentrantMutex` that identifies the current coroutine `Job`. This allows the same coroutine to acquire the lock multiple times without deadlocking, while still maintaining strict mutual exclusion for concurrent requests from different scopes.
+
 ## 🎨 Design Patterns
 
 ### 1. Wrapper/Adapter Pattern
-
+...
 **Problem**: Directly using platform APIs in business logic creates:
 - **Tight Coupling**: Hard to change implementation
 - **Test Complexity**: Need to mock platform-specific types

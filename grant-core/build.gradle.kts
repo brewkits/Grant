@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "dev.brewkits"
-version = "1.3.1"
+version = "1.4.0"
 
 kotlin {
     androidTarget {
@@ -62,6 +62,8 @@ kotlin {
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.turbine)
             implementation(libs.koin.test)
+            implementation(libs.kotest.assertions)
+            implementation(libs.kotest.property)
         }
 
         androidInstrumentedTest.dependencies {
@@ -90,14 +92,14 @@ koverReport {
     defaults {
         verify {
             rule {
-                minBound(82)
+                minBound(85)
             }
         }
     }
     androidReports("debug") {
         verify {
             rule {
-                minBound(82)
+                minBound(85)
             }
         }
     }
@@ -110,6 +112,7 @@ android {
     defaultConfig {
         minSdk = libs.versions.android.minSdk.get().toInt()
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        multiDexEnabled = true
     }
 
     compileOptions {
@@ -129,7 +132,7 @@ publishing {
     publications.configureEach {
         (this as? MavenPublication)?.let {
             groupId = "dev.brewkits"
-            version = "1.3.1"
+            version = "1.4.0"
 
             pom {
                 name.set("KMP Grant")

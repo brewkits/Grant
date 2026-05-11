@@ -26,12 +26,13 @@ internal class ContactsPermissionHandler : IosPermissionHandler {
 
     override fun checkStatus(): GrantStatus {
         if (!hasInfoPlistKey(TAG, "NSContactsUsageDescription")) return GrantStatus.DENIED_ALWAYS
-        return when (CNContactStore.authorizationStatusForEntityType(CNEntityType.CNEntityTypeContacts)) {
-            CNAuthorizationStatusAuthorized    -> GrantStatus.GRANTED
-            CNAuthorizationStatusDenied,
-            CNAuthorizationStatusRestricted    -> GrantStatus.DENIED_ALWAYS
-            CNAuthorizationStatusNotDetermined -> GrantStatus.NOT_DETERMINED
-            else                               -> GrantStatus.NOT_DETERMINED
+        val status = CNContactStore.authorizationStatusForEntityType(CNEntityType.CNEntityTypeContacts)
+        return when {
+            status == CNAuthorizationStatusAuthorized -> GrantStatus.GRANTED
+            status == 4L /* CNAuthorizationStatusLimited (iOS 18+) */ -> GrantStatus.PARTIAL_GRANTED
+            status == CNAuthorizationStatusDenied || status == CNAuthorizationStatusRestricted -> GrantStatus.DENIED_ALWAYS
+            status == CNAuthorizationStatusNotDetermined -> GrantStatus.NOT_DETERMINED
+            else -> GrantStatus.NOT_DETERMINED
         }
     }
 
@@ -43,7 +44,8 @@ internal class ContactsPermissionHandler : IosPermissionHandler {
                     GrantLogger.e(TAG, "Contacts request error: ${error.localizedDescription}")
                 }
                 mainContinuation<Boolean> { g ->
-                    cont.resume(if (g) GrantStatus.GRANTED else GrantStatus.DENIED_ALWAYS)
+                    // Re-check actual status from OS, because the user could have selected "Limited Access" on iOS 18
+                    cont.resume(checkStatus())
                 }.invoke(granted)
             }
         }

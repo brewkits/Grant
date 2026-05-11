@@ -28,12 +28,13 @@ package dev.brewkits.grant
 sealed interface GrantPermission {
     /**
      * Unique identifier for this permission.
-     *
-     * Used internally for caching, logging, and as a key in [GrantStore].
-     * For [AppGrant], this is the enum name. For [RawPermission], this is
-     * the user-defined string.
      */
     val identifier: String
+
+    /**
+     * Whether this permission needs a specific transition from PARTIAL to background access.
+     */
+    val requiresBackgroundUpgrade: Boolean get() = false
 }
 
 /**

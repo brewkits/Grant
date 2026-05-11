@@ -1,5 +1,8 @@
 package dev.brewkits.grant
 
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+
 /**
  * A utility that combines OS permission checks and hardware service monitoring
  * into a single unified API.
@@ -35,11 +38,14 @@ class GrantAndServiceChecker(
      * @param grant The specific location permission to check (defaults to [AppGrant.LOCATION]).
      * @return A [LocationReadyStatus] representing the aggregate state.
      */
-    suspend fun checkLocationReady(grant: AppGrant = AppGrant.LOCATION): LocationReadyStatus {
-        val grantStatus = grantManager.checkStatus(grant)
-        val serviceStatus = serviceManager.checkServiceStatus(ServiceType.LOCATION_GPS)
+    suspend fun checkLocationReady(grant: AppGrant = AppGrant.LOCATION): LocationReadyStatus = coroutineScope {
+        val grantStatusDef = async { grantManager.checkStatus(grant) }
+        val serviceStatusDef = async { serviceManager.checkServiceStatus(ServiceType.LOCATION_GPS) }
+        
+        val grantStatus = grantStatusDef.await()
+        val serviceStatus = serviceStatusDef.await()
 
-        return when {
+        return@coroutineScope when {
             grantStatus == GrantStatus.GRANTED && serviceStatus == ServiceStatus.ENABLED ->
                 LocationReadyStatus.Ready
 
@@ -59,11 +65,14 @@ class GrantAndServiceChecker(
     /**
      * Checks if Bluetooth features are fully ready (Permission + Radio hardware).
      */
-    suspend fun checkBluetoothReady(): BluetoothReadyStatus {
-        val grantStatus = grantManager.checkStatus(AppGrant.BLUETOOTH)
-        val serviceStatus = serviceManager.checkServiceStatus(ServiceType.BLUETOOTH)
+    suspend fun checkBluetoothReady(): BluetoothReadyStatus = coroutineScope {
+        val grantStatusDef = async { grantManager.checkStatus(AppGrant.BLUETOOTH) }
+        val serviceStatusDef = async { serviceManager.checkServiceStatus(ServiceType.BLUETOOTH) }
+        
+        val grantStatus = grantStatusDef.await()
+        val serviceStatus = serviceStatusDef.await()
 
-        return when {
+        return@coroutineScope when {
             grantStatus == GrantStatus.GRANTED && serviceStatus == ServiceStatus.ENABLED ->
                 BluetoothReadyStatus.Ready
 
@@ -86,11 +95,14 @@ class GrantAndServiceChecker(
     suspend fun checkReady(
         grant: AppGrant,
         serviceType: ServiceType
-    ): ReadyStatus {
-        val grantStatus = grantManager.checkStatus(grant)
-        val serviceStatus = serviceManager.checkServiceStatus(serviceType)
+    ): ReadyStatus = coroutineScope {
+        val grantStatusDef = async { grantManager.checkStatus(grant) }
+        val serviceStatusDef = async { serviceManager.checkServiceStatus(serviceType) }
+        
+        val grantStatus = grantStatusDef.await()
+        val serviceStatus = serviceStatusDef.await()
 
-        return ReadyStatus(
+        return@coroutineScope ReadyStatus(
             grantStatus = grantStatus,
             serviceStatus = serviceStatus,
             isReady = grantStatus == GrantStatus.GRANTED && serviceStatus == ServiceStatus.ENABLED
@@ -104,16 +116,22 @@ class GrantAndServiceChecker(
      * - [AppGrant.LOCATION] -> [ServiceType.LOCATION_GPS]
      * - [AppGrant.BLUETOOTH] -> [ServiceType.BLUETOOTH]
      */
-    suspend fun isReady(grant: AppGrant): Boolean {
-        val hasPermission = grantManager.checkStatus(grant) == GrantStatus.GRANTED
+    suspend fun isReady(grant: AppGrant): Boolean = coroutineScope {
+        val grantStatusDef = async { grantManager.checkStatus(grant) }
         val serviceType = when (grant) {
             AppGrant.LOCATION, AppGrant.LOCATION_ALWAYS -> ServiceType.LOCATION_GPS
             AppGrant.BLUETOOTH -> ServiceType.BLUETOOTH
             else -> null
         }
         
-        return if (serviceType != null) {
-            hasPermission && serviceManager.checkServiceStatus(serviceType) == ServiceStatus.ENABLED
+        val serviceStatusDef = if (serviceType != null) {
+            async { serviceManager.checkServiceStatus(serviceType) }
+        } else null
+        
+        val hasPermission = grantStatusDef.await() == GrantStatus.GRANTED
+        
+        if (serviceStatusDef != null) {
+            hasPermission && serviceStatusDef.await() == ServiceStatus.ENABLED
         } else {
             hasPermission
         }

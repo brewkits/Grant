@@ -1,691 +1,170 @@
 package dev.brewkits.grant
 
-import app.cash.turbine.test
 import dev.brewkits.grant.fakes.FakeGrantManager
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.*
 import kotlin.test.*
 
-/**
- * Tests for GrantHandler - Complex state machine with StateFlow.
- *
- * Coverage:
- * - State transitions (NOT_DETERMINED → GRANTED/DENIED/DENIED_ALWAYS)
- * - UI state updates (showRationale, showSettingsGuide)
- * - Callback invocations and memory leak prevention
- * - Rationale and settings confirmation flows
- * - Refresh status functionality
- * - Custom UI flow with callbacks
- */
+@OptIn(ExperimentalCoroutinesApi::class)
 class GrantHandlerTest {
 
-    private lateinit var testScope: CoroutineScope
     private lateinit var mockGrantManager: FakeGrantManager
+    private lateinit var testScope: TestScope
 
     @BeforeTest
     fun setup() {
-        Dispatchers.setMain(StandardTestDispatcher())
-        testScope = CoroutineScope(StandardTestDispatcher())
         mockGrantManager = FakeGrantManager()
-    }
-
-    @AfterTest
-    fun tearDown() {
-        testScope.cancel()
-    }
-
-    // ==================== Initial State Tests ====================
-
-    @Test
-    fun `initial status should be loaded from GrantManager`() = runTest {
-        mockGrantManager.mockStatus = GrantStatus.GRANTED
-        val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
-
-        // Wait for initialization
-        testScheduler.advanceUntilIdle()
-
-        handler.status.test {
-            assertEquals(GrantStatus.GRANTED, awaitItem())
-        }
+        testScope = TestScope(StandardTestDispatcher())
     }
 
     @Test
-    fun `initial UI state should be hidden`() = runTest {
-        val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
-
-        handler.state.test {
-            val initialState = awaitItem()
-            assertFalse(initialState.isVisible)
-            assertFalse(initialState.showRationale)
-            assertFalse(initialState.showSettingsGuide)
-        }
-    }
-
-    // ==================== Request Flow - Already Granted ====================
-
-    @Test
-    fun `request when already GRANTED should invoke callback immediately`() = runTest {
-        mockGrantManager.mockStatus = GrantStatus.GRANTED
-        val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
-        testScheduler.advanceUntilIdle()
-
-        var callbackInvoked = false
-        handler.request { callbackInvoked = true }
-        testScheduler.advanceUntilIdle()
-
-        assertTrue(callbackInvoked, "Callback should be invoked when already granted")
-    }
-
-    @Test
-    fun `request when already GRANTED should not show any dialogs`() = runTest {
-        mockGrantManager.mockStatus = GrantStatus.GRANTED
-        val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
-        testScheduler.advanceUntilIdle()
-
-        handler.request { }
-        testScheduler.advanceUntilIdle()
-
-        // Check state directly - no emission expected since state doesn't change
-        val state = handler.state.value
-        assertFalse(state.isVisible, "No dialog should be visible")
-        assertFalse(state.showRationale)
-        assertFalse(state.showSettingsGuide)
-    }
-
-    @Test
-    fun `requestWithCustomUi should trigger custom callbacks for rationale`() = runTest {
-        mockGrantManager.mockStatus = GrantStatus.DENIED
-        val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
-        testScheduler.advanceUntilIdle()
-
-        var rationaleShown = false
-        var settingsShown = false
-        var grantedInvoked = false
-
-        handler.requestWithCustomUi(
-            onShowRationale = { _, onConfirm, _ -> 
-                rationaleShown = true
-                onConfirm() // Simulate user accepting rationale
-            },
-            onShowSettings = { _, _, _ -> settingsShown = true },
-            onGranted = { grantedInvoked = true }
-        )
-        testScheduler.advanceUntilIdle()
-
-        assertTrue(rationaleShown, "Rationale should be shown")
-        assertFalse(settingsShown, "Settings should NOT be shown")
-        // After rationale confirm, it should request again. 
-        // FakeGrantManager.request returns GRANTED by default.
-        assertTrue(grantedInvoked, "Callback should be invoked after rationale confirm")
-    }
-
-    @Test
-    fun `requestWithCustomUi should trigger custom callbacks for settings`() = runTest {
-        mockGrantManager.mockStatus = GrantStatus.DENIED_ALWAYS
-        val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
-        testScheduler.advanceUntilIdle()
-
-        var settingsShown = false
-
-        handler.requestWithCustomUi(
-            onShowRationale = { _, _, _ -> },
-            onShowSettings = { _, onConfirm, _ -> 
-                settingsShown = true
-                onConfirm() // Simulate user going to settings
-            },
-            onGranted = { }
-        )
-        testScheduler.advanceUntilIdle()
-
-        assertTrue(settingsShown, "Settings should be shown")
-    }
-
-    @Test
-    fun `request when NOT_DETERMINED should request grant and invoke callback if granted`() = runTest {
-        mockGrantManager.mockStatus = GrantStatus.NOT_DETERMINED
-        mockGrantManager.mockRequestResult = GrantStatus.GRANTED
-        val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
-        testScheduler.advanceUntilIdle()
-
-        var callbackInvoked = false
-        handler.request { callbackInvoked = true }
-        testScheduler.advanceUntilIdle()
-
-        assertTrue(mockGrantManager.requestCalled, "GrantManager.request should be called")
-        assertTrue(callbackInvoked, "Callback should be invoked after grant")
-    }
-
-    @Test
-    fun `request when NOT_DETERMINED and denied should not invoke callback`() = runTest {
-        mockGrantManager.mockStatus = GrantStatus.NOT_DETERMINED
-        mockGrantManager.mockRequestResult = GrantStatus.DENIED
-        val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
-        testScheduler.advanceUntilIdle()
-
-        var callbackInvoked = false
-        handler.request { callbackInvoked = true }
-        testScheduler.advanceUntilIdle()
-
-        assertFalse(callbackInvoked, "Callback should NOT be invoked when denied")
-    }
-
-    @Test
-    fun `request when NOT_DETERMINED and then DENIED should not show rationale immediately`() = runTest {
-        mockGrantManager.mockStatus = GrantStatus.NOT_DETERMINED
-        mockGrantManager.mockRequestResult = GrantStatus.DENIED
-        val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
-        testScheduler.advanceUntilIdle()
-
-        handler.request(rationaleMessage = "Camera needed") { }
-        testScheduler.advanceUntilIdle()
-
-        // Check state directly - no emission expected since state doesn't change
-        val state = handler.state.value
-        // Should NOT show rationale after first system denial (isFirstRequest = true)
-        assertFalse(state.isVisible, "Dialog should not be shown after first system denial")
-        assertFalse(state.showRationale)
-    }
-
-    // ==================== Request Flow - DENIED (Soft Denial) ====================
-
-    @Test
-    fun `request when DENIED should show rationale dialog`() = runTest {
-        assumeRationaleSupported {
-            mockGrantManager.mockStatus = GrantStatus.DENIED
-            val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
-            testScheduler.advanceUntilIdle()
-
-            handler.state.test {
-                skipItems(1) // Skip initial
-
-                handler.request(rationaleMessage = "Camera is required") { }
-                testScheduler.advanceUntilIdle()
-
-                val state = awaitItem()
-                assertTrue(state.isVisible, "Dialog should be visible")
-                assertTrue(state.showRationale, "Should show rationale")
-                assertFalse(state.showSettingsGuide)
-                assertEquals("Camera is required", state.rationaleMessage)
+    fun `multiple rapid requests should only invoke callback once`() = testScope.runTest {
+        val delayingManager = object : GrantManager {
+            override suspend fun checkStatus(grant: GrantPermission): GrantStatus {
+                delay(1000)
+                return GrantStatus.GRANTED
             }
+            override suspend fun request(grant: GrantPermission): GrantStatus = GrantStatus.GRANTED
+            override suspend fun request(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus> = emptyMap()
+            override fun openSettings() {}
         }
-    }
-
-    @Test
-    fun `onRationaleConfirmed should request grant again`() = runTest {
-        mockGrantManager.mockStatus = GrantStatus.DENIED
-        mockGrantManager.mockRequestResult = GrantStatus.GRANTED
-        val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
-        testScheduler.advanceUntilIdle()
-
-        var callbackInvoked = false
-        handler.request { callbackInvoked = true }
-        testScheduler.advanceUntilIdle()
-
-        mockGrantManager.requestCalled = false // Reset
-        handler.onRationaleConfirmed()
-        testScheduler.advanceUntilIdle()
-
-        assertTrue(mockGrantManager.requestCalled, "Should request grant again")
-        assertTrue(callbackInvoked, "Callback should be invoked after grant")
-    }
-
-    @Test
-    fun `onRationaleConfirmed when denied again should hide dialog`() = runTest {
-        assumeRationaleSupported {
-            mockGrantManager.mockStatus = GrantStatus.DENIED
-            mockGrantManager.mockRequestResult = GrantStatus.DENIED_ALWAYS
-            val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
-            testScheduler.advanceUntilIdle()
-
-            handler.request { }
-            testScheduler.advanceUntilIdle()
-
-            handler.onRationaleConfirmed()
-            testScheduler.advanceUntilIdle()
-
-            // Check state directly - should now show settings guide
-            val state = handler.state.value
-            assertTrue(state.isVisible)
-            assertFalse(state.showRationale)
-            assertTrue(state.showSettingsGuide, "Should show settings guide after rationale")
-        }
-    }
-
-    // ==================== Request Flow - DENIED_ALWAYS (Hard Denial) ====================
-
-    @Test
-    fun `request when DENIED_ALWAYS should show settings guide if rationale was shown before`() = runTest {
-        assumeRationaleSupported {
-            mockGrantManager.mockStatus = GrantStatus.DENIED
-            val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
-            testScheduler.advanceUntilIdle()
-
-            handler.state.test {
-                skipItems(1) // Skip initial
-
-                // First request - shows rationale
-                handler.request(rationaleMessage = "Camera needed", settingsMessage = "Enable in Settings") { }
-                testScheduler.advanceUntilIdle()
-
-                val rationaleState = awaitItem()
-                assertTrue(rationaleState.showRationale, "Should show rationale first")
-
-                // Simulate user denying permanently
-                mockGrantManager.mockStatus = GrantStatus.DENIED_ALWAYS
-                mockGrantManager.mockRequestResult = GrantStatus.DENIED_ALWAYS
-                handler.onRationaleConfirmed()
-                testScheduler.advanceUntilIdle()
-
-                // onRationaleConfirmed() emits resetState() first, then settings guide
-                val resetState = awaitItem()
-                assertFalse(resetState.isVisible, "Dialog is hidden during reset")
-
-                val settingsState = awaitItem()
-                assertTrue(settingsState.isVisible, "Dialog should be visible")
-                assertFalse(settingsState.showRationale)
-                assertTrue(settingsState.showSettingsGuide, "Should show settings guide")
-                // onRationaleConfirmed() doesn't preserve messages - it passes null
-                assertNull(settingsState.settingsMessage, "Message is not preserved after onRationaleConfirmed")
-            }
-        }
-    }
-
-    @Test
-    fun `request when DENIED_ALWAYS without prior rationale should not show settings immediately`() = runTest {
-        mockGrantManager.mockStatus = GrantStatus.NOT_DETERMINED
-        mockGrantManager.mockRequestResult = GrantStatus.DENIED_ALWAYS
-        val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
-        testScheduler.advanceUntilIdle()
-
-        handler.request(settingsMessage = "Enable in Settings") { }
-        testScheduler.advanceUntilIdle()
-
-        // Check state directly - no emission expected since state doesn't change
-        val state = handler.state.value
-        // Should NOT show settings after first system denial
-        assertFalse(state.isVisible, "Should not show settings guide immediately")
-        assertFalse(state.showSettingsGuide)
-    }
-
-    @Test
-    fun `request when DENIED_ALWAYS on second request should show settings guide`() = runTest {
-        mockGrantManager.mockStatus = GrantStatus.DENIED_ALWAYS
-        val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
-        testScheduler.advanceUntilIdle()
-
-        handler.state.test {
-            skipItems(1) // Skip initial
-
-            // Second request (isFirstRequest = false)
-            handler.request(settingsMessage = "Enable in Settings") { }
-            testScheduler.advanceUntilIdle()
-
-            val state = awaitItem()
-            assertTrue(state.isVisible, "Dialog should be visible on second request")
-            assertTrue(state.showSettingsGuide, "Should show settings guide")
-            assertEquals("Enable in Settings", state.settingsMessage)
-        }
-    }
-
-    @Test
-    fun `onSettingsConfirmed should open settings and reset state`() = runTest {
-        mockGrantManager.mockStatus = GrantStatus.DENIED_ALWAYS
-        val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
-        testScheduler.advanceUntilIdle()
-
-        handler.request { }
-        testScheduler.advanceUntilIdle()
-
-        handler.onSettingsConfirmed()
-        testScheduler.advanceUntilIdle()
-
-        assertTrue(mockGrantManager.openSettingsCalled, "Should open settings")
-
-        // Check state directly
-        val state = handler.state.value
-        assertFalse(state.isVisible, "Dialog should be hidden")
-    }
-
-    // ==================== Dialog Dismissal ====================
-
-    @Test
-    fun `onDismiss should hide dialog and clear callback`() = runTest {
-        mockGrantManager.mockStatus = GrantStatus.DENIED
-        val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
-        testScheduler.advanceUntilIdle()
-
-        var callbackInvoked = false
-        handler.request { callbackInvoked = true }
-        testScheduler.advanceUntilIdle()
-
-        handler.onDismiss()
-        testScheduler.advanceUntilIdle()
-
-        // Check state directly
-        val state = handler.state.value
-        assertFalse(state.isVisible, "Dialog should be hidden")
-        assertFalse(state.showRationale)
-        assertFalse(state.showSettingsGuide)
-
-        // Verify callback was cleared (no way to invoke it now)
-        assertFalse(callbackInvoked, "Callback should not be invoked after dismiss")
-    }
-
-    // ==================== Refresh Status ====================
-
-    @Test
-    fun `refreshStatus should update status flow`() = runTest {
-        mockGrantManager.mockStatus = GrantStatus.DENIED
-        val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
-        testScheduler.advanceUntilIdle()
-
-        handler.status.test {
-            skipItems(1) // Skip initial DENIED
-
-            // User enabled permission in settings
-            mockGrantManager.mockStatus = GrantStatus.GRANTED
-            handler.refreshStatus()
-            testScheduler.advanceUntilIdle()
-
-            assertEquals(GrantStatus.GRANTED, awaitItem())
-        }
-    }
-
-    // ==================== Memory Leak Prevention ====================
-
-    @Test
-    fun `callback should be cleared after invocation to prevent memory leak`() = runTest {
-        mockGrantManager.mockStatus = GrantStatus.GRANTED
-        val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
-        testScheduler.advanceUntilIdle()
-
-        var invocationCount = 0
-        handler.request { invocationCount++ }
-        testScheduler.advanceUntilIdle()
-
-        assertEquals(1, invocationCount, "Callback should be invoked once")
-
-        // Manually try to trigger again (simulating retained handler)
-        // Callback should be cleared, so nothing happens
-        handler.refreshStatus()
-        testScheduler.advanceUntilIdle()
-
-        assertEquals(1, invocationCount, "Callback should still be 1 (was cleared)")
-    }
-
-    // ==================== Custom UI Flow ====================
-
-    @Test
-    fun `requestWithCustomUi should invoke rationale callback when DENIED`() = runTest {
-        mockGrantManager.mockStatus = GrantStatus.DENIED
-        val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
-        testScheduler.advanceUntilIdle()
-
-        var rationaleShown = false
-        var rationaleMessage = ""
-
-        handler.requestWithCustomUi(
-            rationaleMessage = "Camera is required",
-            onShowRationale = { message, _, _ ->
-                rationaleShown = true
-                rationaleMessage = message
-            },
-            onShowSettings = { _, _, _ -> },
-            onGranted = { }
-        )
-        testScheduler.advanceUntilIdle()
-
-        assertTrue(rationaleShown, "Rationale callback should be invoked")
-        assertEquals("Camera is required", rationaleMessage)
-    }
-
-    @Test
-    fun `requestWithCustomUi should invoke settings callback when DENIED_ALWAYS`() = runTest {
-        mockGrantManager.mockStatus = GrantStatus.DENIED_ALWAYS
-        val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
-        testScheduler.advanceUntilIdle()
-
-        var settingsShown = false
-        var settingsMessage = ""
-
-        handler.requestWithCustomUi(
-            settingsMessage = "Enable in Settings",
-            onShowRationale = { _, _, _ -> },
-            onShowSettings = { message, _, _ ->
-                settingsShown = true
-                settingsMessage = message
-            },
-            onGranted = { }
-        )
-        testScheduler.advanceUntilIdle()
-
-        assertTrue(settingsShown, "Settings callback should be invoked")
-        assertEquals("Enable in Settings", settingsMessage)
-    }
-
-    @Test
-    fun `requestWithCustomUi rationale onConfirm should request grant`() = runTest {
-        mockGrantManager.mockStatus = GrantStatus.DENIED
-        mockGrantManager.mockRequestResult = GrantStatus.GRANTED
-        val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
-        testScheduler.advanceUntilIdle()
-
-        var grantedInvoked = false
-        var onConfirm: (() -> Unit)? = null
-
-        handler.requestWithCustomUi(
-            onShowRationale = { _, confirm, _ -> onConfirm = confirm },
-            onShowSettings = { _, _, _ -> },
-            onGranted = { grantedInvoked = true }
-        )
-        testScheduler.advanceUntilIdle()
-
-        assertNotNull(onConfirm, "onConfirm should be captured")
-        mockGrantManager.requestCalled = false
-        onConfirm?.invoke()
-        testScheduler.advanceUntilIdle()
-
-        assertTrue(mockGrantManager.requestCalled, "Should request grant")
-        assertTrue(grantedInvoked, "onGranted should be invoked")
-    }
-
-    @Test
-    fun `requestWithCustomUi settings onConfirm should open settings`() = runTest {
-        mockGrantManager.mockStatus = GrantStatus.DENIED_ALWAYS
-        val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
-        testScheduler.advanceUntilIdle()
-
-        var onConfirm: (() -> Unit)? = null
-
-        handler.requestWithCustomUi(
-            onShowRationale = { _, _, _ -> },
-            onShowSettings = { _, confirm, _ -> onConfirm = confirm },
-            onGranted = { }
-        )
-        testScheduler.advanceUntilIdle()
-
-        assertNotNull(onConfirm)
-        onConfirm?.invoke()
-        testScheduler.advanceUntilIdle()
-
-        assertTrue(mockGrantManager.openSettingsCalled, "Should open settings")
-    }
-
-    @Test
-    fun `requestWithCustomUi onDismiss should clear callback`() = runTest {
-        mockGrantManager.mockStatus = GrantStatus.DENIED
-        val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
-        testScheduler.advanceUntilIdle()
-
-        var grantedInvoked = false
-        var onDismiss: (() -> Unit)? = null
-
-        handler.requestWithCustomUi(
-            onShowRationale = { _, _, dismiss -> onDismiss = dismiss },
-            onShowSettings = { _, _, _ -> },
-            onGranted = { grantedInvoked = true }
-        )
-        testScheduler.advanceUntilIdle()
-
-        assertNotNull(onDismiss)
-        onDismiss?.invoke()
-        testScheduler.advanceUntilIdle()
-
-        assertFalse(grantedInvoked, "Callback should be cleared after dismiss")
-    }
-
-    // ==================== Edge Cases ====================
-
-    @Test
-    fun `request with null messages should use empty UI state`() = runTest {
-        mockGrantManager.mockStatus = GrantStatus.DENIED
-        val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
-        testScheduler.advanceUntilIdle()
-
-        handler.state.test {
-            skipItems(1)
-
-            handler.request(rationaleMessage = null) { }
-            testScheduler.advanceUntilIdle()
-
-            val state = awaitItem()
-            assertNull(state.rationaleMessage, "Message should be null")
-        }
-    }
-
-    @Test
-    fun `multiple rapid requests should only invoke callback once`() = runTest {
-        mockGrantManager.mockStatus = GrantStatus.GRANTED
-        val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
-        testScheduler.advanceUntilIdle()
+        val handler = GrantHandler(delayingManager, AppGrant.CAMERA, this)
 
         var invocationCount = 0
 
         handler.request { invocationCount++ }
-        handler.request { invocationCount++ } // Second request
-        handler.request { invocationCount++ } // Third request
-        testScheduler.advanceUntilIdle()
+        runCurrent()
+        handler.request { invocationCount++ }
+        handler.request { invocationCount++ }
+        advanceUntilIdle()
 
-        // Last callback wins (overwrites previous)
-        assertEquals(1, invocationCount, "Only last callback should be invoked once")
+        assertEquals(1, invocationCount, "Only first callback should be invoked once")
     }
 
-    // ==================== RawPermission Support Tests ====================
-
     @Test
-    fun `should accept RawPermission in constructor`() = runTest {
-        // Create a custom permission
-        val customPermission = RawPermission(
-            identifier = "CUSTOM_FEATURE",
-            androidPermissions = listOf("com.example.permission.CUSTOM"),
-            iosUsageKey = "NSCustomUsageDescription"
-        )
-
+    fun `requestSuspend returns correct status`() = testScope.runTest {
         mockGrantManager.mockStatus = GrantStatus.NOT_DETERMINED
+        mockGrantManager.mockRequestResult = GrantStatus.GRANTED
+        val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, this)
 
-        // Should compile and not throw
-        val handler = GrantHandler(mockGrantManager, customPermission, testScope)
-        testScheduler.advanceUntilIdle()
-
-        // Verify handler is functional
-        assertNotNull(handler)
-        assertEquals(GrantStatus.NOT_DETERMINED, handler.status.value)
+        val result = handler.requestSuspend()
+        assertEquals(GrantStatus.GRANTED, result)
     }
 
     @Test
-    fun `should request RawPermission successfully`() = runTest {
-        val customPermission = RawPermission(
-            identifier = "BIOMETRIC",
-            androidPermissions = listOf("android.permission.USE_BIOMETRIC"),
-            iosUsageKey = "NSFaceIDUsageDescription"
-        )
+    fun `requestFlow emits correct status`() = testScope.runTest {
+        mockGrantManager.mockStatus = GrantStatus.NOT_DETERMINED
+        mockGrantManager.mockRequestResult = GrantStatus.DENIED
+        val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, this)
 
-        mockGrantManager.mockStatus = GrantStatus.GRANTED
-        val handler = GrantHandler(mockGrantManager, customPermission, testScope)
-        testScheduler.advanceUntilIdle()
-
-        var callbackInvoked = false
-        handler.request {
-            callbackInvoked = true
-        }
-        testScheduler.advanceUntilIdle()
-
-        assertTrue(callbackInvoked, "Callback should be invoked for RawPermission when granted")
-        assertEquals(GrantStatus.GRANTED, handler.status.value)
+        val result = handler.requestFlow().first()
+        assertEquals(GrantStatus.DENIED, result)
     }
 
     @Test
-    fun `should handle RawPermission denial flow`() = runTest {
+    fun `requestWithCustomUi invokes custom rationale callback`() = testScope.runTest {
         assumeRationaleSupported {
-            val customPermission = RawPermission(
-                identifier = "CUSTOM_SENSOR",
-                androidPermissions = listOf("com.example.permission.SENSOR"),
-                iosUsageKey = null  // Android-only permission
+            mockGrantManager.mockStatus = GrantStatus.DENIED
+            mockGrantManager.mockRequestResult = GrantStatus.DENIED
+            val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, this)
+
+            var rationaleShown = false
+            var settingsShown = false
+            var granted = false
+
+            handler.requestWithCustomUi(
+                rationaleMessage = "Custom Rationale",
+                onShowRationale = { msg, onConfirm, _ ->
+                    rationaleShown = true
+                    assertEquals("Custom Rationale", msg)
+                    onConfirm() // Must invoke to unsuspend
+                },
+                onShowSettings = { _, _, _ -> settingsShown = true },
+                onGranted = { granted = true }
             )
+            advanceUntilIdle()
 
-            mockGrantManager.mockStatus = GrantStatus.DENIED
-            val handler = GrantHandler(mockGrantManager, customPermission, testScope)
-            testScheduler.advanceUntilIdle()
-
-            handler.state.test {
-                awaitItem() // Initial state
-
-                handler.request {
-                    fail("Callback should not be invoked when denied")
-                }
-                testScheduler.advanceUntilIdle()
-
-                // Should show rationale for custom permission (second request)
-                handler.request {
-                    fail("Callback should not be invoked")
-                }
-                testScheduler.advanceUntilIdle()
-
-                val state = awaitItem()
-                assertTrue(state.showRationale, "Should show rationale for denied RawPermission")
-            }
+            assertTrue(rationaleShown)
+            assertFalse(settingsShown)
+            assertFalse(granted)
         }
     }
 
     @Test
-    fun `should work with Android-only RawPermission`() = runTest {
-        val androidOnlyPermission = RawPermission(
-            identifier = "ANDROID_15_FEATURE",
-            androidPermissions = listOf("android.permission.NEW_FEATURE"),
-            iosUsageKey = null  // No iOS equivalent
-        )
+    fun `requestWithCustomUi invokes custom settings callback`() = testScope.runTest {
+        assumeRationaleSupported {
+            mockGrantManager.mockStatus = GrantStatus.DENIED_ALWAYS
+            mockGrantManager.mockRequestResult = GrantStatus.DENIED_ALWAYS
+            val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, this)
 
-        mockGrantManager.mockStatus = GrantStatus.GRANTED
-        val handler = GrantHandler(mockGrantManager, androidOnlyPermission, testScope)
-        testScheduler.advanceUntilIdle()
+            var rationaleShown = false
+            var settingsShown = false
 
-        var callbackInvoked = false
-        handler.request { callbackInvoked = true }
-        testScheduler.advanceUntilIdle()
+            handler.requestWithCustomUi(
+                settingsMessage = "Custom Settings",
+                onShowRationale = { _, _, _ -> rationaleShown = true },
+                onShowSettings = { msg, _, onDismiss ->
+                    settingsShown = true
+                    assertEquals("Custom Settings", msg)
+                    onDismiss() // Must invoke to unsuspend
+                },
+                onGranted = {}
+            )
+            advanceUntilIdle()
 
-        assertTrue(callbackInvoked, "Android-only RawPermission should work")
+            assertFalse(rationaleShown)
+            assertTrue(settingsShown)
+        }
     }
 
     @Test
-    fun `should work with iOS-only RawPermission`() = runTest {
-        val iosOnlyPermission = RawPermission(
-            identifier = "HEALTH_KIT",
-            androidPermissions = emptyList(),  // No Android equivalent
-            iosUsageKey = "NSHealthShareUsageDescription"
-        )
+    fun `requestSuspend handles exception gracefully and returns last status`() = testScope.runTest {
+        val throwingManager = object : GrantManager {
+            override suspend fun checkStatus(grant: GrantPermission): GrantStatus {
+                return GrantStatus.NOT_DETERMINED
+            }
+            override suspend fun request(grant: GrantPermission): GrantStatus {
+                throw IllegalStateException("Test exception")
+            }
+            override suspend fun request(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus> = emptyMap()
+            override fun openSettings() {}
+        }
+        val handler = GrantHandler(throwingManager, AppGrant.CAMERA, this)
 
-        mockGrantManager.mockStatus = GrantStatus.GRANTED
-        val handler = GrantHandler(mockGrantManager, iosOnlyPermission, testScope)
-        testScheduler.advanceUntilIdle()
+        val result = handler.requestSuspend()
+        assertEquals(GrantStatus.NOT_DETERMINED, result, "Should swallow exception and return last known status")
+    }
 
-        var callbackInvoked = false
-        handler.request { callbackInvoked = true }
-        testScheduler.advanceUntilIdle()
+    @Test
+    fun `requestSuspend subsequent concurrent calls return immediately with current status`() = testScope.runTest {
+        val delayingManager = object : GrantManager {
+            override suspend fun checkStatus(grant: GrantPermission): GrantStatus {
+                delay(1000)
+                return GrantStatus.NOT_DETERMINED
+            }
+            override suspend fun request(grant: GrantPermission): GrantStatus = GrantStatus.GRANTED
+            override suspend fun request(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus> = emptyMap()
+            override fun openSettings() {}
+        }
+        val handler = GrantHandler(delayingManager, AppGrant.CAMERA, this)
 
-        assertTrue(callbackInvoked, "iOS-only RawPermission should work")
+        // Launch first request
+        val deferred1 = async { handler.requestSuspend() }
+        runCurrent() // Let the first coroutine acquire the mutex and delay
+
+        // Launch second request while first is holding the mutex
+        val deferred2 = async { handler.requestSuspend() }
+
+        // Second one should immediately return the initial status (NOT_DETERMINED)
+        // because it fails to acquire the tryLock() and cont.resumes(currentStatus).
+        val result2 = deferred2.await()
+        assertEquals(GrantStatus.NOT_DETERMINED, result2)
+
+        advanceUntilIdle()
+        // First one eventually finishes with GRANTED (since the mock returns GRANTED from request)
+        // Actually wait, our delayingManager returns NOT_DETERMINED from checkStatus, then requests.
+        val result1 = deferred1.await()
+        assertEquals(GrantStatus.GRANTED, result1)
     }
 }

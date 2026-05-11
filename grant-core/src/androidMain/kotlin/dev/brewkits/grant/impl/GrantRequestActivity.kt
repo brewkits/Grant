@@ -7,79 +7,59 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
 import dev.brewkits.grant.utils.GrantLogger
 import kotlinx.coroutines.CompletableDeferred
 import java.util.concurrent.ConcurrentHashMap
 import java.util.UUID
 
+class GrantRequestViewModel(private val savedStateHandle: SavedStateHandle) : ViewModel() {
+    companion object {
+        private const val KEY_ALREADY_LAUNCHED = "already_launched"
+    }
+
+    var alreadyLaunched: Boolean
+        get() = savedStateHandle.get<Boolean>(KEY_ALREADY_LAUNCHED) ?: false
+        set(value) {
+            savedStateHandle[KEY_ALREADY_LAUNCHED] = value
+        }
+}
+
 /**
  * Transparent Activity for handling runtime grant requests.
- *
- * This Activity:
- * - Shows no UI (transparent theme)
- * - Requests single or multiple grants at once
- * - Returns the result via a StateFlow mapped by request ID
- * - Finishes immediately after getting the result
- * - Includes lifecycle safety to prevent memory leaks
- *
- * **Usage Pattern:**
- * 1. PlatformGrantDelegate launches this Activity with grant(s) and unique request ID
- * 2. Activity requests grant(s) and waits for user response
- * 3. Result is posted to StateFlow keyed by request ID
- * 4. Activity finishes
- * 5. PlatformGrantDelegate receives result from its specific StateFlow
- *
- * **Thread Safety (Request ID Pattern):**
- * - Each grant request gets a unique UUID
- * - Results are stored in ConcurrentHashMap keyed by request ID
- * - Prevents race conditions when multiple grants requested simultaneously
- * - Automatic cleanup after result is consumed
- *
- * **Lifecycle Safety:**
- * - Registers lifecycle observer to cleanup on destroy
- * - Prevents memory leaks from retained launcher references
- * - Clears pending results when activity is destroyed
- *
- * **Multiple Grants (Android Best Practice):**
- * - Uses RequestMultiplePermissions to show all grant dialogs together
- * - Provides better UX by grouping related grants (e.g., FINE + COARSE Location)
- * - System handles dialog flow automatically
  */
 class GrantRequestActivity : ComponentActivity() {
 
     private var requestMultipleGrantsLauncher: ActivityResultLauncher<Array<String>>? = null
     private var currentGrants = arrayOf<String>()
     private var requestId = ""
+    private val viewModel: GrantRequestViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         try {
-            // Don't set any content view - keep activity completely empty
-            // This prevents any UI rendering and ensures zero visual impact
-
-            // Get request ID from savedInstanceState (process death recovery) or intent (new request)
             requestId = savedInstanceState?.getString(KEY_REQUEST_ID)
                 ?: intent.getStringExtra(EXTRA_REQUEST_ID)
                 ?: ""
 
             if (requestId.isEmpty()) {
                 GrantLogger.w(TAG, "No requestId found - finishing activity")
-                finish()
+                finishAndCleanup()
                 return
             }
 
             currentGrants = intent.getStringArrayExtra(EXTRA_GRANTS) ?: run {
                 setResult(requestId, GrantResult.ERROR)
-                finish()
+                finishAndCleanup()
                 return
             }
 
-            // Register grant launcher for multiple grants BEFORE checking if orphaned
-            // This is critical for Process Death recovery. If the OS recreates this Activity
-            // to deliver a permission result, we MUST register the launcher to receive it.
+            // Register launcher first
             requestMultipleGrantsLauncher = registerForActivityResult(
                 ActivityResultContracts.RequestMultiplePermissions()
             ) { grantsResult: Map<String, Boolean> ->
@@ -93,66 +73,64 @@ class GrantRequestActivity : ComponentActivity() {
                     }
                 }
                 setResult(requestId, result)
-                finish()
+                finishAndCleanup()
             }
 
-            // Check if this requestId still has a waiting coroutine
-            // If process died, the old requestId has no waiting coroutine.
-            // We STILL need to register the launcher (done above) so the OS doesn't crash
-            // trying to deliver the result, but we shouldn't launch a NEW request.
-            if (!pendingResults.containsKey(requestId)) {
-                GrantLogger.w(TAG, "RequestId $requestId has no pending coroutine - finishing orphaned activity")
-                finish()
+            // If this requestId still has a waiting coroutine, normal flow.
+            // If it DOES NOT have a pending coroutine (orphaned from Process Death),
+            // we STILL wait for the launcher callback so the OS can deliver the result.
+            // We just don't re-launch the request if alreadyLaunched == true.
+            if (!pendingResults.containsKey(requestId) && !viewModel.alreadyLaunched) {
+                GrantLogger.w(TAG, "RequestId $requestId has no pending coroutine and wasn't launched - finishing orphaned activity")
+                finishAndCleanup()
                 return
             }
 
-            // Add lifecycle observer for cleanup
             lifecycle.addObserver(object : DefaultLifecycleObserver {
                 override fun onDestroy(owner: LifecycleOwner) {
-                    // If the activity is being recreated for a configuration change,
-                    // DO NOT fail the request. The new activity instance will re-attach to the request.
                     if (!isChangingConfigurations) {
-                        // Clear pending result if activity is destroyed without result
-                        // Optimization: Do this BEFORE unregistering launcher to ensure no race
                         val deferred = pendingResults[requestId]
                         if (deferred?.isActive == true) {
                             setResult(requestId, GrantResult.ERROR)
                         }
+                        isActivityActive = false
                     }
-
-                    // Cleanup to prevent memory leaks
                     requestMultipleGrantsLauncher?.unregister()
                     requestMultipleGrantsLauncher = null
                 }
             })
 
-            // Check if all grants are already granted
             val allAlreadyGranted = currentGrants.all { grant ->
                 checkSelfPermission(grant) == PackageManager.PERMISSION_GRANTED
             }
 
             if (allAlreadyGranted) {
                 setResult(requestId, GrantResult.GRANTED)
-                finish()
+                finishAndCleanup()
                 return
             }
 
-            // Request the grants (all at once for better UX)
-            requestMultipleGrantsLauncher?.launch(currentGrants)
+            if (!viewModel.alreadyLaunched) {
+                viewModel.alreadyLaunched = true
+                requestMultipleGrantsLauncher?.launch(currentGrants)
+            }
         } catch (e: Exception) {
             GrantLogger.e(TAG, "Error in onCreate: ${e.message}", e)
             if (requestId.isNotEmpty()) {
                 setResult(requestId, GrantResult.ERROR)
             }
-            finish()
+            finishAndCleanup()
         }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        // Save requestId to survive process death
-        // This allows the activity to check if it's an orphaned request on recreation
         outState.putString(KEY_REQUEST_ID, requestId)
+    }
+
+    private fun finishAndCleanup() {
+        isActivityActive = false
+        finish()
     }
 
     private fun setResult(requestId: String, result: GrantResult) {
@@ -165,66 +143,44 @@ class GrantRequestActivity : ComponentActivity() {
         private const val EXTRA_REQUEST_ID = "request_id"
         private const val KEY_REQUEST_ID = "saved_request_id"
 
-        /**
-         * Map of request ID to result Deferred.
-         * Using CompletableDeferred is more efficient than StateFlow for single results.
-         */
         private val pendingResults = ConcurrentHashMap<String, CompletableDeferred<GrantResult>>()
-
-        /**
-         * Map of request ID to creation timestamp for orphan cleanup.
-         * Tracks when each request was created to identify stale entries.
-         */
         private val pendingTimestamps = ConcurrentHashMap<String, Long>()
-
-        /**
-         * Threshold for cleaning up orphaned entries (2 minutes).
-         * Entries older than this are considered orphaned and cleaned up.
-         */
         private const val ORPHAN_CLEANUP_THRESHOLD_MS = 120_000L
+
+        @Volatile
+        private var isActivityActive = false
 
         /**
          * Launch this Activity to request one or more grants.
-         *
-         * **Android Best Practice:**
-         * - Requesting multiple related grants at once (e.g., FINE + COARSE Location)
-         *   provides better UX as the system can group them into a single dialog flow
-         * - This prevents showing multiple sequential dialogs for related grants
-         *
-         * **Process Death Recovery:**
-         * - Tracks request timestamps to cleanup orphaned entries
-         * - If process dies during request, old entries are cleaned up on next request
-         * - Prevents memory leaks from abandoned StateFlows
-         *
-         * @param context Android context
-         * @param androidGrants List of Android grant strings (e.g., [Manifest.permission.CAMERA])
-         * @return Unique request ID to track this grant request
          */
         fun requestGrants(context: Context, androidGrants: List<String>): String {
             val requestId = UUID.randomUUID().toString()
 
-            // Create Deferred for this request
             pendingResults[requestId] = CompletableDeferred()
             pendingTimestamps[requestId] = System.currentTimeMillis()
 
-            // Cleanup orphaned entries before starting new request
             cleanupOrphanedEntries()
+
+            if (isActivityActive) {
+                GrantLogger.w(TAG, "Activity Launch Guard: Another GrantRequestActivity is already active. Failing fast.")
+                pendingResults[requestId]?.complete(GrantResult.ERROR)
+                cleanup(requestId)
+                return requestId
+            }
+            isActivityActive = true
 
             val intent = Intent(context, GrantRequestActivity::class.java).apply {
                 putExtra(EXTRA_GRANTS, androidGrants.toTypedArray())
                 putExtra(EXTRA_REQUEST_ID, requestId)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                // NOTE: FLAG_ACTIVITY_CLEAR_TOP intentionally omitted.
-                // It could destroy the host app's foreground Activity when
-                // launched from a Service or Application context.
                 addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
             }
             
             try {
                 context.startActivity(intent)
             } catch (e: Exception) {
-                GrantLogger.e("GrantRequestActivity", "Failed to start GrantRequestActivity. On Android 10+, starting activities from the background (e.g. from Application context) is restricted and may be blocked by the OS.", e)
-                // Complete immediately with ERROR to prevent hanging
+                GrantLogger.e(TAG, "Failed to start GrantRequestActivity", e)
+                isActivityActive = false
                 pendingResults[requestId]?.complete(GrantResult.ERROR)
                 cleanup(requestId)
             }
@@ -232,16 +188,6 @@ class GrantRequestActivity : ComponentActivity() {
             return requestId
         }
 
-        /**
-         * Cleanup orphaned entries that have exceeded the timeout threshold.
-         * Called automatically on each new request to prevent memory leaks.
-         *
-         * **Why This is Needed:**
-         * - Process death leaves orphaned entries in pendingResults
-         * - Old requestId has no waiting coroutine after process death
-         * - Orphaned StateFlows consume memory (~200 bytes each)
-         * - This cleanup prevents unbounded memory growth
-         */
         private fun cleanupOrphanedEntries() {
             val now = System.currentTimeMillis()
             val orphanedIds = mutableListOf<String>()
@@ -253,7 +199,6 @@ class GrantRequestActivity : ComponentActivity() {
             }
 
             orphanedIds.forEach { requestId ->
-                // Complete with error before removing to ensure no waiting coroutine hangs
                 pendingResults[requestId]?.complete(GrantResult.ERROR)
                 pendingResults.remove(requestId)
                 pendingTimestamps.remove(requestId)
@@ -264,25 +209,14 @@ class GrantRequestActivity : ComponentActivity() {
             }
         }
 
-        /**
-         * Get the result Deferred for a specific request ID.
-         *
-         * @param requestId The unique request ID returned by requestGrants()
-         * @return Deferred that will complete with the result, or null if invalid request ID
-         */
         internal fun getResultDeferred(requestId: String): CompletableDeferred<GrantResult>? {
             return pendingResults[requestId]
         }
 
-        /**
-         * Clean up after consuming result.
-         * Call this after receiving the grant result to prevent memory leaks.
-         *
-         * @param requestId The unique request ID to clean up
-         */
         internal fun cleanup(requestId: String) {
             pendingResults.remove(requestId)
             pendingTimestamps.remove(requestId)
+            isActivityActive = false
         }
     }
 

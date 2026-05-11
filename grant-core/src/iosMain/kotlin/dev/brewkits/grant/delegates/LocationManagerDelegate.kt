@@ -168,4 +168,36 @@ internal class LocationManagerDelegate : NSObject(), CLLocationManagerDelegatePr
      */
     fun currentAuthorizationStatus(): CLAuthorizationStatus =
         locationManager?.authorizationStatus() ?: CLLocationManager().authorizationStatus()
+
+    /**
+     * Exposes the instance `accuracyAuthorization` property (iOS 14+).
+     * Returns `CLAccuracyAuthorizationFullAccuracy` (0) or `CLAccuracyAuthorizationReducedAccuracy` (1).
+     */
+    @OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+    fun currentAccuracyAuthorization(): Long {
+        val manager = locationManager ?: CLLocationManager()
+        return if (manager.respondsToSelector(platform.Foundation.NSSelectorFromString("accuracyAuthorization"))) {
+            manager.accuracyAuthorization.value.toLong()
+        } else {
+            0L // Full accuracy is default on iOS < 14
+        }
+    }
+
+    /**
+     * Requests temporary full accuracy authorization (iOS 14+).
+     */
+    @OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+    suspend fun requestTemporaryFullAccuracyAuthorization(purposeKey: String) {
+        return suspendCancellableCoroutine { cont ->
+            val manager = getManager()
+            if (!manager.respondsToSelector(platform.Foundation.NSSelectorFromString("requestTemporaryFullAccuracyAuthorizationWithPurposeKey:completion:"))) {
+                cont.resume(Unit)
+                return@suspendCancellableCoroutine
+            }
+            
+            manager.requestTemporaryFullAccuracyAuthorizationWithPurposeKey(purposeKey) { _ ->
+                cont.resume(Unit)
+            }
+        }
+    }
 }

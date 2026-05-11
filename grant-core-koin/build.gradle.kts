@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "dev.brewkits"
-version = "1.3.1"
+version = "1.4.0"
 
 kotlin {
     androidTarget {
@@ -55,10 +55,17 @@ kotlin {
 android {
     namespace = "dev.brewkits.grant.koin"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
-compileOptions {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
-}
+
+    defaultConfig {
+        minSdk = libs.versions.android.minSdk.get().toInt()
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        multiDexEnabled = true
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
 }
 
 publishing {
@@ -72,7 +79,7 @@ repositories {
 publications.configureEach {
     (this as? MavenPublication)?.let {
         groupId = "dev.brewkits"
-        version = "1.3.1"
+        version = "1.4.0"
 
         pom {
             name.set("KMP Grant Koin")

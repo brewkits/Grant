@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "dev.brewkits"
-version = "1.3.1"
+version = "1.4.0"
 
 kotlin {
     androidTarget {
@@ -73,7 +73,7 @@ koverReport {
     defaults {
         verify {
             rule {
-                minBound(80)
+                minBound(85)
             }
         }
     }
@@ -105,7 +105,7 @@ publishing {
     publications.configureEach {
         (this as? MavenPublication)?.let {
             groupId = "dev.brewkits"
-            version = "1.3.1"
+            version = "1.4.0"
 
             pom {
                 name.set("KMP Grant Compose")

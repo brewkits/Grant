@@ -38,6 +38,9 @@ jobs:
       - name: Build grant-compose
         run: ./gradlew :grant-compose:build
 
+      - name: Build grant-core-koin
+        run: ./gradlew :grant-core-koin:build
+
       - name: Build demo app
         run: ./gradlew :demo:assembleDebug
 
