@@ -151,7 +151,7 @@ class GrantHandler(
     val status: StateFlow<GrantStatus> = _status.asStateFlow()
 
     private val _grantedEvents = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1)
-    val grantedEvents: kotlinx.coroutines.flow.SharedFlow<Unit> = _grantedEvents.asSharedFlow()
+    internal val grantedEvents: kotlinx.coroutines.flow.SharedFlow<Unit> = _grantedEvents.asSharedFlow()
 
     @kotlin.concurrent.Volatile
     private var onGrantedCallback: ((GrantStatus) -> Unit)? = null
@@ -220,29 +220,16 @@ class GrantHandler(
         settingsMessage: String? = null,
         onGranted: (GrantStatus) -> Unit
     ) {
-        // tryLock() is atomic — safe concurrent guard replacing the racy isLocked check.
-        if (!requestMutex.tryLock()) return
-        
-        this.onGrantedCallback = onGranted
-
-        val job = scope.launch {
+        scope.launch {
+            if (!requestMutex.tryLock()) return@launch
             try {
+                this@GrantHandler.onGrantedCallback = onGranted
                 val currentStatus = grantManager.checkStatus(grant)
                 _status.value = currentStatus
                 handleStatus(currentStatus, rationaleMessage, settingsMessage)
-            } catch (e: Exception) {
-                // If an unexpected error occurs, clear the callback to prevent hanging references
-                clearCallbacks()
-                throw e 
             } finally {
                 requestMutex.unlock()
             }
-        }
-        
-        // Safety: If the scope was already cancelled, launch() returns a cancelled job 
-        // and the block never runs. We must unlock manually to prevent a permanent leak.
-        if (!job.isActive) {
-            requestMutex.unlock()
         }
     }
 
@@ -258,16 +245,14 @@ class GrantHandler(
         rationaleMessage: String? = null,
         settingsMessage: String? = null
     ): GrantStatus = suspendCancellableCoroutine { cont ->
-        if (!requestMutex.tryLock()) {
-            cont.resume(_status.value)
-            return@suspendCancellableCoroutine
-        }
-        
-        this.onResultCallback = { finalStatus ->
-            if (cont.isActive) cont.resume(finalStatus)
-        }
-
         val job = scope.launch {
+            if (!requestMutex.tryLock()) {
+                if (cont.isActive) cont.resume(_status.value)
+                return@launch
+            }
+            this@GrantHandler.onResultCallback = { finalStatus ->
+                if (cont.isActive) cont.resume(finalStatus)
+            }
             try {
                 val currentStatus = grantManager.checkStatus(grant)
                 _status.value = currentStatus
@@ -280,10 +265,10 @@ class GrantHandler(
             }
         }
 
-        if (!job.isActive) {
-            requestMutex.unlock()
-            clearCallbacks()
-            if (cont.isActive) cont.resume(_status.value)
+        cont.invokeOnCancellation { job.cancel() }
+
+        if (!job.isActive && cont.isActive) {
+            cont.resume(_status.value)
         }
     }
 
@@ -306,29 +291,20 @@ class GrantHandler(
      * Called when user confirms rationale dialog and wants to proceed.
      */
     fun onRationaleConfirmed() {
-        if (!requestMutex.tryLock()) return
-
-        val job = scope.launch {
+        scope.launch {
+            if (!requestMutex.tryLock()) return@launch
             try {
-                // Hide dialog first to prevent user confusion
                 resetState()
 
                 val newStatus = grantManager.request(grant)
                 _status.value = newStatus
 
-                // Force a refresh after the request to ensure UI is in sync
                 _status.value = grantManager.checkStatus(grant)
 
-                // Mark as first request to prevent showing another dialog immediately
-                // User just saw system dialog - don't bombard with rationale again if denied
                 handleStatus(newStatus, null, null, isFirstRequest = true)
             } finally {
                 requestMutex.unlock()
             }
-        }
-
-        if (!job.isActive) {
-            requestMutex.unlock()
         }
     }
 
@@ -441,10 +417,9 @@ class GrantHandler(
         onShowSettings: (message: String, onConfirm: () -> Unit, onDismiss: () -> Unit) -> Unit,
         onGranted: (GrantStatus) -> Unit
     ) {
-        if (!requestMutex.tryLock()) return
-        this.onGrantedCallback = onGranted
-
-        val job = scope.launch {
+        scope.launch {
+            if (!requestMutex.tryLock()) return@launch
+            this@GrantHandler.onGrantedCallback = onGranted
             try {
                 val currentStatus = grantManager.checkStatus(grant)
                 _status.value = currentStatus
@@ -459,10 +434,6 @@ class GrantHandler(
                 clearCallbacks()
                 requestMutex.unlock()
             }
-        }
-
-        if (!job.isActive) {
-            requestMutex.unlock()
         }
     }
 
@@ -497,13 +468,30 @@ class GrantHandler(
                 }
                 is FlowState.HandleResult -> {
                     when (state.status) {
-                        GrantStatus.GRANTED, GrantStatus.PARTIAL_GRANTED -> {
+                        GrantStatus.GRANTED -> {
                             resetState()
                             hasShownRationaleDialog = false
                             _grantedEvents.tryEmit(Unit)
                             onGrantedCallback?.invoke(state.status)
                             clearCallbacks(state.status)
                             currentState = FlowState.Done
+                        }
+                        GrantStatus.PARTIAL_GRANTED -> {
+                            if (grant.requiresBackgroundUpgrade) {
+                                // The OS dialog (foreground + background prompt) has already
+                                // run for permissions that require a background upgrade. If we
+                                // land here with PARTIAL_GRANTED, the user explicitly denied
+                                // the background step, so jump straight to the settings guide
+                                // regardless of isFirstRequest.
+                                currentState = FlowState.HandleResult(GrantStatus.DENIED_ALWAYS, isFirstRequest = false)
+                            } else {
+                                resetState()
+                                hasShownRationaleDialog = false
+                                _grantedEvents.tryEmit(Unit)
+                                onGrantedCallback?.invoke(state.status)
+                                clearCallbacks(state.status)
+                                currentState = FlowState.Done
+                            }
                         }
                         GrantStatus.NOT_DETERMINED -> {
                             currentState = FlowState.Check(isFirstRequest = state.isFirstRequest)
@@ -602,11 +590,21 @@ class GrantHandler(
                 }
                 is FlowState.HandleResult -> {
                     when (state.status) {
-                        GrantStatus.GRANTED, GrantStatus.PARTIAL_GRANTED -> {
+                        GrantStatus.GRANTED -> {
                             _grantedEvents.tryEmit(Unit)
                             onGrantedCallback?.invoke(state.status)
                             clearCallbacks(state.status)
                             currentState = FlowState.Done
+                        }
+                        GrantStatus.PARTIAL_GRANTED -> {
+                            if (grant.requiresBackgroundUpgrade) {
+                                currentState = FlowState.HandleResult(GrantStatus.DENIED_ALWAYS, isFirstRequest = false)
+                            } else {
+                                _grantedEvents.tryEmit(Unit)
+                                onGrantedCallback?.invoke(state.status)
+                                clearCallbacks(state.status)
+                                currentState = FlowState.Done
+                            }
                         }
                         GrantStatus.NOT_DETERMINED -> {
                             currentState = FlowState.Check(isFirstRequest = state.isFirstRequest)

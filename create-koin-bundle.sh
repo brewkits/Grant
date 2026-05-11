@@ -6,7 +6,7 @@
 
 set -e
 
-VERSION="1.3.1"
+VERSION="1.4.0"
 MODULE="grant-core-koin"
 GROUP_PATH="dev/brewkits"
 BUNDLE_NAME="${MODULE}-v${VERSION}-bundle.jar"

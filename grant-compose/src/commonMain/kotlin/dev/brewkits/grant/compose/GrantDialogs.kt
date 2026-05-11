@@ -18,7 +18,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -29,11 +31,16 @@ import dev.brewkits.grant.GrantAndServiceHandler
 import dev.brewkits.grant.GrantGroupHandler
 import dev.brewkits.grant.GrantHandler
 
+private enum class DialogKind { None, Rationale, Settings }
+private enum class ServiceDialogKind { None, Rationale, PermissionSettings, ServiceSettings }
+
 /**
  * A comprehensive Dialog Handler optimized for performance and accessibility.
- * 
- * Uses derivedStateOf to minimize recompositions and supports scrollable 
- * content for small screen compatibility.
+ *
+ * Uses [derivedStateOf] over the underlying [GrantHandler.state] so that
+ * unrelated field changes (e.g. message text edits) do not trigger a
+ * re-composition of the dialog branch selection. Recomposition only happens
+ * when the dialog kind actually changes.
  */
 @Composable
 fun GrantDialog(
@@ -50,38 +57,46 @@ fun GrantDialog(
     }
 
     val state by handler.collectAsStateWithLifecycle()
-
-    if (state.isVisible) {
-        when {
-            state.showRationale -> {
-                GrantRationaleDialog(
-                    message = state.rationaleMessage
-                        ?: "This permission is needed for this feature to work properly.",
-                    title = rationaleTitle,
-                    confirmText = rationaleConfirm,
-                    dismissText = rationaleDismiss,
-                    onConfirm = { handler.onRationaleConfirmed() },
-                    onDismiss = { handler.onDismiss() }
-                )
-            }
-
-            state.showSettingsGuide -> {
-                GrantSettingsDialog(
-                    message = state.settingsMessage
-                        ?: "This permission was denied. Please enable it in Settings.",
-                    title = settingsTitle,
-                    confirmText = settingsConfirm,
-                    dismissText = settingsDismiss,
-                    onConfirm = { handler.onSettingsConfirmed() },
-                    onDismiss = { handler.onDismiss() }
-                )
+    val dialogKind by remember {
+        derivedStateOf {
+            when {
+                !state.isVisible -> DialogKind.None
+                state.showRationale -> DialogKind.Rationale
+                state.showSettingsGuide -> DialogKind.Settings
+                else -> DialogKind.None
             }
         }
+    }
+
+    when (dialogKind) {
+        DialogKind.None -> Unit
+        DialogKind.Rationale -> GrantRationaleDialog(
+            message = state.rationaleMessage
+                ?: "This permission is needed for this feature to work properly.",
+            title = rationaleTitle,
+            confirmText = rationaleConfirm,
+            dismissText = rationaleDismiss,
+            onConfirm = { handler.onRationaleConfirmed() },
+            onDismiss = { handler.onDismiss() }
+        )
+        DialogKind.Settings -> GrantSettingsDialog(
+            message = state.settingsMessage
+                ?: "This permission was denied. Please enable it in Settings.",
+            title = settingsTitle,
+            confirmText = settingsConfirm,
+            dismissText = settingsDismiss,
+            onConfirm = { handler.onSettingsConfirmed() },
+            onDismiss = { handler.onDismiss() }
+        )
     }
 }
 
 /**
- * A Dialog Handler for group permission requests, optimized for performance.
+ * A Dialog Handler for group permission requests.
+ *
+ * Uses [derivedStateOf] so that mid-flight `grantedGrants` set updates (which
+ * tick frequently while the user grants each permission) do not invalidate the
+ * dialog branch unless the visible dialog kind actually changes.
  */
 @Composable
 fun GrantGroupDialog(
@@ -98,38 +113,45 @@ fun GrantGroupDialog(
     }
 
     val state by handler.collectAsStateWithLifecycle()
-
-    if (state.isVisible) {
-        when {
-            state.showRationale -> {
-                GrantRationaleDialog(
-                    message = state.rationaleMessage
-                        ?: "This permission is needed for this feature to work properly.",
-                    title = rationaleTitle,
-                    confirmText = rationaleConfirm,
-                    dismissText = rationaleDismiss,
-                    onConfirm = { handler.onRationaleConfirmed() },
-                    onDismiss = { handler.onDismiss() }
-                )
-            }
-
-            state.showSettingsGuide -> {
-                GrantSettingsDialog(
-                    message = state.settingsMessage
-                        ?: "This permission was denied. Please enable it in Settings.",
-                    title = settingsTitle,
-                    confirmText = settingsConfirm,
-                    dismissText = settingsDismiss,
-                    onConfirm = { handler.onSettingsConfirmed() },
-                    onDismiss = { handler.onDismiss() }
-                )
+    val dialogKind by remember {
+        derivedStateOf {
+            when {
+                !state.isVisible -> DialogKind.None
+                state.showRationale -> DialogKind.Rationale
+                state.showSettingsGuide -> DialogKind.Settings
+                else -> DialogKind.None
             }
         }
+    }
+
+    when (dialogKind) {
+        DialogKind.None -> Unit
+        DialogKind.Rationale -> GrantRationaleDialog(
+            message = state.rationaleMessage
+                ?: "This permission is needed for this feature to work properly.",
+            title = rationaleTitle,
+            confirmText = rationaleConfirm,
+            dismissText = rationaleDismiss,
+            onConfirm = { handler.onRationaleConfirmed() },
+            onDismiss = { handler.onDismiss() }
+        )
+        DialogKind.Settings -> GrantSettingsDialog(
+            message = state.settingsMessage
+                ?: "This permission was denied. Please enable it in Settings.",
+            title = settingsTitle,
+            confirmText = settingsConfirm,
+            dismissText = settingsDismiss,
+            onConfirm = { handler.onSettingsConfirmed() },
+            onDismiss = { handler.onDismiss() }
+        )
     }
 }
 
 /**
  * A Dialog Handler for unified permission and hardware service requests.
+ *
+ * Uses [derivedStateOf] to isolate dialog-kind changes from unrelated state
+ * updates such as service availability ticks.
  */
 @Composable
 fun GrantAndServiceDialog(
@@ -148,45 +170,47 @@ fun GrantAndServiceDialog(
     }
 
     val state by handler.collectAsStateWithLifecycle()
-
-    if (state.isVisible) {
-        when {
-            state.showRationale -> {
-                GrantRationaleDialog(
-                    message = state.rationaleMessage
-                        ?: "This permission is needed for this feature to work properly.",
-                    title = rationaleTitle,
-                    confirmText = rationaleConfirm,
-                    dismissText = rationaleDismiss,
-                    onConfirm = { handler.onRationaleConfirmed() },
-                    onDismiss = { handler.onDismiss() }
-                )
-            }
-
-            state.showPermissionSettings -> {
-                GrantSettingsDialog(
-                    message = state.permissionSettingsMessage
-                        ?: "This permission was denied. Please enable it in Settings.",
-                    title = permissionSettingsTitle,
-                    confirmText = permissionSettingsConfirm,
-                    dismissText = dismissText,
-                    onConfirm = { handler.onPermissionSettingsConfirmed() },
-                    onDismiss = { handler.onDismiss() }
-                )
-            }
-            
-            state.showServiceSettings -> {
-                GrantSettingsDialog(
-                    message = state.serviceSettingsMessage
-                        ?: "This service needs to be enabled for this feature to work.",
-                    title = serviceSettingsTitle,
-                    confirmText = serviceSettingsConfirm,
-                    dismissText = dismissText,
-                    onConfirm = { handler.onServiceSettingsConfirmed() },
-                    onDismiss = { handler.onDismiss() }
-                )
+    val dialogKind by remember {
+        derivedStateOf {
+            when {
+                !state.isVisible -> ServiceDialogKind.None
+                state.showRationale -> ServiceDialogKind.Rationale
+                state.showPermissionSettings -> ServiceDialogKind.PermissionSettings
+                state.showServiceSettings -> ServiceDialogKind.ServiceSettings
+                else -> ServiceDialogKind.None
             }
         }
+    }
+
+    when (dialogKind) {
+        ServiceDialogKind.None -> Unit
+        ServiceDialogKind.Rationale -> GrantRationaleDialog(
+            message = state.rationaleMessage
+                ?: "This permission is needed for this feature to work properly.",
+            title = rationaleTitle,
+            confirmText = rationaleConfirm,
+            dismissText = rationaleDismiss,
+            onConfirm = { handler.onRationaleConfirmed() },
+            onDismiss = { handler.onDismiss() }
+        )
+        ServiceDialogKind.PermissionSettings -> GrantSettingsDialog(
+            message = state.permissionSettingsMessage
+                ?: "This permission was denied. Please enable it in Settings.",
+            title = permissionSettingsTitle,
+            confirmText = permissionSettingsConfirm,
+            dismissText = dismissText,
+            onConfirm = { handler.onPermissionSettingsConfirmed() },
+            onDismiss = { handler.onDismiss() }
+        )
+        ServiceDialogKind.ServiceSettings -> GrantSettingsDialog(
+            message = state.serviceSettingsMessage
+                ?: "This service needs to be enabled for this feature to work.",
+            title = serviceSettingsTitle,
+            confirmText = serviceSettingsConfirm,
+            dismissText = dismissText,
+            onConfirm = { handler.onServiceSettingsConfirmed() },
+            onDismiss = { handler.onDismiss() }
+        )
     }
 }
 

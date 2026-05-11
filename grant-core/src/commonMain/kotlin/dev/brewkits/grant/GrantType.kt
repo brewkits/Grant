@@ -67,7 +67,9 @@ enum class AppGrant : GrantPermission {
      * - **Android**: `ACCESS_BACKGROUND_LOCATION` (requires special handling on API 30+).
      * - **iOS**: `NSLocationAlwaysUsageDescription`.
      */
-    LOCATION_ALWAYS,
+    LOCATION_ALWAYS {
+        override val requiresBackgroundUpgrade: Boolean get() = true
+    },
 
     /**
      * Permission to show push or local notifications.
