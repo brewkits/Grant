@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.1] - 2026-05-12
+
+### 🐛 Bug Fixes
+- **LOCATION_ALWAYS Flow**: Fixed a regression introduced in 1.4.0 where a duplicate background location request caused a 60-second timeout if the app already possessed foreground location permissions (Issue #33).
+
+---
+
 ## [1.4.0] - 2026-05-09
 
 ### 🚀 Enterprise Hardening & Extensibility

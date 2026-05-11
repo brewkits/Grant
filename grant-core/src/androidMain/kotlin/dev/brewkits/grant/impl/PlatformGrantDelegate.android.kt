@@ -221,7 +221,8 @@ actual class PlatformGrantDelegate(
         var finalStatus = checkStatus(grant)
 
         // Handle 2-step flow for LOCATION_ALWAYS
-        if (grant == AppGrant.LOCATION_ALWAYS && finalStatus == GrantStatus.PARTIAL_GRANTED) {
+        // We only trigger step 2 if we weren't already at PARTIAL_GRANTED (meaning we just acquired foreground location)
+        if (grant == AppGrant.LOCATION_ALWAYS && finalStatus == GrantStatus.PARTIAL_GRANTED && currentStatus != GrantStatus.PARTIAL_GRANTED) {
             // Step 1 (Foreground) was granted. Immediately proceed to Step 2 (Background).
             val backgroundPermissions = (grant as AppGrant).toAndroidGrants()
             if (backgroundPermissions.isNotEmpty()) {

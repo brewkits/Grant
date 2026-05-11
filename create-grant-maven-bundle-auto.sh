@@ -172,7 +172,7 @@ echo ""
 echo "  Creating ZIP bundle..."
 cd "$TEMP_BUNDLE"
 zip -q -r "../$BUNDLE_NAME" "$GROUP_PATH/"
-cd ../..
+cd "$ROOT_DIR"
 
 BUNDLE_SIZE=$(du -h "$OUTPUT_DIR/$BUNDLE_NAME" | awk '{print $1}')
 echo ""

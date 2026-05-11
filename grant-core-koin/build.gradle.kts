@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "dev.brewkits"
-version = "1.4.0"
+version = "1.4.1"
 
 kotlin {
     androidTarget {
@@ -79,7 +79,7 @@ repositories {
 publications.configureEach {
     (this as? MavenPublication)?.let {
         groupId = "dev.brewkits"
-        version = "1.4.0"
+        version = "1.4.1"
 
         pom {
             name.set("KMP Grant Koin")
