@@ -6,10 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.2] - 2026-05-13
+
+### 🐛 Critical Bug Fixes
+- **LOCATION_ALWAYS Timeout (Final Fix)**: Completely resolved the 60-second timeout on Android 11+ by addressing a race condition where sequential background requests launched before the previous Activity fully closed.
+- **State Integrity**: Re-engineered `GrantRequestActivity` to reset internal state in `finishAndCleanup()` instead of `onDestroy()`, ensuring immediate availability for subsequent requests.
+- **Fail-safe Recovery**: Implemented a 10-second automatic reset for internal permission locks to prevent permanent deadlocks if an Activity is killed unexpectedly.
+- **Partial Upgrade Logic**: Fixed `GrantHandler` and `GrantAndServiceHandler` to correctly attempt an OS-level request when a permission is in `PARTIAL_GRANTED` status, instead of jumping prematurely to the Settings guide.
+
+### 🛠️ Stability & Performance
+- **Android 15 Optimizations**: Disabled redundant Activity animations during the 2-step location flow to improve speed and reliability.
+- **Concurrent Request Guard**: Added strict mutex-based serialization for all native request calls to prevent UI spam and activity leakage.
+
 ## [1.4.1] - 2026-05-12
 
 ### 🐛 Bug Fixes
-- **LOCATION_ALWAYS Flow**: Fixed a regression introduced in 1.4.0 where a duplicate background location request caused a 60-second timeout if the app already possessed foreground location permissions (Issue #33).
+- **LOCATION_ALWAYS Flow**: Initial mitigation for a regression introduced in 1.4.0 where duplicate background location requests could cause timeouts. (Full resolution in v1.4.2).
 
 ---
 

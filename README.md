@@ -174,9 +174,9 @@ Most KMP permission libraries are simple wrappers around native APIs. Grant is a
 kotlin {
     sourceSets {
         commonMain.dependencies {
-            implementation("dev.brewkits:grant-core:1.4.1")
-            implementation("dev.brewkits:grant-compose:1.4.1")    // Optional: Compose dialogs
-            implementation("dev.brewkits:grant-core-koin:1.4.1")  // Optional: Koin DI support
+            implementation("dev.brewkits:grant-core:1.4.2")
+            implementation("dev.brewkits:grant-compose:1.4.2")    // Optional: Compose dialogs
+            implementation("dev.brewkits:grant-core-koin:1.4.2")  // Optional: Koin DI support
         }
     }
 }
@@ -186,7 +186,7 @@ kotlin {
 > For projects targeting **Web (JS)** or **Desktop (JVM)**, use an intermediate `mobileMain` source set to avoid linking iOS/Android dependencies on unsupported platforms. [Read the Guide](docs/DEPENDENCY_MANAGEMENT.md).
 
 > [!NOTE]
-> **Koin users**: The Koin integration was moved to `grant-core-koin` in v1.4.1. Add the new artifact alongside `grant-core` and replace `GrantPlatformModule` imports. See the [Migration Guide](docs/MIGRATION_GUIDE.md).
+> **Koin users**: The Koin integration was moved to `grant-core-koin` in v1.4.2. Add the new artifact alongside `grant-core` and replace `GrantPlatformModule` imports. See the [Migration Guide](docs/MIGRATION_GUIDE.md).
 
 ---
 
@@ -196,7 +196,7 @@ kotlin {
 | :--- | :--- |
 | [Architecture](docs/grant-core/ARCHITECTURE.md) | How concurrency, state machines, and the mutex flow work |
 | [iOS Setup](docs/platform-specific/ios/info-plist.md) | Critical `Info.plist` configuration — read before shipping |
-| [Migration Guide](docs/MIGRATION_GUIDE.md) | Upgrading from v1.2.x to v1.4.1 |
+| [Migration Guide](docs/MIGRATION_GUIDE.md) | Upgrading from v1.2.x to v1.4.2 |
 | [Service Checking](docs/grant-core/SERVICES.md) | Combining permission + hardware service checks |
 | [Manual Injection](docs/MANUAL_INJECTION.md) | Using Grant without any DI framework |
 | [Android Reliability](docs/FIX_DEAD_CLICK_ANDROID.md) | How we fix "Dead Clicks" on Android |
