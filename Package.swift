@@ -15,7 +15,7 @@ let package = Package(
     targets: [
         .binaryTarget(
             name: "Grant",
-            url: "https://github.com/brewkits/Grant/releases/download/1.4.0/Grant.xcframework.zip",
+            url: "https://github.com/brewkits/Grant/releases/download/1.4.2/Grant.xcframework.zip",
             checksum: "PLACEHOLDER_CHECKSUM_WILL_BE_REPLACED_BY_CI"
         )
     ]
