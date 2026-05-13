@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "dev.brewkits"
-version = "1.4.2"
+version = "1.4.3"
 
 kotlin {
     androidTarget {
@@ -50,6 +50,7 @@ kotlin {
         androidMain.dependencies {
             // AndroidX Activity for grant requests
             implementation(libs.androidx.activity.compose)
+            implementation("androidx.fragment:fragment:1.8.9")
         }
 
         commonMain.dependencies {
@@ -132,7 +133,7 @@ publishing {
     publications.configureEach {
         (this as? MavenPublication)?.let {
             groupId = "dev.brewkits"
-            version = "1.4.2"
+            version = "1.4.3"
 
             pom {
                 name.set("KMP Grant")

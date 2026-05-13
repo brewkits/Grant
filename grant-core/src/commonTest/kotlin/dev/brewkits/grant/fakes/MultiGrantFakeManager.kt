@@ -57,4 +57,8 @@ class MultiGrantFakeManager : GrantManager {
     override fun openSettings() {
         openSettingsCalled = true
     }
+
+    override fun setLauncher(launcher: dev.brewkits.grant.GrantLauncher) {
+        // No-op for fake
+    }
 }

@@ -4,6 +4,7 @@ import dev.brewkits.grant.AppGrant
 import dev.brewkits.grant.GrantPermission
 import dev.brewkits.grant.GrantStatus
 import dev.brewkits.grant.GrantStore
+import dev.brewkits.grant.GrantLauncher
 import dev.brewkits.grant.RawPermission
 import dev.brewkits.grant.delegates.BluetoothManagerDelegate
 import dev.brewkits.grant.delegates.LocationManagerDelegate
@@ -78,8 +79,10 @@ actual class PlatformGrantDelegate(
     private val statusCacheMap = mutableMapOf<String, Pair<GrantStatus, Long>>()
 
     private companion object {
-        /** Status cache TTL (200ms). Prevents redundant OS calls within the same interaction while remaining fresh. */
-        const val STATUS_CACHE_TTL_MS = 200L
+        /** Status cache TTL (1000ms). */
+        const val STATUS_CACHE_TTL_MS = 1000L
+        /** Delay between sequential requests on iOS to avoid system throttling. */
+        const val SEQUENTIAL_REQUEST_DELAY_MS = 600L
     }
 
     private suspend fun getMutexFor(identifier: String): ReentrantMutex =
@@ -144,12 +147,34 @@ actual class PlatformGrantDelegate(
         getMutexFor(grant.identifier).withLock { requestInternal(grant) }
 
     actual suspend fun request(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus> {
-        if (grants.size > 1) {
-            GrantLogger.w(TAG, "Requesting multiple grants sequentially. This will trigger multiple system dialogs in a row. Consider requesting them individually for better UX.")
+        if (grants.isEmpty()) return emptyMap()
+        if (grants.size == 1) return mapOf(grants.first() to request(grants.first()))
+
+        GrantLogger.d(TAG, "Requesting ${grants.size} grants sequentially on iOS.")
+
+        val sortedGrants = grants.distinctBy { it.identifier }.sortedBy { it.identifier }
+        return lockAllIterative(sortedGrants) {
+            val results = mutableMapOf<GrantPermission, GrantStatus>()
+            grants.forEachIndexed { index, grant ->
+                results[grant] = requestInternal(grant)
+                
+                // UX Improvement: Add a small delay between sequential dialogs on iOS.
+                if (index < grants.size - 1) {
+                    kotlinx.coroutines.delay(SEQUENTIAL_REQUEST_DELAY_MS)
+                }
+            }
+            results
         }
-        val results = mutableMapOf<GrantPermission, GrantStatus>()
-        grants.forEach { results[it] = request(it) }
-        return results
+    }
+
+    /**
+     * Iterative locking to prevent O(n) stack growth and avoid deadlocks.
+     */
+    private suspend fun <T> lockAllIterative(grants: List<GrantPermission>, block: suspend () -> T): T {
+        val chain: suspend () -> T = grants.foldRight(block) { grant, inner ->
+            suspend { getMutexFor(grant.identifier).withLock { inner() } }
+        }
+        return chain()
     }
 
     /**
@@ -283,6 +308,8 @@ actual class PlatformGrantDelegate(
      * Delegates to the shared [dev.brewkits.grant.utils.hasInfoPlistKey] utility.
      */
     private fun hasInfoPlistKey(key: String): Boolean = hasInfoPlistKey(TAG, key)
+
+    actual fun setLauncher(launcher: GrantLauncher) {}
 }
 
 // ────────────────────────────────────────────────────────────────────────────

@@ -307,6 +307,7 @@ class GrantGroupHandler(
     private fun handleStatus(grant: GrantPermission, status: GrantStatus): Boolean {
         return when (status) {
             GrantStatus.GRANTED -> true
+            GrantStatus.BUSY -> false
 
             GrantStatus.PARTIAL_GRANTED -> {
                 if (!grant.requiresBackgroundUpgrade) {

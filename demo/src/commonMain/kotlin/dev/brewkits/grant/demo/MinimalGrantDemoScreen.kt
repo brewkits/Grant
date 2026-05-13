@@ -79,8 +79,7 @@ fun MinimalGrantDemoScreen(
                                 rationaleMessage = "We need camera access to take photos.",
                                 settingsMessage = "Camera is disabled. Please enable it in Settings."
                             ) {
-                                // ✅ This only runs when grant is GRANTED
-                                println("✅ Camera granted! Opening camera...")
+                                // success: open camera here
                             }
                         },
                         modifier = Modifier.fillMaxWidth()
@@ -119,8 +118,7 @@ fun MinimalGrantDemoScreen(
                                 rationaleMessage = "We need your location to show nearby places.",
                                 settingsMessage = "Location is disabled. Please enable it in Settings to use this feature."
                             ) {
-                                // ✅ This only runs when grant is GRANTED
-                                println("✅ Location granted! Loading map...")
+                                // success: load map here
                             }
                         },
                         modifier = Modifier.fillMaxWidth()

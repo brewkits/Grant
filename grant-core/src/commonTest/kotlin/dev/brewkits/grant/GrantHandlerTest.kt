@@ -28,6 +28,7 @@ class GrantHandlerTest {
             override suspend fun request(grant: GrantPermission): GrantStatus = GrantStatus.GRANTED
             override suspend fun request(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus> = emptyMap()
             override fun openSettings() {}
+            override fun setLauncher(launcher: GrantLauncher) {}
         }
         val handler = GrantHandler(delayingManager, AppGrant.CAMERA, this)
 
@@ -129,6 +130,7 @@ class GrantHandlerTest {
             }
             override suspend fun request(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus> = emptyMap()
             override fun openSettings() {}
+            override fun setLauncher(launcher: GrantLauncher) {}
         }
         val handler = GrantHandler(throwingManager, AppGrant.CAMERA, this)
 
@@ -137,7 +139,7 @@ class GrantHandlerTest {
     }
 
     @Test
-    fun `requestSuspend subsequent concurrent calls return immediately with current status`() = testScope.runTest {
+    fun `requestSuspend subsequent concurrent calls return immediately with BUSY status`() = testScope.runTest {
         val delayingManager = object : GrantManager {
             override suspend fun checkStatus(grant: GrantPermission): GrantStatus {
                 delay(1000)
@@ -146,6 +148,7 @@ class GrantHandlerTest {
             override suspend fun request(grant: GrantPermission): GrantStatus = GrantStatus.GRANTED
             override suspend fun request(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus> = emptyMap()
             override fun openSettings() {}
+            override fun setLauncher(launcher: GrantLauncher) {}
         }
         val handler = GrantHandler(delayingManager, AppGrant.CAMERA, this)
 
@@ -156,10 +159,10 @@ class GrantHandlerTest {
         // Launch second request while first is holding the mutex
         val deferred2 = async { handler.requestSuspend() }
 
-        // Second one should immediately return the initial status (NOT_DETERMINED)
-        // because it fails to acquire the tryLock() and cont.resumes(currentStatus).
+        // Second one should immediately return the initial status (BUSY)
+        // because it fails to acquire the tryLock() and cont.resumes(BUSY).
         val result2 = deferred2.await()
-        assertEquals(GrantStatus.NOT_DETERMINED, result2)
+        assertEquals(GrantStatus.BUSY, result2)
 
         advanceUntilIdle()
         // First one eventually finishes with GRANTED (since the mock returns GRANTED from request)

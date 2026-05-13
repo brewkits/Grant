@@ -62,13 +62,11 @@ class SimpleGrantManager : GrantManager {
     var simulationMode = SimulationMode.REALISTIC
 
     override suspend fun checkStatus(grant: GrantPermission): GrantStatus {
-        // Handle RawPermission - not supported in mock implementation
         if (grant is RawPermission) {
             GrantLogger.w("SimpleGrantManager", "RawPermission not supported in mock - returning DENIED")
             return GrantStatus.DENIED
         }
 
-        // Cast to AppGrant
         val appGrant = grant as AppGrant
 
         return when {
@@ -87,16 +85,13 @@ class SimpleGrantManager : GrantManager {
     }
 
     override suspend fun request(grant: GrantPermission): GrantStatus {
-        // Handle RawPermission - not supported in mock implementation
         if (grant is RawPermission) {
             GrantLogger.w("SimpleGrantManager", "RawPermission not supported in mock - returning DENIED")
-            delay(500)  // Simulate dialog
+            delay(500)
             return GrantStatus.DENIED
         }
 
-        // Cast to AppGrant
         val appGrant = grant as AppGrant
-        // Simulate system dialog delay
         delay(500)
 
         val count = requestCount[appGrant] ?: 0
@@ -154,6 +149,10 @@ class SimpleGrantManager : GrantManager {
     override fun openSettings() {
         // Mock implementation - does nothing
         // In real app, this would open system settings
+    }
+
+    override fun setLauncher(launcher: dev.brewkits.grant.GrantLauncher) {
+        // Mock implementation - does nothing
     }
 
     /**

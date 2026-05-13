@@ -20,12 +20,19 @@ import java.util.UUID
 class GrantRequestViewModel(private val savedStateHandle: SavedStateHandle) : ViewModel() {
     companion object {
         private const val KEY_ALREADY_LAUNCHED = "already_launched"
+        private const val KEY_REQUEST_ID = "request_id"
     }
 
     var alreadyLaunched: Boolean
         get() = savedStateHandle.get<Boolean>(KEY_ALREADY_LAUNCHED) ?: false
         set(value) {
             savedStateHandle[KEY_ALREADY_LAUNCHED] = value
+        }
+
+    var requestId: String?
+        get() = savedStateHandle.get<String>(KEY_REQUEST_ID)
+        set(value) {
+            savedStateHandle[KEY_REQUEST_ID] = value
         }
 }
 
@@ -36,14 +43,17 @@ class GrantRequestActivity : ComponentActivity() {
 
     private var requestMultipleGrantsLauncher: ActivityResultLauncher<Array<String>>? = null
     private var currentGrants = arrayOf<String>()
-    private var requestId = ""
     private val viewModel: GrantRequestViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Ensure the static guard is set even if recreated by OS after process death
+        isActivityActive = true
+        lastActivityLaunchTime = System.currentTimeMillis()
 
         try {
-            requestId = savedInstanceState?.getString(KEY_REQUEST_ID)
+            val requestId = viewModel.requestId 
                 ?: intent.getStringExtra(EXTRA_REQUEST_ID)
                 ?: ""
 
@@ -52,6 +62,8 @@ class GrantRequestActivity : ComponentActivity() {
                 finishAndCleanup()
                 return
             }
+            
+            viewModel.requestId = requestId
 
             currentGrants = intent.getStringArrayExtra(EXTRA_GRANTS) ?: run {
                 setResult(requestId, GrantResult.ERROR)
@@ -76,23 +88,15 @@ class GrantRequestActivity : ComponentActivity() {
                 finishAndCleanup()
             }
 
-            // If this requestId still has a waiting coroutine, normal flow.
-            // If it DOES NOT have a pending coroutine (orphaned from Process Death),
-            // we STILL wait for the launcher callback so the OS can deliver the result.
-            // We just don't re-launch the request if alreadyLaunched == true.
-            if (!pendingResults.containsKey(requestId) && !viewModel.alreadyLaunched) {
-                GrantLogger.w(TAG, "RequestId $requestId has no pending coroutine and wasn't launched - finishing orphaned activity")
-                finishAndCleanup()
-                return
-            }
-
             lifecycle.addObserver(object : DefaultLifecycleObserver {
                 override fun onDestroy(owner: LifecycleOwner) {
                     if (!isChangingConfigurations) {
-                        val deferred = pendingResults[requestId]
+                        val rid = viewModel.requestId ?: ""
+                        val deferred = pendingResults[rid]
                         if (deferred?.isActive == true) {
-                            setResult(requestId, GrantResult.ERROR)
+                            setResult(rid, GrantResult.ERROR)
                         }
+                        isActivityActive = false
                     }
                     requestMultipleGrantsLauncher?.unregister()
                     requestMultipleGrantsLauncher = null
@@ -115,22 +119,17 @@ class GrantRequestActivity : ComponentActivity() {
             }
         } catch (e: Exception) {
             GrantLogger.e(TAG, "Error in onCreate: ${e.message}", e)
-            if (requestId.isNotEmpty()) {
-                setResult(requestId, GrantResult.ERROR)
+            val rid = viewModel.requestId ?: ""
+            if (rid.isNotEmpty()) {
+                setResult(rid, GrantResult.ERROR)
             }
             finishAndCleanup()
         }
     }
 
-    override fun onSaveInstanceState(outState: Bundle) {
-        super.onSaveInstanceState(outState)
-        outState.putString(KEY_REQUEST_ID, requestId)
-    }
-
     private fun finishAndCleanup() {
         isActivityActive = false
         finish()
-        // Override transition to make it completely invisible
         overridePendingTransition(0, 0)
     }
 
@@ -142,15 +141,30 @@ class GrantRequestActivity : ComponentActivity() {
         private const val TAG = "GrantRequestActivity"
         private const val EXTRA_GRANTS = "grants"
         private const val EXTRA_REQUEST_ID = "request_id"
-        private const val KEY_REQUEST_ID = "saved_request_id"
 
         private val pendingResults = ConcurrentHashMap<String, CompletableDeferred<GrantResult>>()
         private val pendingTimestamps = ConcurrentHashMap<String, Long>()
-        private const val ORPHAN_CLEANUP_THRESHOLD_MS = 120_000L
+        
+        // Increase cleanup threshold to handle slow devices or long rationale reading
+        private const val ORPHAN_CLEANUP_THRESHOLD_MS = 300_000L // 5 minutes
 
         @Volatile
         private var isActivityActive = false
         private var lastActivityLaunchTime = 0L
+
+        /**
+         * Check if any GrantRequestActivity is currently active.
+         */
+        fun isAnyActivityActive(): Boolean {
+            val now = System.currentTimeMillis()
+            // Robust check: If activity is marked active but launch was long ago, 
+            // it's either stuck or finished without clearing.
+            if (isActivityActive && (now - lastActivityLaunchTime > 60_000L)) {
+                GrantLogger.w(TAG, "Activity guard reset after 60s timeout.")
+                isActivityActive = false
+            }
+            return isActivityActive
+        }
 
         /**
          * Launch this Activity to request one or more grants.
@@ -159,20 +173,15 @@ class GrantRequestActivity : ComponentActivity() {
             val requestId = UUID.randomUUID().toString()
             val now = System.currentTimeMillis()
 
+            val appContext = context.applicationContext
+
             pendingResults[requestId] = CompletableDeferred()
             pendingTimestamps[requestId] = now
 
             cleanupOrphanedEntries()
 
-            // Safety fallback: If isActivityActive is stuck for more than 10 seconds, reset it.
-            // This prevents a permanent lock if an activity crashed or was killed without cleanup.
-            if (isActivityActive && (now - lastActivityLaunchTime > 10_000L)) {
-                GrantLogger.w(TAG, "Activity Launch Guard: Force resetting stuck isActivityActive flag.")
-                isActivityActive = false
-            }
-
-            if (isActivityActive) {
-                GrantLogger.w(TAG, "Activity Launch Guard: Another GrantRequestActivity is already active. Failing fast.")
+            if (isAnyActivityActive()) {
+                GrantLogger.w(TAG, "Activity Launch Guard: Another GrantRequestActivity is already active. Yielding.")
                 pendingResults[requestId]?.complete(GrantResult.ERROR)
                 cleanup(requestId)
                 return requestId
@@ -181,7 +190,7 @@ class GrantRequestActivity : ComponentActivity() {
             isActivityActive = true
             lastActivityLaunchTime = now
 
-            val intent = Intent(context, GrantRequestActivity::class.java).apply {
+            val intent = Intent(appContext, GrantRequestActivity::class.java).apply {
                 putExtra(EXTRA_GRANTS, androidGrants.toTypedArray())
                 putExtra(EXTRA_REQUEST_ID, requestId)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -190,7 +199,7 @@ class GrantRequestActivity : ComponentActivity() {
             }
             
             try {
-                context.startActivity(intent)
+                appContext.startActivity(intent)
             } catch (e: Exception) {
                 GrantLogger.e(TAG, "Failed to start GrantRequestActivity", e)
                 isActivityActive = false

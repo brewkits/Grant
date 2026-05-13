@@ -55,5 +55,12 @@ enum class GrantStatus {
      *
      * **Developer Action**: Trigger a request to show the system permission dialog.
      */
-    NOT_DETERMINED
+    NOT_DETERMINED,
+
+    /**
+     * A permission request is already in progress for this identifier.
+     *
+     * Concurrent requests are blocked to maintain state integrity.
+     */
+    BUSY
 }

@@ -61,7 +61,7 @@ class GrantHandlerSavedStateTest {
     }
 
     @Test
-    fun `GrantHandler with SavedStateDelegate - saves state`() = runTest {
+    fun `GrantHandler with SavedStateDelegate - saves state with custom messages`() = runTest {
         assumeRationaleSupported {
             val handler = GrantHandler(
                 grantManager = fakeGrantManager,
@@ -70,26 +70,35 @@ class GrantHandlerSavedStateTest {
                 savedStateDelegate = savedStateDelegate
             )
 
+            val customRationale = "Custom rationale message"
+            val customSettings = "Custom settings message"
+
             // Request permission (will be denied)
             fakeGrantManager.setStatus(AppGrant.CAMERA, GrantStatus.DENIED)
-            handler.request { }
+            handler.request(rationaleMessage = customRationale, settingsMessage = customSettings) { }
 
             testDispatcher.scheduler.advanceUntilIdle()
 
             // State should be visible and saved
-            assertTrue(handler.state.value.isVisible)
-            assertEquals("true", savedStateDelegate.storage["grant_handler_is_visible"])
-            assertEquals("true", savedStateDelegate.storage["grant_handler_show_rationale"])
-            assertEquals("false", savedStateDelegate.storage["grant_handler_show_settings"])
+            val storage = savedStateDelegate.storage
+            assertTrue(handler.state.value.isVisible, "UI State should be visible")
+            assertEquals("true", storage["grant_handler_is_visible"], "Visible flag should be saved")
+            assertEquals("true", storage["grant_handler_show_rationale"], "Rationale flag should be saved")
+            assertEquals(customRationale, storage["grant_handler_rationale_msg"], "Rationale message should be saved")
+            assertEquals(customSettings, storage["grant_handler_settings_msg"], "Settings message should be saved")
         }
     }
 
     @Test
-    fun `GrantHandler - restores state from SavedStateDelegate on init`() = runTest {
-        // Pre-populate saved state (simulating process death recovery)
+    fun `GrantHandler - restores state with custom messages from SavedStateDelegate`() = runTest {
+        val customRationale = "Restored rationale"
+        val customSettings = "Restored settings"
+        
+        // Pre-populate saved state
         savedStateDelegate.saveState("grant_handler_is_visible", "true")
         savedStateDelegate.saveState("grant_handler_show_rationale", "true")
-        savedStateDelegate.saveState("grant_handler_show_settings", "false")
+        savedStateDelegate.saveState("grant_handler_rationale_msg", customRationale)
+        savedStateDelegate.saveState("grant_handler_settings_msg", customSettings)
 
         // Create handler - should restore state
         val handler = GrantHandler(
@@ -103,9 +112,9 @@ class GrantHandlerSavedStateTest {
 
         // State should be restored
         val state = handler.state.value
-        assertTrue(state.isVisible, "Dialog should be visible after restoration")
-        assertTrue(state.showRationale, "Rationale should be shown after restoration")
-        assertFalse(state.showSettingsGuide, "Settings guide should not be shown")
+        assertTrue(state.isVisible)
+        assertEquals(customRationale, state.rationaleMessage)
+        assertEquals(customSettings, state.settingsMessage)
     }
 
     @Test

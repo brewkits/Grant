@@ -53,7 +53,6 @@ class GlobalHardeningTest {
             }
         }
         
-        println("Performance: 1000 refreshes took $duration")
         // Budget: 1000 virtual refreshes should be near-instant in test environment
         assertTrue(duration.inWholeMilliseconds < 2000, "Performance regression detected in status refresh")
     }

@@ -117,4 +117,10 @@ interface GrantManager {
      * ```
      */
     fun openSettings()
+
+    /**
+     * Set the launcher for permission requests.
+     * This must be called from the host activity or fragment.
+     */
+    fun setLauncher(launcher: GrantLauncher)
 }

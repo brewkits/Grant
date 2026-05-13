@@ -81,8 +81,21 @@ class GrantAndServiceHandler(
     private val serviceManager: ServiceManager,
     private val grant: GrantPermission,
     private val serviceType: ServiceType,
-    private val scope: CoroutineScope
+    private val scope: CoroutineScope,
+    private val savedStateDelegate: SavedStateDelegate = NoOpSavedStateDelegate()
 ) {
+    private companion object {
+        const val KEY_IS_VISIBLE      = "gsh_is_visible"
+        const val KEY_SHOW_RATIONALE  = "gsh_show_rationale"
+        const val KEY_SHOW_PERM_SET   = "gsh_show_perm_settings"
+        const val KEY_SHOW_SVC_SET    = "gsh_show_svc_settings"
+        const val KEY_RATIONALE_MSG   = "gsh_rationale_msg"
+        const val KEY_PERM_SET_MSG    = "gsh_perm_settings_msg"
+        const val KEY_SVC_SET_MSG     = "gsh_svc_settings_msg"
+        
+        const val TAG = "GrantAndServiceHandler"
+    }
+
     private val _state = MutableStateFlow(GrantAndServiceUiState())
 
     /**
@@ -93,7 +106,6 @@ class GrantAndServiceHandler(
     @kotlin.concurrent.Volatile
     private var onReadyCallback: (() -> Unit)? = null
 
-    // Stored so onRationaleConfirmed() can pass them to processFlow/handlePermissionStatus
     @kotlin.concurrent.Volatile private var pendingRationale: String? = null
     @kotlin.concurrent.Volatile private var pendingPermSettings: String? = null
     @kotlin.concurrent.Volatile private var pendingSvcSettings: String? = null
@@ -101,7 +113,57 @@ class GrantAndServiceHandler(
     private val requestMutex = Mutex()
 
     init {
+        // Restore state from delegate (process death)
+        val wasVisible      = savedStateDelegate.restoreState(KEY_IS_VISIBLE)?.toBoolean() ?: false
+        val wasRationale    = savedStateDelegate.restoreState(KEY_SHOW_RATIONALE)?.toBoolean() ?: false
+        val wasPermSettings = savedStateDelegate.restoreState(KEY_SHOW_PERM_SET)?.toBoolean() ?: false
+        val wasSvcSettings  = savedStateDelegate.restoreState(KEY_SHOW_SVC_SET)?.toBoolean() ?: false
+        
+        pendingRationale    = savedStateDelegate.restoreState(KEY_RATIONALE_MSG)
+        pendingPermSettings = savedStateDelegate.restoreState(KEY_PERM_SET_MSG)
+        pendingSvcSettings  = savedStateDelegate.restoreState(KEY_SVC_SET_MSG)
+        
+        if (wasVisible) {
+            _state.update {
+                it.copy(
+                    isVisible = true,
+                    showRationale = wasRationale,
+                    showPermissionSettings = wasPermSettings,
+                    showServiceSettings = wasSvcSettings,
+                    rationaleMessage = pendingRationale,
+                    permissionSettingsMessage = pendingPermSettings,
+                    serviceSettingsMessage = pendingSvcSettings
+                )
+            }
+        }
+
         refreshStatus()
+    }
+
+    private fun updateState(block: (GrantAndServiceUiState) -> GrantAndServiceUiState) {
+        val oldState = _state.value
+        val newState = block(oldState)
+        _state.value = newState
+        
+        if (oldState.isVisible != newState.isVisible ||
+            oldState.showRationale != newState.showRationale ||
+            oldState.showPermissionSettings != newState.showPermissionSettings ||
+            oldState.showServiceSettings != newState.showServiceSettings
+        ) {
+            savedStateDelegate.saveState(KEY_IS_VISIBLE, newState.isVisible.toString())
+            savedStateDelegate.saveState(KEY_SHOW_RATIONALE, newState.showRationale.toString())
+            savedStateDelegate.saveState(KEY_SHOW_PERM_SET, newState.showPermissionSettings.toString())
+            savedStateDelegate.saveState(KEY_SHOW_SVC_SET, newState.showServiceSettings.toString())
+            
+            if (pendingRationale != null) savedStateDelegate.saveState(KEY_RATIONALE_MSG, pendingRationale!!)
+            else savedStateDelegate.clear(KEY_RATIONALE_MSG)
+            
+            if (pendingPermSettings != null) savedStateDelegate.saveState(KEY_PERM_SET_MSG, pendingPermSettings!!)
+            else savedStateDelegate.clear(KEY_PERM_SET_MSG)
+            
+            if (pendingSvcSettings != null) savedStateDelegate.saveState(KEY_SVC_SET_MSG, pendingSvcSettings!!)
+            else savedStateDelegate.clear(KEY_SVC_SET_MSG)
+        }
     }
 
     /**
@@ -137,7 +199,10 @@ class GrantAndServiceHandler(
         serviceSettingsMessage: String? = null,
         onReady: () -> Unit
     ) {
-        if (!requestMutex.tryLock()) return
+        if (!requestMutex.tryLock()) {
+            dev.brewkits.grant.utils.GrantLogger.d(TAG, "Request for ${grant.identifier} is BUSY.")
+            return
+        }
         this.onReadyCallback = onReady
         pendingRationale = rationaleMessage
         pendingPermSettings = permissionSettingsMessage
@@ -163,12 +228,12 @@ class GrantAndServiceHandler(
         if (!requestMutex.tryLock()) return
         val job = scope.launch {
             try {
-                _state.update { it.copy(isVisible = false, showRationale = false) }
+                updateState { it.copy(isVisible = false, showRationale = false) }
                 val status = grantManager.request(grant)
                 if (status == GrantStatus.GRANTED || status == GrantStatus.PARTIAL_GRANTED) {
                     checkServiceAndFinish(pendingSvcSettings)
                 } else {
-                    handlePermissionStatus(status, settings = pendingPermSettings)
+                    handlePermissionStatus(status, rationale = pendingRationale, settings = pendingPermSettings)
                 }
             } finally {
                 requestMutex.unlock()
@@ -237,7 +302,6 @@ class GrantAndServiceHandler(
         permSettings: String? = null,
         svcSettings: String? = null
     ) = coroutineScope {
-        // 1. Check Permission and Service concurrently
         val permStatusDef = async { grantManager.checkStatus(grant) }
         val svcStatusDef = async { serviceManager.checkServiceStatus(serviceType) }
 
@@ -250,11 +314,12 @@ class GrantAndServiceHandler(
                 checkServiceAndFinishWithStatus(svcStatus, svcSettings)
             } else {
                 if (result == GrantStatus.PARTIAL_GRANTED) {
-                    // Landed here after an OS dialog interaction.
-                    // For background-upgrade permissions, this means the user denied the second step.
+                    // User denied the background step — route straight to settings.
                     handlePermissionStatus(GrantStatus.DENIED_ALWAYS, rationale, permSettings)
+                } else if (result == GrantStatus.DENIED) {
+                    // Show rationale immediately after first denial, consistent with GrantHandler UX.
+                    handlePermissionStatus(GrantStatus.DENIED, rationale, permSettings)
                 } else {
-                    // First system request denied — don't show rationale yet (matches GrantHandler UX).
                     resetState()
                     onReadyCallback = null
                 }
@@ -278,7 +343,7 @@ class GrantAndServiceHandler(
 
     private fun checkServiceAndFinishWithStatus(svcStatus: ServiceStatus, svcSettings: String?) {
         if (svcStatus != ServiceStatus.ENABLED) {
-            _state.update {
+            updateState {
                 it.copy(
                     isVisible = true,
                     showServiceSettings = true,
@@ -301,22 +366,24 @@ class GrantAndServiceHandler(
     ) {
         when (status) {
             GrantStatus.NOT_DETERMINED, GrantStatus.DENIED -> {
-                _state.update {
+                updateState {
                     it.copy(
                         isVisible = true,
                         showRationale = true,
-                        rationaleMessage = rationale
+                        rationaleMessage = rationale,
+                        permissionSettingsMessage = settings,
+                        serviceSettingsMessage = pendingSvcSettings
                     )
                 }
             }
             GrantStatus.DENIED_ALWAYS, GrantStatus.PARTIAL_GRANTED -> {
-                // If we are here with PARTIAL_GRANTED, it means isSufficient was false,
-                // so it's a background-upgrade permission that needs settings.
-                _state.update {
+                updateState {
                     it.copy(
                         isVisible = true,
                         showPermissionSettings = true,
-                        permissionSettingsMessage = settings
+                        permissionSettingsMessage = settings,
+                        rationaleMessage = rationale,
+                        serviceSettingsMessage = pendingSvcSettings
                     )
                 }
             }
@@ -344,7 +411,7 @@ class GrantAndServiceHandler(
     }
 
     private fun resetState() {
-        _state.update {
+        updateState {
             it.copy(
                 isVisible = false,
                 showRationale = false,
@@ -352,5 +419,8 @@ class GrantAndServiceHandler(
                 showServiceSettings = false
             )
         }
+        pendingRationale = null
+        pendingPermSettings = null
+        pendingSvcSettings = null
     }
 }

@@ -27,11 +27,9 @@ fun SimpleGrantDemoScreen(
     viewModel: GrantDemoViewModel,
     modifier: Modifier = Modifier
 ) {
-    // Snackbar state for success messages
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    // Helper function to show success message
     fun showSuccess(grantName: String) {
         scope.launch {
             snackbarHostState.showSnackbar(
@@ -41,7 +39,6 @@ fun SimpleGrantDemoScreen(
         }
     }
 
-    // Handle grant dialogs for all grants using grant-compose
     GrantDialog(handler = viewModel.cameraGrant)
     GrantDialog(handler = viewModel.microphoneGrant)
     GrantDialog(handler = viewModel.locationGrant)
@@ -496,6 +493,7 @@ private fun GrantCard(
                 dev.brewkits.grant.GrantStatus.GRANTED, dev.brewkits.grant.GrantStatus.PARTIAL_GRANTED -> MaterialTheme.colorScheme.primaryContainer
                 dev.brewkits.grant.GrantStatus.DENIED_ALWAYS -> MaterialTheme.colorScheme.errorContainer
                 dev.brewkits.grant.GrantStatus.DENIED,
+                dev.brewkits.grant.GrantStatus.BUSY,
                 dev.brewkits.grant.GrantStatus.NOT_DETERMINED -> MaterialTheme.colorScheme.surfaceVariant
             }
         ),
@@ -571,6 +569,7 @@ private fun GrantCard(
                             dev.brewkits.grant.GrantStatus.GRANTED, dev.brewkits.grant.GrantStatus.PARTIAL_GRANTED -> MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                             dev.brewkits.grant.GrantStatus.DENIED_ALWAYS -> MaterialTheme.colorScheme.error.copy(alpha = 0.15f)
                             dev.brewkits.grant.GrantStatus.DENIED -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f)
+                            dev.brewkits.grant.GrantStatus.BUSY,
                             dev.brewkits.grant.GrantStatus.NOT_DETERMINED -> MaterialTheme.colorScheme.surfaceVariant
                         },
                         shape = MaterialTheme.shapes.small,
@@ -582,6 +581,7 @@ private fun GrantCard(
                                 dev.brewkits.grant.GrantStatus.PARTIAL_GRANTED -> "✓ Partial"
                                 dev.brewkits.grant.GrantStatus.DENIED -> "✗ Denied"
                                 dev.brewkits.grant.GrantStatus.DENIED_ALWAYS -> "⚠️ Denied Always"
+                                dev.brewkits.grant.GrantStatus.BUSY -> "⌛ Busy"
                                 dev.brewkits.grant.GrantStatus.NOT_DETERMINED -> "? Not Determined"
                             },
                             style = MaterialTheme.typography.labelSmall,
@@ -590,6 +590,7 @@ private fun GrantCard(
                                 dev.brewkits.grant.GrantStatus.GRANTED, dev.brewkits.grant.GrantStatus.PARTIAL_GRANTED -> MaterialTheme.colorScheme.primary
                                 dev.brewkits.grant.GrantStatus.DENIED_ALWAYS -> MaterialTheme.colorScheme.error
                                 dev.brewkits.grant.GrantStatus.DENIED -> MaterialTheme.colorScheme.tertiary
+                                dev.brewkits.grant.GrantStatus.BUSY,
                                 dev.brewkits.grant.GrantStatus.NOT_DETERMINED -> MaterialTheme.colorScheme.onSurfaceVariant
                             },
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -604,7 +605,6 @@ private fun GrantCard(
                         rationaleMessage = "$title is required for this feature.",
                         settingsMessage = "$title access is disabled. Enable it in Settings."
                     ) {
-                        // Success callback - show snackbar
                         onSuccess(title)
                     }
                 },

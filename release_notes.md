@@ -1,3 +1,13 @@
+## [1.4.3] - 2026-05-13
+
+### 🐛 Critical Bug Fixes
+- **ReentrantMutex Context Key Overwrite**: Fixed a critical bug in `ReentrantMutex` where nested locks of different instances would overwrite each other's coroutine context keys, resolving the batch request deadlock on iOS.
+- **Test Suite Stabilizations**: 
+  - Updated `PlatformGrantDelegateStatusTest` to account for the new 1000ms caching by properly advancing Robolectric `ShadowSystemClock`.
+  - Fixed `Issue33HotfixDuplicateRequestTest` by properly injecting the new `GrantLauncher` mock, matching the refactored architecture.
+  - Adjusted UX assertions in `GrantAndServiceHandlerTest` to expect immediate rationale display on first denial.
+  - Updated `IosGrantDelegateTest` to properly validate the full `GrantStatus` enum including the `BUSY` state.
+
 ## [1.4.0] - 2026-05-09
 
 ### 🚀 Enterprise Hardening & Extensibility

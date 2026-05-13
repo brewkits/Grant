@@ -72,6 +72,7 @@ class PlatformGrantDelegateStatusTest {
 
         val shadowApp = Shadows.shadowOf(context as android.app.Application)
         shadowApp.grantPermissions("android.permission.CUSTOM")
+        org.robolectric.shadows.ShadowSystemClock.advanceBy(java.time.Duration.ofMillis(1100))
         val status2 = delegate.checkStatus(raw)
         assertEquals(GrantStatus.GRANTED, status2)
     }
@@ -87,10 +88,12 @@ class PlatformGrantDelegateStatusTest {
         // Just foreground
         shadowApp.grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
         shadowApp.grantPermissions(Manifest.permission.ACCESS_COARSE_LOCATION)
+        org.robolectric.shadows.ShadowSystemClock.advanceBy(java.time.Duration.ofMillis(1100))
         assertEquals(GrantStatus.PARTIAL_GRANTED, delegate.checkStatus(AppGrant.LOCATION_ALWAYS))
         
         // Foreground and background
         shadowApp.grantPermissions(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+        org.robolectric.shadows.ShadowSystemClock.advanceBy(java.time.Duration.ofMillis(1100))
         assertEquals(GrantStatus.GRANTED, delegate.checkStatus(AppGrant.LOCATION_ALWAYS))
     }
 }

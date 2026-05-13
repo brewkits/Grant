@@ -24,6 +24,7 @@ import dev.brewkits.grant.GrantStatus
  * - DENIED         → Orange
  * - DENIED_ALWAYS  → Red
  * - NOT_DETERMINED → Neutral grey
+ * - BUSY           → Blue
  * - null           → Light grey (not yet checked)
  */
 @Composable
@@ -33,6 +34,7 @@ fun StatusChip(status: GrantStatus?, modifier: Modifier = Modifier) {
         GrantStatus.PARTIAL_GRANTED -> Color(0xFFF57F17)  // Amber
         GrantStatus.DENIED -> Color(0xFFE65100)           // Deep Orange
         GrantStatus.DENIED_ALWAYS -> Color(0xFFC62828)    // Deep Red
+        GrantStatus.BUSY -> Color(0xFF1976D2)             // Blue
         GrantStatus.NOT_DETERMINED -> Color(0xFF546E7A)   // Blue Grey
         null -> Color(0xFF9E9E9E)                          // Neutral Grey
     }
@@ -48,6 +50,7 @@ fun StatusChip(status: GrantStatus?, modifier: Modifier = Modifier) {
         GrantStatus.PARTIAL_GRANTED -> "◑ PARTIAL"
         GrantStatus.DENIED -> "✕ DENIED"
         GrantStatus.DENIED_ALWAYS -> "⛔ BLOCKED"
+        GrantStatus.BUSY -> "⌛ BUSY"
         GrantStatus.NOT_DETERMINED -> "? UNKNOWN"
         null -> "— NOT CHECKED"
     }

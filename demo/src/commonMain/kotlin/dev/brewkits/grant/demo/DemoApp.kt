@@ -8,9 +8,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
-/**
- * Simplified demo app while we fix the grant implementation
- */
 @Composable
 fun DemoApp(onStartDemo: () -> Unit = {}) {
     Surface(

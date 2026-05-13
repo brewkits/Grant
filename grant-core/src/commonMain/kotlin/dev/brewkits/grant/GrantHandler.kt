@@ -1,5 +1,6 @@
 package dev.brewkits.grant
 
+import dev.brewkits.grant.utils.GrantLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -142,6 +143,10 @@ class GrantHandler(
         const val KEY_IS_VISIBLE     = "grant_handler_is_visible"
         const val KEY_SHOW_RATIONALE = "grant_handler_show_rationale"
         const val KEY_SHOW_SETTINGS  = "grant_handler_show_settings"
+        const val KEY_RATIONALE_MSG  = "grant_handler_rationale_msg"
+        const val KEY_SETTINGS_MSG   = "grant_handler_settings_msg"
+        
+        const val TAG = "GrantHandler"
     }
 
     private val _state  = MutableStateFlow(GrantUiState())
@@ -160,8 +165,8 @@ class GrantHandler(
     private var onResultCallback: ((GrantStatus) -> Unit)? = null
 
     private fun clearCallbacks(finalStatus: GrantStatus? = null) {
-        this.onGrantedCallback = null
         val statusToReport = finalStatus ?: _status.value
+        onGrantedCallback = null
         onResultCallback?.invoke(statusToReport)
         onResultCallback = null
     }
@@ -176,17 +181,34 @@ class GrantHandler(
         val wasVisible   = savedStateDelegate.restoreState(KEY_IS_VISIBLE)?.toBoolean() ?: false
         val wasRationale = savedStateDelegate.restoreState(KEY_SHOW_RATIONALE)?.toBoolean() ?: false
         val wasSettings  = savedStateDelegate.restoreState(KEY_SHOW_SETTINGS)?.toBoolean() ?: false
+        val restoredRationaleMsg = savedStateDelegate.restoreState(KEY_RATIONALE_MSG)
+        val restoredSettingsMsg  = savedStateDelegate.restoreState(KEY_SETTINGS_MSG)
+        
         if (wasVisible) {
             _state.update {
                 it.copy(
                     isVisible        = true,
                     showRationale    = wasRationale,
-                    showSettingsGuide = wasSettings
+                    showSettingsGuide = wasSettings,
+                    rationaleMessage = restoredRationaleMsg,
+                    settingsMessage  = restoredSettingsMsg
                 )
             }
         }
-        // Initialize status on creation (non-blocking background check)
-        refreshStatus()
+        
+        // Initialize status and handle auto-resume after process death
+        scope.launch {
+            val currentStatus = grantManager.checkStatus(grant)
+            _status.value = currentStatus
+            
+            // IF we were visible before process death AND now we are GRANTED,
+            // it means the user likely granted it and then process death occurred,
+            // or they granted it in Settings. We should trigger the success event.
+            if (wasVisible && (currentStatus == GrantStatus.GRANTED || currentStatus == GrantStatus.PARTIAL_GRANTED)) {
+                resetState()
+                _grantedEvents.tryEmit(Unit)
+            }
+        }
     }
 
     /**
@@ -195,13 +217,29 @@ class GrantHandler(
      */
     fun refreshStatus() {
         scope.launch {
-            _status.value = grantManager.checkStatus(grant)
+            val newStatus = grantManager.checkStatus(grant)
+            val oldStatus = _status.value
+            _status.value = newStatus
+            
+            // Auto-complete flow if status changed to GRANTED while a dialog was showing
+            if (state.value.isVisible && (newStatus == GrantStatus.GRANTED || newStatus == GrantStatus.PARTIAL_GRANTED)) {
+                resetState()
+                _grantedEvents.tryEmit(Unit)
+                onGrantedCallback?.invoke(newStatus)
+                clearCallbacks(newStatus)
+            }
         }
     }
 
     /**
-     * If a request is already in-flight, the call is silently ignored — no new coroutine
-     * is launched and the in-flight request continues to completion.
+     * Call this when the app returns to foreground to check if user changed settings.
+     */
+    fun onReturnFromSettings() {
+        refreshStatus()
+    }
+
+    /**
+     * If a request is already in-flight, the call is logged and ignored.
      *
      * This function orchestrates the entire flow:
      * 1. Check current status
@@ -221,12 +259,18 @@ class GrantHandler(
         onGranted: (GrantStatus) -> Unit
     ) {
         scope.launch {
-            if (!requestMutex.tryLock()) return@launch
+            if (!requestMutex.tryLock()) {
+                GrantLogger.d(TAG, "Request for ${grant.identifier} is already in progress. Ignoring duplicate call.")
+                return@launch
+            }
             try {
                 this@GrantHandler.onGrantedCallback = onGranted
                 val currentStatus = grantManager.checkStatus(grant)
                 _status.value = currentStatus
                 handleStatus(currentStatus, rationaleMessage, settingsMessage)
+            } catch (e: Exception) {
+                GrantLogger.e(TAG, "Error during grant request for ${grant.identifier}", e)
+                clearCallbacks()
             } finally {
                 requestMutex.unlock()
             }
@@ -239,7 +283,8 @@ class GrantHandler(
      *
      * @param rationaleMessage Custom message for rationale dialog (optional)
      * @param settingsMessage  Custom message for settings dialog (optional)
-     * @return The final [GrantStatus] after the flow completes.
+     * @return The final [GrantStatus] after the flow completes. Returns [GrantStatus.BUSY]
+     *         if a request is already in progress.
      */
     suspend fun requestSuspend(
         rationaleMessage: String? = null,
@@ -247,17 +292,19 @@ class GrantHandler(
     ): GrantStatus = suspendCancellableCoroutine { cont ->
         val job = scope.launch {
             if (!requestMutex.tryLock()) {
-                if (cont.isActive) cont.resume(_status.value)
+                GrantLogger.d(TAG, "Suspending request for ${grant.identifier} is already in progress.")
+                if (cont.isActive) cont.resume(GrantStatus.BUSY)
                 return@launch
             }
-            this@GrantHandler.onResultCallback = { finalStatus ->
-                if (cont.isActive) cont.resume(finalStatus)
-            }
             try {
+                this@GrantHandler.onResultCallback = { finalStatus ->
+                    if (cont.isActive) cont.resume(finalStatus)
+                }
                 val currentStatus = grantManager.checkStatus(grant)
                 _status.value = currentStatus
                 handleStatus(currentStatus, rationaleMessage, settingsMessage)
             } catch (e: Exception) {
+                GrantLogger.e(TAG, "Error during suspending grant request for ${grant.identifier}", e)
                 clearCallbacks()
                 if (cont.isActive) cont.resumeWith(Result.failure(e))
             } finally {
@@ -265,10 +312,11 @@ class GrantHandler(
             }
         }
 
-        cont.invokeOnCancellation { job.cancel() }
-
-        if (!job.isActive && cont.isActive) {
-            cont.resume(_status.value)
+        cont.invokeOnCancellation { 
+            job.cancel() 
+            if (requestMutex.isLocked) {
+                try { requestMutex.unlock() } catch (e: Exception) {}
+            }
         }
     }
 
@@ -295,13 +343,11 @@ class GrantHandler(
             if (!requestMutex.tryLock()) return@launch
             try {
                 resetState()
-
                 val newStatus = grantManager.request(grant)
                 _status.value = newStatus
-
-                _status.value = grantManager.checkStatus(grant)
-
                 handleStatus(newStatus, null, null, isFirstRequest = true)
+            } catch (e: Exception) {
+                clearCallbacks()
             } finally {
                 requestMutex.unlock()
             }
@@ -312,13 +358,16 @@ class GrantHandler(
      * Called when user clicks "Open Settings" button
      */
     fun onSettingsConfirmed() {
-        if (!requestMutex.tryLock()) return
-        try {
-            resetState()
-            grantManager.openSettings()
-            clearCallbacks()
-        } finally {
-            requestMutex.unlock()
+        scope.launch {
+            if (!requestMutex.tryLock()) return@launch
+            try {
+                resetState()
+                grantManager.openSettings()
+                // Do NOT clear callbacks here. We wait for user to return from settings.
+                // refreshStatus() or onReturnFromSettings() will handle completion.
+            } finally {
+                requestMutex.unlock()
+            }
         }
     }
 
@@ -326,13 +375,14 @@ class GrantHandler(
      * Called when user dismisses any dialog (Cancel/Outside tap)
      */
     fun onDismiss() {
-        if (!requestMutex.tryLock()) return
-        try {
-            resetState()
-            // Clear callback to prevent memory leak when grant flow is cancelled
-            clearCallbacks()
-        } finally {
-            requestMutex.unlock()
+        scope.launch {
+            if (!requestMutex.tryLock()) return@launch
+            try {
+                resetState()
+                clearCallbacks()
+            } finally {
+                requestMutex.unlock()
+            }
         }
     }
 
@@ -437,9 +487,6 @@ class GrantHandler(
         }
     }
 
-    // --- Internal Logic ---
-
-    
     private sealed class FlowState {
         data class Check(val isFirstRequest: Boolean = false) : FlowState()
         data class HandleResult(val status: GrantStatus, val isFirstRequest: Boolean = false) : FlowState()
@@ -500,6 +547,11 @@ class GrantHandler(
                         GrantStatus.NOT_DETERMINED -> {
                             currentState = FlowState.Check(isFirstRequest = state.isFirstRequest)
                         }
+                        GrantStatus.BUSY -> {
+                            resetState()
+                            clearCallbacks()
+                            currentState = FlowState.Done
+                        }
                         GrantStatus.DENIED -> {
                             if (!PlatformConfig.isRationaleSupported) {
                                 currentState = FlowState.HandleResult(GrantStatus.DENIED_ALWAYS, state.isFirstRequest)
@@ -511,7 +563,8 @@ class GrantHandler(
                                             isVisible = true,
                                             showRationale = true,
                                             showSettingsGuide = false,
-                                            rationaleMessage = rationaleMessage
+                                            rationaleMessage = rationaleMessage,
+                                            settingsMessage = settingsMessage
                                         )
                                     }
                                 } else {
@@ -529,6 +582,7 @@ class GrantHandler(
                                         isVisible = true,
                                         showRationale = false,
                                         showSettingsGuide = true,
+                                        rationaleMessage = rationaleMessage,
                                         settingsMessage = settingsMessage
                                     )
                                 }
@@ -562,11 +616,25 @@ class GrantHandler(
         // We only care about persisting visibility and dialog types for process death
         if (oldState.isVisible != newState.isVisible ||
             oldState.showRationale != newState.showRationale ||
-            oldState.showSettingsGuide != newState.showSettingsGuide
+            oldState.showSettingsGuide != newState.showSettingsGuide ||
+            oldState.rationaleMessage != newState.rationaleMessage ||
+            oldState.settingsMessage != newState.settingsMessage
         ) {
             savedStateDelegate.saveState(KEY_IS_VISIBLE, newState.isVisible.toString())
             savedStateDelegate.saveState(KEY_SHOW_RATIONALE, newState.showRationale.toString())
             savedStateDelegate.saveState(KEY_SHOW_SETTINGS, newState.showSettingsGuide.toString())
+            
+            if (newState.rationaleMessage != null) {
+                savedStateDelegate.saveState(KEY_RATIONALE_MSG, newState.rationaleMessage)
+            } else {
+                savedStateDelegate.clear(KEY_RATIONALE_MSG)
+            }
+            
+            if (newState.settingsMessage != null) {
+                savedStateDelegate.saveState(KEY_SETTINGS_MSG, newState.settingsMessage)
+            } else {
+                savedStateDelegate.clear(KEY_SETTINGS_MSG)
+            }
         }
     }
 
@@ -616,6 +684,10 @@ class GrantHandler(
                         }
                         GrantStatus.NOT_DETERMINED -> {
                             currentState = FlowState.Check(isFirstRequest = state.isFirstRequest)
+                        }
+                        GrantStatus.BUSY -> {
+                            clearCallbacks()
+                            currentState = FlowState.Done
                         }
                         GrantStatus.DENIED -> {
                             if (!state.isFirstRequest) {

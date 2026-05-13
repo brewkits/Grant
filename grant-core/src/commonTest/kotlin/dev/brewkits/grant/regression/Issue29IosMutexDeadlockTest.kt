@@ -87,6 +87,7 @@ class Issue29IosMutexDeadlockTest {
             grants.associateWith { request(it) }
 
         override fun openSettings() = Unit
+        override fun setLauncher(launcher: dev.brewkits.grant.GrantLauncher) {}
     }
 
     // ── Tests ────────────────────────────────────────────────────────────────────

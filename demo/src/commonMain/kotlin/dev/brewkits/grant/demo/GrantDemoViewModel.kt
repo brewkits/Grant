@@ -25,101 +25,159 @@ import kotlinx.coroutines.launch
  */
 class GrantDemoViewModel(
     private val grantManager: GrantManager,
-    private val scope: CoroutineScope
+    private val scope: CoroutineScope,
+    private val savedStateDelegate: dev.brewkits.grant.SavedStateDelegate = dev.brewkits.grant.NoOpSavedStateDelegate()
 ) {
-    // ==============================================
-    // SCENARIO 1: SEQUENTIAL GRANTS
-    // Request camera first, then microphone after
-    // ==============================================
-
     val galleryImagesOnlyGrant = GrantHandler(
         grantManager = grantManager,
         grant = AppGrant.GALLERY_IMAGES_ONLY,
-        scope = scope
+        scope = scope,
+        savedStateDelegate = savedStateDelegate
     )
 
     val galleryVideoOnlyGrant = GrantHandler(
         grantManager = grantManager,
         grant = AppGrant.GALLERY_VIDEO_ONLY,
-        scope = scope
+        scope = scope,
+        savedStateDelegate = savedStateDelegate
     )
 
-    /**
-     * DANGEROUS grant - Camera access
-     * Used for: Photo/video capture, QR scanning
-     */
     val cameraGrant = GrantHandler(
         grantManager = grantManager,
         grant = AppGrant.CAMERA,
-        scope = scope
+        scope = scope,
+        savedStateDelegate = savedStateDelegate
     )
 
-    /**
-     * DANGEROUS grant - Microphone access
-     * Used for: Audio recording, voice notes
-     */
     val microphoneGrant = GrantHandler(
         grantManager = grantManager,
         grant = AppGrant.MICROPHONE,
-        scope = scope
+        scope = scope,
+        savedStateDelegate = savedStateDelegate
     )
 
     val motionGrant = GrantHandler(
         grantManager = grantManager,
         grant = AppGrant.MOTION,
-        scope = scope
+        scope = scope,
+        savedStateDelegate = savedStateDelegate
     )
 
-    /**
-     * DANGEROUS grant - Calendar full access (read + write)
-     * Used for: Reading/writing calendar events
-     */
     val calendarGrant = GrantHandler(
         grantManager = grantManager,
         grant = AppGrant.CALENDAR,
-        scope = scope
+        scope = scope,
+        savedStateDelegate = savedStateDelegate
     )
 
-    /**
-     * DANGEROUS grant - Contacts full access (read + write)
-     * Used for: Creating, updating, or deleting contacts
-     * v1.1.0: CONTACTS now requests READ + WRITE on Android
-     */
     val contactsWriteGrant = GrantHandler(
         grantManager = grantManager,
         grant = AppGrant.CONTACTS,
-        scope = scope
+        scope = scope,
+        savedStateDelegate = savedStateDelegate
     )
 
-    /**
-     * DANGEROUS grant - Contacts read-only access
-     * Used for: Contact pickers, address book viewers (principle of least privilege)
-     */
     val readContactsGrant = GrantHandler(
         grantManager = grantManager,
         grant = AppGrant.READ_CONTACTS,
-        scope = scope
+        scope = scope,
+        savedStateDelegate = savedStateDelegate
     )
 
-    /**
-     * DANGEROUS grant - Bluetooth advertising (BLE peripheral mode)
-     * Used for: Beacons, proximity advertising, device-to-device transfer
-     */
     val bluetoothAdvertiseGrant = GrantHandler(
         grantManager = grantManager,
         grant = AppGrant.BLUETOOTH_ADVERTISE,
-        scope = scope
+        scope = scope,
+        savedStateDelegate = savedStateDelegate
     )
 
-    /**
-     * DANGEROUS grant - Calendar read-only access
-     * Used for: Calendar viewers, reminder apps (principle of least privilege)
-     */
     val readCalendarGrant = GrantHandler(
         grantManager = grantManager,
         grant = AppGrant.READ_CALENDAR,
-        scope = scope
+        scope = scope,
+        savedStateDelegate = savedStateDelegate
     )
+
+    val locationGrant = GrantHandler(
+        grantManager = grantManager,
+        grant = AppGrant.LOCATION,
+        scope = scope,
+        savedStateDelegate = savedStateDelegate
+    )
+
+    val storageGrant = GrantHandler(
+        grantManager = grantManager,
+        grant = AppGrant.STORAGE,
+        scope = scope,
+        savedStateDelegate = savedStateDelegate
+    )
+
+    val notificationGrant = GrantHandler(
+        grantManager = grantManager,
+        grant = AppGrant.NOTIFICATION,
+        scope = scope,
+        savedStateDelegate = savedStateDelegate
+    )
+
+    val locationAlwaysGrant = GrantHandler(
+        grantManager = grantManager,
+        grant = AppGrant.LOCATION_ALWAYS,
+        scope = scope,
+        savedStateDelegate = savedStateDelegate
+    )
+
+    val bluetoothGrant = GrantHandler(
+        grantManager = grantManager,
+        grant = AppGrant.BLUETOOTH,
+        scope = scope,
+        savedStateDelegate = savedStateDelegate
+    )
+
+    val galleryGrant = GrantHandler(
+        grantManager = grantManager,
+        grant = AppGrant.GALLERY,
+        scope = scope,
+        savedStateDelegate = savedStateDelegate
+    )
+
+    private val _isBusy = MutableStateFlow(false)
+    val isBusy: StateFlow<Boolean> = _isBusy.asStateFlow()
+
+    fun requestWithBusyCheck() {
+        _grantTypeResult.value = "Requesting Camera with concurrency protection..."
+        scope.launch {
+            _isBusy.value = true
+            cameraGrant.request(
+                rationaleMessage = "We need camera access."
+            ) {
+                _grantTypeResult.value = "✓ Camera granted!"
+                _isBusy.value = false
+            }
+            
+            // Try to trigger again immediately to test "Already in progress" log
+            cameraGrant.request(rationaleMessage = "Second request") { }
+        }
+    }
+
+    /**
+     * Scenario 6: Custom UI Integration
+     * 
+     * Demonstrate requestWithCustomUi for non-Compose or custom dialog flows.
+     */
+    fun requestWithCustomUiExample(
+        onShowRationale: (String, () -> Unit, () -> Unit) -> Unit,
+        onShowSettings: (String, () -> Unit, () -> Unit) -> Unit
+    ) {
+        _scenario5Result.value = "Requesting Camera via Custom UI flow..."
+        cameraGrant.requestWithCustomUi(
+            rationaleMessage = "Custom Rationale: Camera is needed for this demo.",
+            settingsMessage = "Custom Settings: Please enable camera manually.",
+            onShowRationale = onShowRationale,
+            onShowSettings = onShowSettings
+        ) {
+            _scenario5Result.value = "✓ Camera granted via Custom UI!"
+        }
+    }
 
     private val _sequentialResult = MutableStateFlow("")
     val sequentialResult: StateFlow<String> = _sequentialResult.asStateFlow()
@@ -160,31 +218,6 @@ class GrantDemoViewModel(
             _sequentialResult.update { it + "\n\n🎥 Recording video with audio..." }
         }
     }
-
-    // ==============================================
-    // SCENARIO 2: ATOMIC GROUP GRANTS
-    // Request location + storage at the same time using GrantGroupHandler
-    // ==============================================
-
-    /**
-     * DANGEROUS grant - Location access (when in use)
-     * Used for: Maps, location-based services
-     */
-    val locationGrant = GrantHandler(
-        grantManager = grantManager,
-        grant = AppGrant.LOCATION,
-        scope = scope
-    )
-
-    /**
-     * DANGEROUS grant - Storage access
-     * Used for: Reading/writing files, photo galleries
-     */
-    val storageGrant = GrantHandler(
-        grantManager = grantManager,
-        grant = AppGrant.STORAGE,
-        scope = scope
-    )
 
     /**
      * Group Handler for related grants
@@ -236,51 +269,6 @@ class GrantDemoViewModel(
             }
         }
     }
-
-    // ==============================================
-    // SCENARIO 3: RUNTIME vs DANGEROUS GRANTS
-    // Show the difference in behavior
-    // ==============================================
-
-    /**
-     * RUNTIME grant - Notifications (POST_NOTIFICATIONS on Android 13+)
-     * Note: On older Android or iOS, may be granted automatically
-     */
-    val notificationGrant = GrantHandler(
-        grantManager = grantManager,
-        grant = AppGrant.NOTIFICATION,
-        scope = scope
-    )
-
-    /**
-     * DANGEROUS grant - Location (always/background)
-     * Highest risk level - background access to location
-     */
-    val locationAlwaysGrant = GrantHandler(
-        grantManager = grantManager,
-        grant = AppGrant.LOCATION_ALWAYS,
-        scope = scope
-    )
-
-    /**
-     * DANGEROUS grant - Bluetooth access
-     * Used for: Bluetooth device connections
-     */
-    val bluetoothGrant = GrantHandler(
-        grantManager = grantManager,
-        grant = AppGrant.BLUETOOTH,
-        scope = scope
-    )
-
-    /**
-     * DANGEROUS grant - Gallery/Photo library access
-     * Used for: Selecting photos from gallery
-     */
-    val galleryGrant = GrantHandler(
-        grantManager = grantManager,
-        grant = AppGrant.GALLERY,
-        scope = scope
-    )
 
     private val _grantTypeResult = MutableStateFlow("")
     val grantTypeResult: StateFlow<String> = _grantTypeResult.asStateFlow()
@@ -379,11 +367,6 @@ class GrantDemoViewModel(
         }
     }
 
-    // ==============================================
-    // SCENARIO 4: v1.1.0 — GRANULAR PERMISSIONS
-    // Demonstrate READ_CONTACTS, READ_CALENDAR, BLUETOOTH_ADVERTISE
-    // ==============================================
-
     /**
      * Scenario 4a: Least-privilege contacts — read only
      * Use case: Contact picker, CRM viewer (does NOT need write access)
@@ -447,12 +430,6 @@ class GrantDemoViewModel(
             }
         }
     }
-
-    // ==============================================
-    // SCENARIO 5: ADVANCED / OS-VERSION-SPECIFIC
-    // Motion (Dummy Query), Calendar (iOS 17+ writeOnly),
-    // Gallery partial (Android 14+ SELECT_PHOTOS)
-    // ==============================================
 
     private val _scenario5Result = MutableStateFlow("")
     val scenario5Result: StateFlow<String> = _scenario5Result.asStateFlow()
@@ -529,10 +506,6 @@ class GrantDemoViewModel(
             _scenario5Result.value = "✓ NOTIFICATION GRANTED\n${OsInfo.notificationBehaviorNote()}\n\n🔔 Push notifications enabled!"
         }
     }
-
-    // ==============================================
-    // UTILITY FUNCTIONS
-    // ==============================================
 
     fun resetResults() {
         _sequentialResult.value = ""
