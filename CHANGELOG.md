@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [1.4.3] - 2026-05-14
+## [1.4.2] - 2026-05-14
 
 ### 🐛 Critical Bug Fixes
 
