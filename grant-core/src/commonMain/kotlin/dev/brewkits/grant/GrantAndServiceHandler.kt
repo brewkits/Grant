@@ -244,19 +244,25 @@ class GrantAndServiceHandler(
         val permStatus = permStatusDef.await()
         val svcStatus = svcStatusDef.await()
 
-        if (permStatus == GrantStatus.NOT_DETERMINED) {
+        if (permStatus == GrantStatus.NOT_DETERMINED || (permStatus == GrantStatus.PARTIAL_GRANTED && grant.requiresBackgroundUpgrade)) {
             val result = grantManager.request(grant)
-            if (result == GrantStatus.GRANTED || result == GrantStatus.PARTIAL_GRANTED) {
+            if (isSufficient(result)) {
                 checkServiceAndFinishWithStatus(svcStatus, svcSettings)
             } else {
-                // First system request denied — don't show rationale yet (matches GrantHandler UX).
-                resetState()
-                onReadyCallback = null
+                if (result == GrantStatus.PARTIAL_GRANTED) {
+                    // Landed here after an OS dialog interaction.
+                    // For background-upgrade permissions, this means the user denied the second step.
+                    handlePermissionStatus(GrantStatus.DENIED_ALWAYS, rationale, permSettings)
+                } else {
+                    // First system request denied — don't show rationale yet (matches GrantHandler UX).
+                    resetState()
+                    onReadyCallback = null
+                }
             }
             return@coroutineScope
         }
 
-        if (permStatus != GrantStatus.GRANTED && permStatus != GrantStatus.PARTIAL_GRANTED) {
+        if (!isSufficient(permStatus)) {
             handlePermissionStatus(permStatus, rationale, permSettings)
             return@coroutineScope
         }
@@ -303,7 +309,9 @@ class GrantAndServiceHandler(
                     )
                 }
             }
-            GrantStatus.DENIED_ALWAYS -> {
+            GrantStatus.DENIED_ALWAYS, GrantStatus.PARTIAL_GRANTED -> {
+                // If we are here with PARTIAL_GRANTED, it means isSufficient was false,
+                // so it's a background-upgrade permission that needs settings.
                 _state.update {
                     it.copy(
                         isVisible = true,
@@ -321,10 +329,18 @@ class GrantAndServiceHandler(
         val svcStatusDef = async { serviceManager.checkServiceStatus(serviceType) }
         
         val permStatus = permStatusDef.await()
-        val permOk = permStatus == GrantStatus.GRANTED || permStatus == GrantStatus.PARTIAL_GRANTED 
+        val permOk = isSufficient(permStatus)
         
         val svcOk = svcStatusDef.await() == ServiceStatus.ENABLED
         return@coroutineScope permOk && svcOk
+    }
+
+    private fun isSufficient(status: GrantStatus): Boolean {
+        return when (status) {
+            GrantStatus.GRANTED -> true
+            GrantStatus.PARTIAL_GRANTED -> !grant.requiresBackgroundUpgrade
+            else -> false
+        }
     }
 
     private fun resetState() {

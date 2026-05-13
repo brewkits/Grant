@@ -3,6 +3,7 @@ package dev.brewkits.grant.demo
 import android.app.Application
 import dev.brewkits.grant.di.grantModule
 import dev.brewkits.grant.di.grantPlatformModule
+import dev.brewkits.grant.utils.GrantLogger
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin

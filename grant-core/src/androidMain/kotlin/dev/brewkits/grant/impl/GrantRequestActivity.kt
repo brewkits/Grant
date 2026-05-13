@@ -93,7 +93,6 @@ class GrantRequestActivity : ComponentActivity() {
                         if (deferred?.isActive == true) {
                             setResult(requestId, GrantResult.ERROR)
                         }
-                        isActivityActive = false
                     }
                     requestMultipleGrantsLauncher?.unregister()
                     requestMultipleGrantsLauncher = null
@@ -131,6 +130,8 @@ class GrantRequestActivity : ComponentActivity() {
     private fun finishAndCleanup() {
         isActivityActive = false
         finish()
+        // Override transition to make it completely invisible
+        overridePendingTransition(0, 0)
     }
 
     private fun setResult(requestId: String, result: GrantResult) {
@@ -149,17 +150,26 @@ class GrantRequestActivity : ComponentActivity() {
 
         @Volatile
         private var isActivityActive = false
+        private var lastActivityLaunchTime = 0L
 
         /**
          * Launch this Activity to request one or more grants.
          */
         fun requestGrants(context: Context, androidGrants: List<String>): String {
             val requestId = UUID.randomUUID().toString()
+            val now = System.currentTimeMillis()
 
             pendingResults[requestId] = CompletableDeferred()
-            pendingTimestamps[requestId] = System.currentTimeMillis()
+            pendingTimestamps[requestId] = now
 
             cleanupOrphanedEntries()
+
+            // Safety fallback: If isActivityActive is stuck for more than 10 seconds, reset it.
+            // This prevents a permanent lock if an activity crashed or was killed without cleanup.
+            if (isActivityActive && (now - lastActivityLaunchTime > 10_000L)) {
+                GrantLogger.w(TAG, "Activity Launch Guard: Force resetting stuck isActivityActive flag.")
+                isActivityActive = false
+            }
 
             if (isActivityActive) {
                 GrantLogger.w(TAG, "Activity Launch Guard: Another GrantRequestActivity is already active. Failing fast.")
@@ -167,13 +177,16 @@ class GrantRequestActivity : ComponentActivity() {
                 cleanup(requestId)
                 return requestId
             }
+            
             isActivityActive = true
+            lastActivityLaunchTime = now
 
             val intent = Intent(context, GrantRequestActivity::class.java).apply {
                 putExtra(EXTRA_GRANTS, androidGrants.toTypedArray())
                 putExtra(EXTRA_REQUEST_ID, requestId)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
+                addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
             }
             
             try {

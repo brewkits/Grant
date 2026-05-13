@@ -224,6 +224,11 @@ actual class PlatformGrantDelegate(
         // We only trigger step 2 if we weren't already at PARTIAL_GRANTED (meaning we just acquired foreground location)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && grant == AppGrant.LOCATION_ALWAYS && finalStatus == GrantStatus.PARTIAL_GRANTED && currentStatus != GrantStatus.PARTIAL_GRANTED) {
             // Step 1 (Foreground) was granted. Immediately proceed to Step 2 (Background).
+            
+            // Add a small delay to ensure the first GrantRequestActivity has fully finished
+            // and cleared its isActivityActive flag, preventing the 2nd request from failing fast.
+            kotlinx.coroutines.delay(100)
+
             val backgroundPermissions = (grant as AppGrant).toAndroidGrants()
             if (backgroundPermissions.isNotEmpty()) {
                 val bgRequestId = GrantRequestActivity.requestGrants(context, backgroundPermissions)

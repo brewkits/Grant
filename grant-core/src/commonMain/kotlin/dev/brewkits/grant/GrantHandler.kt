@@ -478,12 +478,16 @@ class GrantHandler(
                         }
                         GrantStatus.PARTIAL_GRANTED -> {
                             if (grant.requiresBackgroundUpgrade) {
-                                // The OS dialog (foreground + background prompt) has already
-                                // run for permissions that require a background upgrade. If we
-                                // land here with PARTIAL_GRANTED, the user explicitly denied
-                                // the background step, so jump straight to the settings guide
-                                // regardless of isFirstRequest.
-                                currentState = FlowState.HandleResult(GrantStatus.DENIED_ALWAYS, isFirstRequest = false)
+                                if (state.isFirstRequest) {
+                                    // Landed here after an OS dialog interaction in this flow.
+                                    // The user must have denied the background step, so jump
+                                    // straight to the settings guide.
+                                    currentState = FlowState.HandleResult(GrantStatus.DENIED_ALWAYS, isFirstRequest = false)
+                                } else {
+                                    // Flow just started, and we are currently PARTIAL.
+                                    // Trigger an OS request to attempt background upgrade.
+                                    currentState = FlowState.Check(isFirstRequest = false)
+                                }
                             } else {
                                 resetState()
                                 hasShownRationaleDialog = false
@@ -598,7 +602,11 @@ class GrantHandler(
                         }
                         GrantStatus.PARTIAL_GRANTED -> {
                             if (grant.requiresBackgroundUpgrade) {
-                                currentState = FlowState.HandleResult(GrantStatus.DENIED_ALWAYS, isFirstRequest = false)
+                                if (state.isFirstRequest) {
+                                    currentState = FlowState.HandleResult(GrantStatus.DENIED_ALWAYS, isFirstRequest = false)
+                                } else {
+                                    currentState = FlowState.Check(isFirstRequest = false)
+                                }
                             } else {
                                 _grantedEvents.tryEmit(Unit)
                                 onGrantedCallback?.invoke(state.status)
