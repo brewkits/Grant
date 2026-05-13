@@ -73,6 +73,28 @@ class Issue33HotfixDuplicateRequestTest {
         context = ApplicationProvider.getApplicationContext()
         store = InMemoryGrantStore()
         delegate = PlatformGrantDelegate(context, store)
+        
+        val pm = org.robolectric.Shadows.shadowOf(context.packageManager)
+        val packageInfo = android.content.pm.PackageInfo().apply {
+            packageName = context.packageName
+            requestedPermissions = arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+                Manifest.permission.ACCESS_BACKGROUND_LOCATION
+            )
+        }
+        pm.installPackage(packageInfo)
+        
+        delegate.setLauncher(object : dev.brewkits.grant.GrantLauncher {
+            override fun launch(permissions: List<String>, onResult: (Map<String, Boolean>) -> Unit) {
+                // Simulate granting whatever is already in the shadow
+                val app = org.robolectric.Shadows.shadowOf(context as android.app.Application)
+                val results = permissions.associateWith { 
+                    androidx.core.content.ContextCompat.checkSelfPermission(context, it) == android.content.pm.PackageManager.PERMISSION_GRANTED 
+                }
+                onResult(results)
+            }
+        })
 
         // Set up Robolectric shadow state matching the bug scenario:
         // foreground location GRANTED, background DENIED → checkStatus returns PARTIAL_GRANTED.
@@ -99,14 +121,27 @@ class Issue33HotfixDuplicateRequestTest {
 
     @Test
     fun `request from PARTIAL_GRANTED state fires exactly one Activity launch, not two`() = runBlocking {
-        val callCount = AtomicInteger(0)
+        val launcherCallCount = AtomicInteger(0)
+        delegate.setLauncher(object : dev.brewkits.grant.GrantLauncher {
+            override fun launch(permissions: List<String>, onResult: (Map<String, Boolean>) -> Unit) {
+                launcherCallCount.incrementAndGet()
+                // Simulate granting whatever is already in the shadow
+                val app = org.robolectric.Shadows.shadowOf(context as android.app.Application)
+                val results = permissions.associateWith { 
+                    androidx.core.content.ContextCompat.checkSelfPermission(context, it) == android.content.pm.PackageManager.PERMISSION_GRANTED 
+                }
+                onResult(results)
+            }
+        })
+        
+        val legacyCallCount = AtomicInteger(0)
 
         mockkObject(GrantRequestActivity.Companion)
 
         // Each call returns a fresh requestId.
         every { GrantRequestActivity.requestGrants(any(), any()) } answers {
-            callCount.incrementAndGet()
-            "test-request-id-${callCount.get()}"
+            legacyCallCount.incrementAndGet()
+            "test-request-id-${legacyCallCount.get()}"
         }
 
         // Return a deferred that is already completed with DENIED, so
@@ -126,17 +161,12 @@ class Issue33HotfixDuplicateRequestTest {
         // Core assertion: the duplicate request guard prevented a second launch.
         assertEquals(
             1,
-            callCount.get(),
-            "GrantRequestActivity.requestGrants must be invoked exactly once when " +
-                "the call starts from PARTIAL_GRANTED. Got ${callCount.get()} invocations — " +
-                "the v1.4.1 guard (currentStatus != PARTIAL_GRANTED) likely regressed."
+            launcherCallCount.get() + legacyCallCount.get(),
+            "Must be invoked exactly once when the call starts from PARTIAL_GRANTED. Got ${launcherCallCount.get()} launcher calls and ${legacyCallCount.get()} legacy calls."
         )
 
         // Sanity: status should remain PARTIAL_GRANTED since background was denied.
         assertEquals(GrantStatus.PARTIAL_GRANTED, finalStatus)
-
-        // Belt-and-suspenders: explicit MockK verification.
-        verify(exactly = 1) { GrantRequestActivity.requestGrants(any(), any()) }
     }
 
     /**
@@ -157,19 +187,26 @@ class Issue33HotfixDuplicateRequestTest {
         app.denyPermissions(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
 
         // currentStatus is now NOT_DETERMINED (no prior request recorded in the store).
-        val callCount = AtomicInteger(0)
+        val launcherCallCount = AtomicInteger(0)
+        val legacyCallCount = AtomicInteger(0)
+
+        delegate.setLauncher(object : dev.brewkits.grant.GrantLauncher {
+            override fun launch(permissions: List<String>, onResult: (Map<String, Boolean>) -> Unit) {
+                launcherCallCount.incrementAndGet()
+                // Step 1: Simulate granting foreground mid-flow
+                app.grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
+                app.grantPermissions(Manifest.permission.ACCESS_COARSE_LOCATION)
+                val results = permissions.associateWith { 
+                    androidx.core.content.ContextCompat.checkSelfPermission(context, it) == android.content.pm.PackageManager.PERMISSION_GRANTED 
+                }
+                onResult(results)
+            }
+        })
 
         mockkObject(GrantRequestActivity.Companion)
         every { GrantRequestActivity.requestGrants(any(), any()) } answers {
-            callCount.incrementAndGet()
-            // After the FIRST call (foreground request), flip the shadow state so
-            // checkStatus() now reports PARTIAL_GRANTED. This drives the delegate
-            // into the 2-step branch.
-            if (callCount.get() == 1) {
-                app.grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
-                app.grantPermissions(Manifest.permission.ACCESS_COARSE_LOCATION)
-            }
-            "req-${callCount.get()}"
+            legacyCallCount.incrementAndGet()
+            "req-${legacyCallCount.get()}"
         }
         every { GrantRequestActivity.getResultDeferred(any()) } answers {
             CompletableDeferred<GrantRequestActivity.GrantResult>().apply {
@@ -180,13 +217,12 @@ class Issue33HotfixDuplicateRequestTest {
 
         delegate.request(AppGrant.LOCATION_ALWAYS)
 
-        // 2-step flow expected: call #1 = foreground, call #2 = background.
+        // 2-step flow expected: call #1 = foreground (launcher), call #2 = background (legacy).
         assertEquals(
             2,
-            callCount.get(),
+            launcherCallCount.get() + legacyCallCount.get(),
             "Starting from NOT_DETERMINED must still trigger both steps of the " +
-                "2-step LOCATION_ALWAYS flow. Got ${callCount.get()} — the hotfix " +
-                "may have over-restricted the guard."
+                "2-step LOCATION_ALWAYS flow. Got ${launcherCallCount.get()} launcher calls and ${legacyCallCount.get()} legacy calls."
         )
     }
 }

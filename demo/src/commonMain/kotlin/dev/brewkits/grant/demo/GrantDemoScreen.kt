@@ -39,7 +39,6 @@ fun GrantDemoScreen(
     val v11Result by viewModel.v11Result.collectAsState()
     val scenario5Result by viewModel.scenario5Result.collectAsState()
 
-    // Live status for status chips
     val cameraStatus by viewModel.cameraGrant.status.collectAsState()
     val micStatus by viewModel.microphoneGrant.status.collectAsState()
     val notifStatus by viewModel.notificationGrant.status.collectAsState()
@@ -48,18 +47,15 @@ fun GrantDemoScreen(
     val motionStatus by viewModel.motionGrant.status.collectAsState()
     val calendarStatus by viewModel.calendarGrant.status.collectAsState()
 
-    // Handle grant dialogs using grant-compose
     GrantDialog(handler = viewModel.cameraGrant)
     GrantDialog(handler = viewModel.microphoneGrant)
     GrantGroupDialog(handler = viewModel.locationAndStorageGroup)
     GrantDialog(handler = viewModel.notificationGrant)
     GrantDialog(handler = viewModel.locationAlwaysGrant)
-    // v1.1.0 new permissions
     GrantDialog(handler = viewModel.readContactsGrant)
     GrantDialog(handler = viewModel.contactsWriteGrant)
     GrantDialog(handler = viewModel.bluetoothAdvertiseGrant)
     GrantDialog(handler = viewModel.readCalendarGrant)
-    // v1.2.0 new
     GrantDialog(handler = viewModel.motionGrant)
     GrantDialog(handler = viewModel.calendarGrant)
     Column(
@@ -346,15 +342,6 @@ fun GrantDemoScreen(
 
         HorizontalDivider()
 
-        // ==========================================
-        // Scenario 5: v1.2.0 — OS-Specific Advanced
-        // Automates the manual verification checklist:
-        // - Android API 21: STORAGE legacy
-        // - Android API 33: NOTIFICATION, granular GALLERY
-        // - Android API 35: GALLERY partial access
-        // - iOS Simulator: all permissions requestable
-        // - iOS 17+: Calendar writeOnly → PARTIAL_GRANTED
-        // ==========================================
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text(
                 text = "5. v1.2.0 — OS-Version Advanced",
@@ -420,6 +407,51 @@ fun GrantDemoScreen(
                     )
                 )
             }
+        }
+
+        HorizontalDivider()
+
+        // Scenario 6: Concurrency & Custom UI
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Text(
+                text = "6. Concurrency & Custom UI",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "Tests the new concurrency protection (Mutex) and Custom UI injection flow.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            val isBusy by viewModel.isBusy.collectAsState()
+
+            AdvancedPermissionCard(
+                title = "Concurrency Test",
+                platformNote = "Simulates double-click. Check logs for 'already in progress' warning.",
+                buttonText = if (isBusy) "Busy..." else "Test Double Request",
+                currentStatus = cameraStatus,
+                onClick = { viewModel.requestWithBusyCheck() }
+            )
+
+            AdvancedPermissionCard(
+                title = "Custom UI Injection",
+                platformNote = "Demonstrates requestWithCustomUi for non-Compose flows.",
+                buttonText = "Request via Custom UI",
+                currentStatus = cameraStatus,
+                onClick = { 
+                    viewModel.requestWithCustomUiExample(
+                        onShowRationale = { msg, onConfirm, onDismiss ->
+                            // Simulate a custom dialog
+                            onConfirm()
+                        },
+                        onShowSettings = { msg, onConfirm, onDismiss ->
+                            // Simulate a custom settings dialog
+                            onConfirm()
+                        }
+                    )
+                }
+            )
         }
 
         HorizontalDivider()

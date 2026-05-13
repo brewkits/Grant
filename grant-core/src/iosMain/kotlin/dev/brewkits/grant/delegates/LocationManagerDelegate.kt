@@ -42,8 +42,6 @@ internal class LocationManagerDelegate : NSObject(), CLLocationManagerDelegatePr
     @kotlin.concurrent.Volatile
     private var continuation: Continuation<CLAuthorizationStatus>? = null
 
-
-
     /**
      * Call when done to break the retain cycle.
      */
@@ -65,9 +63,7 @@ internal class LocationManagerDelegate : NSObject(), CLLocationManagerDelegatePr
             val manager = getManager()
             val currentStatus = manager.authorizationStatus()
             if (currentStatus != kCLAuthorizationStatusNotDetermined) {
-                continuation = null
-                manager.delegate = null
-                locationManager = null
+                cleanupAfterRequest()
                 cont.resume(currentStatus)
                 return@suspendCancellableCoroutine
             }
@@ -75,9 +71,7 @@ internal class LocationManagerDelegate : NSObject(), CLLocationManagerDelegatePr
             manager.requestWhenInUseAuthorization()
 
             cont.invokeOnCancellation {
-                continuation = null
-                locationManager?.delegate = null
-                locationManager = null
+                cleanupAfterRequest()
             }
         }
     }
@@ -96,9 +90,7 @@ internal class LocationManagerDelegate : NSObject(), CLLocationManagerDelegatePr
             val manager = getManager()
             val currentStatus = manager.authorizationStatus()
             if (currentStatus == kCLAuthorizationStatusAuthorizedAlways) {
-                continuation = null
-                manager.delegate = null
-                locationManager = null
+                cleanupAfterRequest()
                 cont.resume(currentStatus)
                 return@suspendCancellableCoroutine
             }
@@ -112,11 +104,15 @@ internal class LocationManagerDelegate : NSObject(), CLLocationManagerDelegatePr
             manager.requestAlwaysAuthorization()
 
             cont.invokeOnCancellation {
-                continuation = null
-                locationManager?.delegate = null
-                locationManager = null
+                cleanupAfterRequest()
             }
         }
+    }
+
+    private fun cleanupAfterRequest() {
+        continuation = null
+        locationManager?.delegate = null
+        locationManager = null
     }
 
     /**
@@ -128,14 +124,10 @@ internal class LocationManagerDelegate : NSObject(), CLLocationManagerDelegatePr
      */
     override fun locationManagerDidChangeAuthorization(manager: CLLocationManager) {
         val status = manager.authorizationStatus()
-        // FIX C3: null continuation FIRST to block the legacy callback
+        // Null continuation before resuming so the legacy callback below is a safe no-op if it fires.
         val cont = continuation
-        continuation = null
         if (cont != null) {
-            manager.delegate = null
-            if (locationManager == manager) {
-                locationManager = null
-            }
+            cleanupAfterRequest()
             mainContinuation<CLAuthorizationStatus> { s -> cont.resume(s) }.invoke(status)
         }
     }
@@ -151,11 +143,9 @@ internal class LocationManagerDelegate : NSObject(), CLLocationManagerDelegatePr
         manager: CLLocationManager,
         didChangeAuthorizationStatus: CLAuthorizationStatus
     ) {
-        // FIX C3: If already consumed by the iOS 14+ callback above → skip
+        // Already consumed by the iOS 14+ callback above → safe no-op.
         val cont = continuation ?: return
-        continuation = null
-        manager.delegate = null
-        locationManager = null
+        cleanupAfterRequest()
         mainContinuation<CLAuthorizationStatus> { status ->
             cont.resume(status)
         }.invoke(didChangeAuthorizationStatus)

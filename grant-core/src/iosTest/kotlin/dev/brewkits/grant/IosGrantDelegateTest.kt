@@ -238,8 +238,8 @@ class IosGrantDelegateTest {
     // ====================================================================
 
     @Test
-    fun `GrantStatus has exactly 5 values`() {
-        assertEquals(5, GrantStatus.entries.size, "GrantStatus must have exactly 5 values")
+    fun `GrantStatus has exactly 6 values`() {
+        assertEquals(6, GrantStatus.entries.size, "GrantStatus must have exactly 6 values")
     }
 
     @Test
@@ -249,6 +249,7 @@ class IosGrantDelegateTest {
         assertTrue(GrantStatus.DENIED in GrantStatus.entries)
         assertTrue(GrantStatus.DENIED_ALWAYS in GrantStatus.entries)
         assertTrue(GrantStatus.NOT_DETERMINED in GrantStatus.entries)
+        assertTrue(GrantStatus.BUSY in GrantStatus.entries)
     }
 
     // ====================================================================

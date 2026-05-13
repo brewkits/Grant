@@ -15,10 +15,6 @@ import dev.brewkits.grant.GrantStatus
  * - `commonMain`: This class + [PlatformGrantDelegate] expect declaration
  * - `androidMain`: [PlatformGrantDelegate] actual — full Android implementation
  * - `iosMain`: [PlatformGrantDelegate] actual — full iOS implementation
- *
- * **FIX L1**: Renamed from `MyGrantManager` (placeholder name) to
- * `DefaultGrantManager` to reflect its role as the production-ready default.
- * `MyGrantManager` is kept as a typealias for backwards compatibility.
  */
 class DefaultGrantManager(
     private val platformDelegate: PlatformGrantDelegate
@@ -35,13 +31,14 @@ class DefaultGrantManager(
 
     override fun openSettings() =
         platformDelegate.openSettings()
+
+    override fun setLauncher(launcher: dev.brewkits.grant.GrantLauncher) {
+        platformDelegate.setLauncher(launcher)
+    }
 }
 
 /**
  * Backwards-compatibility alias. Prefer [DefaultGrantManager] for new code.
- *
- * FIX L1: `MyGrantManager` was a placeholder name that leaked implementation
- * details. This alias preserves binary compatibility for existing integrations.
  */
 @Deprecated(
     message = "Use DefaultGrantManager. MyGrantManager is a placeholder name and will be removed in v2.0.",
@@ -66,4 +63,5 @@ expect class PlatformGrantDelegate {
     suspend fun request(grant: GrantPermission): GrantStatus
     suspend fun request(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus>
     fun openSettings()
+    fun setLauncher(launcher: dev.brewkits.grant.GrantLauncher)
 }

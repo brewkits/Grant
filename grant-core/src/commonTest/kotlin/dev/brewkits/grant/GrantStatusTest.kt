@@ -9,7 +9,7 @@ class GrantStatusTest {
     @Test
     fun testAllGrantStatusesExist() {
         val statuses = GrantStatus.entries
-        assertEquals(5, statuses.size, "Expected 5 grant statuses")
+        assertEquals(6, statuses.size, "Expected 6 grant statuses: GRANTED, PARTIAL_GRANTED, DENIED, DENIED_ALWAYS, NOT_DETERMINED, BUSY")
     }
 
     @Test
@@ -21,6 +21,7 @@ class GrantStatusTest {
         assertTrue(statuses.contains(GrantStatus.DENIED), "DENIED status should exist")
         assertTrue(statuses.contains(GrantStatus.DENIED_ALWAYS), "DENIED_ALWAYS status should exist")
         assertTrue(statuses.contains(GrantStatus.NOT_DETERMINED), "NOT_DETERMINED status should exist")
+        assertTrue(statuses.contains(GrantStatus.BUSY), "BUSY status should exist")
     }
 
     @Test
@@ -30,6 +31,7 @@ class GrantStatusTest {
         assertEquals("DENIED", GrantStatus.DENIED.name)
         assertEquals("DENIED_ALWAYS", GrantStatus.DENIED_ALWAYS.name)
         assertEquals("NOT_DETERMINED", GrantStatus.NOT_DETERMINED.name)
+        assertEquals("BUSY", GrantStatus.BUSY.name)
     }
 
     @Test
@@ -39,6 +41,7 @@ class GrantStatusTest {
         assertEquals(2, GrantStatus.DENIED.ordinal)
         assertEquals(3, GrantStatus.DENIED_ALWAYS.ordinal)
         assertEquals(4, GrantStatus.NOT_DETERMINED.ordinal)
+        assertEquals(5, GrantStatus.BUSY.ordinal)
     }
 
     @Test
@@ -48,5 +51,6 @@ class GrantStatusTest {
         assertEquals(GrantStatus.DENIED, GrantStatus.valueOf("DENIED"))
         assertEquals(GrantStatus.DENIED_ALWAYS, GrantStatus.valueOf("DENIED_ALWAYS"))
         assertEquals(GrantStatus.NOT_DETERMINED, GrantStatus.valueOf("NOT_DETERMINED"))
+        assertEquals(GrantStatus.BUSY, GrantStatus.valueOf("BUSY"))
     }
 }

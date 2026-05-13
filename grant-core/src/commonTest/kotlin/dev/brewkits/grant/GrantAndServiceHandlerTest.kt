@@ -109,14 +109,14 @@ class GrantAndServiceHandlerTest {
     }
 
     @Test
-    fun `first system request denied - no rationale shown`() = runTest {
+    fun `first system request denied - shows rationale`() = runTest {
         fakeGrantManager.mockStatus = GrantStatus.NOT_DETERMINED
         fakeGrantManager.mockRequestResult = GrantStatus.DENIED
 
         handler.request { }
         testScope.advanceUntilIdle()
 
-        assertFalse(handler.state.value.showRationale, "No rationale on first denial (matches GrantHandler UX)")
+        assertTrue(handler.state.value.showRationale, "Rationale should be shown immediately on first denial (matches GrantHandler UX)")
     }
 
     // ─── Service disabled flow ───────────────────────────────────────────────

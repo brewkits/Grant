@@ -284,6 +284,10 @@ private class FakeGrantManager(
     override fun openSettings() {
         // No-op
     }
+
+    override fun setLauncher(launcher: GrantLauncher) {
+        // No-op
+    }
 }
 
 /**

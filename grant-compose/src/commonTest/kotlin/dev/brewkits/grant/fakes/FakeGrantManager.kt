@@ -1,5 +1,6 @@
 package dev.brewkits.grant.fakes
 
+import dev.brewkits.grant.GrantLauncher
 import dev.brewkits.grant.GrantManager
 import dev.brewkits.grant.GrantPermission
 import dev.brewkits.grant.GrantStatus
@@ -10,7 +11,6 @@ import dev.brewkits.grant.GrantStatus
  * Supports per-permission status and request result overrides,
  * enabling precise control over each grant's lifecycle in tests.
  */
-/** FIX L9: Explicitly `internal` — test-only utility, must not leak to production consumers. */
 internal class FakeGrantManager : GrantManager {
 
     // --- Per-permission overrides (highest priority) ---
@@ -29,6 +29,7 @@ internal class FakeGrantManager : GrantManager {
     var requestCalled = false
     val requestedGrants = mutableListOf<GrantPermission>()
     var openSettingsCalled = false
+    var capturedLauncher: GrantLauncher? = null
 
     // --- Interaction recording ---
     val checkStatusCalls = mutableListOf<GrantPermission>()
@@ -62,6 +63,10 @@ internal class FakeGrantManager : GrantManager {
         openSettingsCalled = true
     }
 
+    override fun setLauncher(launcher: GrantLauncher) {
+        this.capturedLauncher = launcher
+    }
+
     // --- Configuration helpers ---
 
     /** Set expected status for a specific grant (used by checkStatus). */
@@ -88,6 +93,7 @@ internal class FakeGrantManager : GrantManager {
         requestedGrants.clear()
         openSettingsCalled = false
         checkStatusCalls.clear()
+        capturedLauncher = null
         mockStatus = GrantStatus.NOT_DETERMINED
         mockRequestResult = GrantStatus.GRANTED
         shouldThrow = null

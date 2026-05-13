@@ -6,10 +6,68 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.3] - 2026-05-14
+
+### 🐛 Critical Bug Fixes
+
+- **`AndroidGrantLauncher` — Callback Never Invoked (Root Cause of Issue #33)**: The `launch()` method was silently discarding the `onResult` callback passed by `PlatformGrantDelegate`. The `ActivityResultLauncher` inside was registered with a fixed callback at construction time via `from()`, meaning the per-call `onResult` that drives `deferred.complete()` was never called. Every `request()` on Android would hang for the full 5-minute timeout. Fixed by replacing the broken constructor-capture pattern with a `@Volatile pendingCallback` that is set in `launch()` and consumed by the registered `ActivityResultLauncher` callback.
+
+- **`BindGrantsController` No-Op on Android (Demo/Consumer Wiring Broken)**: The Android `actual` implementation of `BindGrantsController` was an empty no-op, meaning `PlatformGrantDelegate.setLauncher()` was never called. Every `request()` in the demo app returned `DENIED` immediately (the explicit early-return guard when `launcher == null`). Fixed by implementing `BindGrantsController` with `rememberLauncherForActivityResult` and `SideEffect` to register and wire the `ActivityResultLauncher` into `GrantManager` on every composition, including after Activity recreation.
+
+- **`ReentrantMutex` Context Key Collision on iOS**: Fixed a bug where nested locks from different `ReentrantMutex` instances overwrote each other's coroutine context keys, causing silent deadlocks in concurrent batch `request()` calls on iOS.
+
+### 🛠️ Architecture & API
+
+- **`GrantLauncher` Interface**: Introduced as the abstraction between `PlatformGrantDelegate` and the Activity Result API. Allows consumers to wire their own launcher without coupling to a specific Activity lifecycle.
+
+- **`AndroidGrantLauncher`**: New public class implementing `GrantLauncher`. Created via `AndroidGrantLauncher.from(activity)` or `from(fragment)`. Handles the mutable-callback bridge between the Kotlin coroutine `deferred` and the Android `ActivityResultLauncher`.
+
+- **`LOCATION_ALWAYS` Two-Step Flow Integrity**: The step-1 (foreground) / step-2 (background) separation introduced in v1.4.2 is now end-to-end functional. Step 1 uses `GrantLauncher` (now correctly wired); step 2 continues to use `GrantRequestActivity` directly, which is correct since background location on Android 11+ requires a separate transparent-Activity launch to avoid overlapping system dialogs.
+
+### ✅ Verified on Device
+
+Full `LOCATION_ALWAYS` flow tested end-to-end on Pixel 6 Pro (Android 16):
+1. Request `LOCATION_ALWAYS` from `NOT_DETERMINED` → system foreground dialog appears
+2. Grant "While using the app" → library detects `PARTIAL_GRANTED`, auto-triggers step 2
+3. `GrantRequestActivity` opens Android Location Settings
+4. Select "Allow all the time" → Back → app receives `GRANTED`
+
+No timeout, no crash, no `DENIED` short-circuit.
+
+### 🧹 Code Quality
+
+- Removed all `// FIX N:` labels and temporary work-in-progress comments from production source
+- Removed Vietnamese-language inline comments
+- Removed stale `// Simplified demo app while we fix the grant implementation` comment from `DemoApp.kt`
+- Removed unused `requestIssue33LocationAlways()` / `issue33Result` dead code from demo `GrantDemoViewModel`
+- Cleaned version-tagged `// v1.2.0 new` inline comment from `GrantDemoScreen`
+- Updated `GrantsBinder.kt` KDoc to accurately describe Android behavior
+
+### 🧪 Test Suite
+
+- Updated `PlatformGrantDelegateStatusTest` to advance `ShadowSystemClock` by 1001ms to correctly account for the 1000ms status cache TTL
+- Fixed `Issue33HotfixDuplicateRequestTest` to inject a `GrantLauncher` mock that correctly calls `onResult`, matching the refactored architecture
+- Updated `IosGrantDelegateTest` to validate the full `GrantStatus` enum including `BUSY`
+- Added `ReentrantMutexTest` covering reentrant locking, non-reentrant behaviour, and concurrent access
+
+---
+
+## [1.4.2] - 2026-05-13
+
+### 🐛 Critical Bug Fixes
+- **LOCATION_ALWAYS Timeout (Final Fix)**: Completely resolved the 60-second timeout on Android 11+ by addressing a race condition where sequential background requests launched before the previous Activity fully closed.
+- **State Integrity**: Re-engineered `GrantRequestActivity` to reset internal state in `finishAndCleanup()` instead of `onDestroy()`, ensuring immediate availability for subsequent requests.
+- **Fail-safe Recovery**: Implemented a 10-second automatic reset for internal permission locks to prevent permanent deadlocks if an Activity is killed unexpectedly.
+- **Partial Upgrade Logic**: Fixed `GrantHandler` and `GrantAndServiceHandler` to correctly attempt an OS-level request when a permission is in `PARTIAL_GRANTED` status, instead of jumping prematurely to the Settings guide.
+
+### 🛠️ Stability & Performance
+- **Android 15 Optimizations**: Disabled redundant Activity animations during the 2-step location flow to improve speed and reliability.
+- **Concurrent Request Guard**: Added strict mutex-based serialization for all native request calls to prevent UI spam and activity leakage.
+
 ## [1.4.1] - 2026-05-12
 
 ### 🐛 Bug Fixes
-- **LOCATION_ALWAYS Flow**: Fixed a regression introduced in 1.4.0 where a duplicate background location request caused a 60-second timeout if the app already possessed foreground location permissions (Issue #33).
+- **LOCATION_ALWAYS Flow**: Initial mitigation for a regression introduced in 1.4.0 where duplicate background location requests could cause timeouts. (Full resolution in v1.4.2).
 
 ---
 

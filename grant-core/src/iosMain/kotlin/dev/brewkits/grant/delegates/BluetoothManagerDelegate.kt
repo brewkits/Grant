@@ -59,8 +59,7 @@ internal class BluetoothManagerDelegate : NSObject(), CBCentralManagerDelegatePr
             return GrantStatus.GRANTED
         }
 
-        // FIX H4: Use CBManager.authorization() without any CBCentralManager instantiation.
-        // Available on iOS 13.1+. Covers 99%+ of active devices as of 2025.
+        // CBManager.authorization() avoids CBCentralManager instantiation (iOS 13.1+, covers 99%+ of active devices).
         val authorization = CBManager.authorization()
         return when (authorization) {
             CBManagerAuthorizationAllowedAlways  -> GrantStatus.GRANTED

@@ -17,6 +17,7 @@ class EdgeCasesTest {
             override suspend fun request(grant: GrantPermission): GrantStatus = GrantStatus.GRANTED
             override suspend fun request(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus> = emptyMap()
             override fun openSettings() {}
+            override fun setLauncher(launcher: GrantLauncher) {}
         }
         
         val handler = GrantHandler(delayingManager, AppGrant.CAMERA, this)

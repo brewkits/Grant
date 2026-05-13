@@ -13,8 +13,8 @@ class ModernPermissionEdgeCasesTest {
         val mockGrantManager = FakeGrantManager()
         // Start as PARTIAL_GRANTED (foreground OK)
         mockGrantManager.setStatus(AppGrant.LOCATION_ALWAYS, GrantStatus.PARTIAL_GRANTED)
-        // For LOCATION_ALWAYS, PARTIAL_GRANTED triggers HandleResult(DENIED_ALWAYS)
-        // which then triggers showSettingsGuide.
+        // Simulate user denying background in OS dialog again
+        mockGrantManager.mockRequestResult = GrantStatus.PARTIAL_GRANTED
         
         val handler = GrantHandler(mockGrantManager, AppGrant.LOCATION_ALWAYS, this)
         advanceUntilIdle()
@@ -22,7 +22,8 @@ class ModernPermissionEdgeCasesTest {
         handler.request { }
         advanceUntilIdle()
 
-        assertTrue(handler.state.value.showSettingsGuide, "Should trigger settings guide for background location upgrade")
+        assertTrue(mockGrantManager.requestCalled, "Should try OS request first")
+        assertTrue(handler.state.value.showSettingsGuide, "Should trigger settings guide if background request failed")
     }
 
     @Test
@@ -35,6 +36,7 @@ class ModernPermissionEdgeCasesTest {
             override suspend fun request(grant: GrantPermission): GrantStatus = GrantStatus.GRANTED
             override suspend fun request(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus> = emptyMap()
             override fun openSettings() {}
+            override fun setLauncher(launcher: GrantLauncher) {}
         }
         val handler = GrantHandler(delayingManager, AppGrant.CAMERA, this)
         
