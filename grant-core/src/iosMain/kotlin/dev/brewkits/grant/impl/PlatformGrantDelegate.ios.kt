@@ -1,23 +1,16 @@
 package dev.brewkits.grant.impl
 
 import dev.brewkits.grant.AppGrant
+import dev.brewkits.grant.GrantBuilder
 import dev.brewkits.grant.GrantPermission
 import dev.brewkits.grant.GrantStatus
 import dev.brewkits.grant.GrantStore
 import dev.brewkits.grant.GrantLauncher
 import dev.brewkits.grant.RawPermission
-import dev.brewkits.grant.delegates.BluetoothManagerDelegate
-import dev.brewkits.grant.delegates.LocationManagerDelegate
-import dev.brewkits.grant.handlers.AVPermissionHandler
-import dev.brewkits.grant.handlers.BluetoothPermissionHandler
-import dev.brewkits.grant.handlers.CalendarPermissionHandler
-import dev.brewkits.grant.handlers.ContactsPermissionHandler
 import dev.brewkits.grant.handlers.IosPermissionHandler
-import dev.brewkits.grant.handlers.LocationPermissionHandler
-import dev.brewkits.grant.handlers.MotionPermissionHandler
-import dev.brewkits.grant.handlers.NotificationPermissionHandler
-import dev.brewkits.grant.handlers.PhotoPermissionHandler
 import dev.brewkits.grant.handlers.IosPermissionHandlerRegistry
+import dev.brewkits.grant.handlers.NotificationPermissionHandler
+import dev.brewkits.grant.registerAll
 import dev.brewkits.grant.utils.GrantLogger
 import dev.brewkits.grant.utils.hasInfoPlistKey
 import dev.brewkits.grant.utils.runOnMain
@@ -38,51 +31,72 @@ import dev.brewkits.grant.utils.ReentrantMutex
 private const val TAG = "iOSGrantDelegate"
 
 /**
- * iOS Platform Grant Delegate — Production-ready implementation.
+ * iOS Platform Grant Delegate — registry-driven dispatch.
  *
- * Dispatches permission operations to dedicated [IosPermissionHandler] instances,
- * each of which owns exactly the native framework imports it needs. This ensures
- * that unused permission frameworks are **not statically linked** into the app binary,
- * preventing Apple App Store rejections caused by undeclared usage description keys.
+ * Handlers are supplied as a map of [AppGrant] → factory function. The map is
+ * populated by [GrantBuilder] (called from `GrantFactory.create { … }`) and
+ * each per-permission `actual fun` references only the handler classes for that
+ * permission family. Permissions the consumer did not register are not in the
+ * map, and the K/N linker DCEs their handler classes — along with the
+ * `import platform.X.*` declarations inside those handlers — out of the
+ * release binary. This prevents Apple's static analyzer from demanding
+ * `NSUsageDescription` keys for frameworks the app never actually uses.
  *
- * See [docs/ios/APPLE_FRAMEWORK_LINKING_ISSUE.md] for the full architectural rationale.
- *
- * **Supported permissions (17 total):**
- * - Camera / Microphone — AVFoundation
- * - Gallery / Storage   — Photos
- * - Location (WhenInUse / Always) — CoreLocation
- * - Notification        — UserNotifications
- * - Contacts            — Contacts
- * - Calendar            — EventKit
- * - Motion              — CoreMotion
- * - Bluetooth           — CoreBluetooth (via BluetoothManagerDelegate)
- * - Schedule Exact Alarm — always GRANTED on iOS
+ * See [issue #38](https://github.com/brewkits/Grant/issues/38) and
+ * `docs/ios/APPLE_FRAMEWORK_LINKING_ISSUE.md` for the architectural rationale.
  *
  * **Thread Safety:**
- * - [mutexMap] is protected by [mapsMutex]
- * - [statusCacheMap] uses per-entry locking via [mapsMutex]
+ * - [mutexMapInternal] / [statusCacheMap] guarded by [mapsMutex]
  * - All synchronous iOS framework calls dispatch to the main thread via [runOnMain]
- * - Notification status is checked via its own async path to avoid nested dispatch
+ * - Notification status uses its own async path to avoid nested dispatch
  */
 @Suppress("UnusedPrivateProperty")
-actual class PlatformGrantDelegate(
-    private val store: GrantStore
+actual class PlatformGrantDelegate internal constructor(
+    private val store: GrantStore,
+    private val handlerFactories: Map<AppGrant, () -> IosPermissionHandler>
 ) {
+    /**
+     * Legacy constructor — registers every built-in handler. Preserves
+     * pre-v1.5.0 linking behavior for callers that still use
+     * `GrantFactory.create()` (no-arg) or construct the delegate directly.
+     *
+     * The class-reachability through [registerAll] forces the K/N linker to
+     * keep every handler; this is the correct trade-off for the legacy path
+     * so existing apps don't break. Apps that need DCE savings must switch to
+     * the new `GrantFactory.create { … }` form.
+     */
+    constructor(store: GrantStore) : this(store, buildLegacyRegistry())
 
     // ====================================================================
     // Thread-safe maps
     // ====================================================================
 
-    /** Protects all map structures (mutexMapInternal, statusCacheMap). */
+    /** Protects all map structures (mutexMapInternal, statusCacheMap, handlerCache). */
     private val mapsMutex = Mutex()
     private val mutexMapInternal = mutableMapOf<String, ReentrantMutex>()
     private val statusCacheMap = mutableMapOf<String, Pair<GrantStatus, Long>>()
+
+    /** Lazy cache of instantiated handlers — each factory runs at most once. */
+    private val handlerCache = mutableMapOf<AppGrant, IosPermissionHandler>()
 
     private companion object {
         /** Status cache TTL (1000ms). */
         const val STATUS_CACHE_TTL_MS = 1000L
         /** Delay between sequential requests on iOS to avoid system throttling. */
         const val SEQUENTIAL_REQUEST_DELAY_MS = 600L
+
+        /**
+         * Builds the legacy "register everything" map used by the no-arg
+         * constructor. Importantly this calls [registerAll], which references
+         * every per-permission extension — preserving v1.4.x linking behavior
+         * so existing apps stay functional after upgrading.
+         */
+        private fun buildLegacyRegistry(): Map<AppGrant, () -> IosPermissionHandler> {
+            val builder = GrantBuilder().apply { registerAll() }
+            return builder.registrations.mapValues { (_, factory) ->
+                { factory() as IosPermissionHandler }
+            }
+        }
     }
 
     private suspend fun getMutexFor(identifier: String): ReentrantMutex =
@@ -91,27 +105,63 @@ actual class PlatformGrantDelegate(
     private fun getMonotonicTimeMillis(): Long =
         (NSProcessInfo.processInfo.systemUptime * 1000).toLong()
 
-    // ====================================================================
-    // Shared delegates (lazy — only initialized if their permission is used)
-    // ====================================================================
+    /**
+     * Returns the handler for [grant], instantiating it lazily via its
+     * registered factory. Throws an informative error if the consumer did not
+     * register the permission.
+     *
+     * NOTIFICATION has a separate async path (see [requestInternal]) but its
+     * factory still lives in the map for status calls via [notificationHandler].
+     */
+    private suspend fun handlerFor(grant: AppGrant): IosPermissionHandler =
+        mapsMutex.withLock {
+            handlerCache.getOrPut(grant) {
+                val factory = handlerFactories[grant]
+                    ?: error(
+                        "Permission ${grant.name} not registered. " +
+                            "Add ${suggestedExtension(grant)}() to your GrantFactory.create { } block, " +
+                            "or call registerAll() for the legacy behavior."
+                    )
+                factory()
+            }
+        }
 
-    private val locationDelegate by lazy { LocationManagerDelegate() }
-    private val bluetoothDelegate by lazy { BluetoothManagerDelegate() }
+    /**
+     * Maps an [AppGrant] back to the [GrantBuilder] extension that registers it.
+     * Used purely for the not-registered error message.
+     */
+    private fun suggestedExtension(grant: AppGrant): String = when (grant) {
+        AppGrant.CAMERA -> "camera"
+        AppGrant.MICROPHONE -> "microphone"
+        AppGrant.GALLERY,
+        AppGrant.GALLERY_IMAGES_ONLY,
+        AppGrant.GALLERY_VIDEO_ONLY -> "gallery"
+        AppGrant.STORAGE -> "storage"
+        AppGrant.LOCATION -> "location"
+        AppGrant.LOCATION_ALWAYS -> "locationAlways"
+        AppGrant.NOTIFICATION -> "notification"
+        AppGrant.SCHEDULE_EXACT_ALARM -> "scheduleExactAlarm"
+        AppGrant.BLUETOOTH,
+        AppGrant.BLUETOOTH_ADVERTISE -> "bluetooth"
+        AppGrant.CONTACTS,
+        AppGrant.READ_CONTACTS -> "contacts"
+        AppGrant.CALENDAR,
+        AppGrant.READ_CALENDAR -> "calendar"
+        AppGrant.MOTION -> "motion"
+        AppGrant.NEARBY_WIFI_DEVICES -> "nearbyWifiDevices"
+    }
 
-    // ====================================================================
-    // Handlers (lazy — framework code loaded only when first accessed)
-    // ====================================================================
-
-    private val cameraHandler by lazy { AVPermissionHandler.camera() }
-    private val microphoneHandler by lazy { AVPermissionHandler.microphone() }
-    private val photoHandler by lazy { PhotoPermissionHandler() }
-    private val locationWhenInUseHandler by lazy { LocationPermissionHandler(forAlways = false, delegate = locationDelegate) }
-    private val locationAlwaysHandler by lazy { LocationPermissionHandler(forAlways = true, delegate = locationDelegate) }
-    private val notificationHandler by lazy { NotificationPermissionHandler() }
-    private val contactsHandler by lazy { ContactsPermissionHandler() }
-    private val calendarHandler by lazy { CalendarPermissionHandler() }
-    private val motionHandler by lazy { MotionPermissionHandler() }
-    private val bluetoothHandler by lazy { BluetoothPermissionHandler(delegate = bluetoothDelegate) }
+    /**
+     * Returns the notification handler (used by the async-only check path).
+     * Throws if NOTIFICATION was not registered.
+     */
+    private suspend fun notificationHandler(): NotificationPermissionHandler {
+        val handler = handlerFor(AppGrant.NOTIFICATION)
+        check(handler is NotificationPermissionHandler) {
+            "Registered NOTIFICATION handler is not a NotificationPermissionHandler"
+        }
+        return handler
+    }
 
     // ====================================================================
     // PUBLIC API
@@ -125,7 +175,7 @@ actual class PlatformGrantDelegate(
                     if (getMonotonicTimeMillis() - timestamp < STATUS_CACHE_TTL_MS) return@withLock cachedStatus
                 }
             }
-            
+
             // Perform actual status check logic inline
             val status = if (grant is RawPermission) {
                 val iosKey = grant.iosUsageKey
@@ -133,9 +183,10 @@ actual class PlatformGrantDelegate(
                 else if (store.isRawPermissionRequested(grant.identifier)) GrantStatus.DENIED
                 else GrantStatus.NOT_DETERMINED
             } else if ((grant as AppGrant) == AppGrant.NOTIFICATION) {
-                notificationHandler.checkStatusAsync()
+                notificationHandler().checkStatusAsync()
             } else {
-                runOnMain { handlerFor(grant).checkStatus() }
+                val handler = handlerFor(grant)
+                runOnMain { handler.checkStatus() }
             }
 
             mapsMutex.withLock { statusCacheMap[identifier] = status to getMonotonicTimeMillis() }
@@ -157,7 +208,7 @@ actual class PlatformGrantDelegate(
             val results = mutableMapOf<GrantPermission, GrantStatus>()
             grants.forEachIndexed { index, grant ->
                 results[grant] = requestInternal(grant)
-                
+
                 // UX Improvement: Add a small delay between sequential dialogs on iOS.
                 if (index < grants.size - 1) {
                     kotlinx.coroutines.delay(SEQUENTIAL_REQUEST_DELAY_MS)
@@ -204,7 +255,7 @@ actual class PlatformGrantDelegate(
                     GrantLogger.w(TAG, "UIApplication.sharedApplication is not accessible in this context.")
                     return@dispatch_async
                 }
-                
+
                 sharedApp.openURL(
                     url,
                     options = emptyMap<Any?, Any>(),
@@ -227,7 +278,7 @@ actual class PlatformGrantDelegate(
     private suspend fun requestInternal(grant: GrantPermission): GrantStatus {
         mapsMutex.withLock { statusCacheMap.remove(grant.identifier) }
 
-        // Since getMutexFor() returns a ReentrantMutex, calling the public checkStatus() 
+        // Since getMutexFor() returns a ReentrantMutex, calling the public checkStatus()
         // here is now safe and will not deadlock.
         val currentStatus = checkStatus(grant)
         if (currentStatus == GrantStatus.GRANTED || currentStatus == GrantStatus.PARTIAL_GRANTED) {
@@ -245,58 +296,19 @@ actual class PlatformGrantDelegate(
                 mapsMutex.withLock { statusCacheMap.remove(grant.identifier) }
                 return result
             }
-            
+
             GrantLogger.w(TAG, "RawPermission '${grant.identifier}' on iOS: no generic request API available. " +
                 "Implement a custom IosPermissionHandler for this permission and register it via IosPermissionHandlerRegistry.")
             return GrantStatus.NOT_DETERMINED
         }
 
         val result = when (grant as AppGrant) {
-            AppGrant.NOTIFICATION -> notificationHandler.request()
+            AppGrant.NOTIFICATION -> notificationHandler().request()
             else                  -> handlerFor(grant).request()
         }
 
         mapsMutex.withLock { statusCacheMap.remove(grant.identifier) }
         return result
-    }
-
-    // ====================================================================
-    // HANDLER DISPATCH
-    // ====================================================================
-
-    /**
-     * Returns the appropriate [IosPermissionHandler] for the given [AppGrant].
-     *
-     * Note: [AppGrant.NOTIFICATION] is handled separately in [checkStatusInternal]
-     * and [requestInternal] due to its async-only check path.
-     */
-    private fun handlerFor(grant: AppGrant): IosPermissionHandler = when (grant) {
-        AppGrant.CAMERA               -> cameraHandler
-        AppGrant.MICROPHONE           -> microphoneHandler
-
-        AppGrant.GALLERY,
-        AppGrant.STORAGE,
-        AppGrant.GALLERY_IMAGES_ONLY,
-        AppGrant.GALLERY_VIDEO_ONLY   -> photoHandler
-
-        AppGrant.LOCATION             -> locationWhenInUseHandler
-        AppGrant.LOCATION_ALWAYS      -> locationAlwaysHandler
-
-        AppGrant.NOTIFICATION         -> notificationHandler   // unreachable here; handled above
-
-        AppGrant.CONTACTS,
-        AppGrant.READ_CONTACTS        -> contactsHandler
-
-        AppGrant.CALENDAR,
-        AppGrant.READ_CALENDAR        -> calendarHandler
-
-        AppGrant.MOTION               -> motionHandler
-
-        AppGrant.BLUETOOTH,
-        AppGrant.BLUETOOTH_ADVERTISE  -> bluetoothHandler
-
-        AppGrant.SCHEDULE_EXACT_ALARM,
-        AppGrant.NEARBY_WIFI_DEVICES  -> AlwaysGrantedHandler
     }
 
     // ====================================================================
@@ -310,17 +322,4 @@ actual class PlatformGrantDelegate(
     private fun hasInfoPlistKey(key: String): Boolean = hasInfoPlistKey(TAG, key)
 
     actual fun setLauncher(launcher: GrantLauncher) {}
-}
-
-// ────────────────────────────────────────────────────────────────────────────
-// Singleton handler for permissions that are always granted on iOS
-// ────────────────────────────────────────────────────────────────────────────
-
-/**
- * A no-op handler for permissions that iOS always grants without a dialog
- * (e.g., [AppGrant.SCHEDULE_EXACT_ALARM]).
- */
-private object AlwaysGrantedHandler : IosPermissionHandler {
-    override fun checkStatus(): GrantStatus = GrantStatus.GRANTED
-    override suspend fun request(): GrantStatus = GrantStatus.GRANTED
 }

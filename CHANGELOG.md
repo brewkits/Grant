@@ -6,6 +6,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [Unreleased]
+
+### 🛠️ Architecture & API
+
+- **Opt-in iOS handler registration (`GrantFactory.create { … }`)** — Closes the App Store rejection class re-opened by [issue #38](https://github.com/brewkits/Grant/issues/38). The previous Handler Pattern fix moved framework imports into per-permission files but `PlatformGrantDelegate.handlerFor()` still referenced every handler class in one exhaustive `when`, defeating Kotlin/Native DCE. `nm -u` on the v1.4.1 release framework still showed `_OBJC_CLASS_$_CMMotionActivityManager`, `_OBJC_CLASS_$_CNContactStore`, and `_OBJC_CLASS_$_EKEventStore` even in apps that only request Location/Bluetooth/Notification.
+
+  The new `GrantFactory.create { … }` block accepts a `GrantBuilder` and per-permission extension functions (`location()`, `locationAlways()`, `bluetooth()`, `notification()`, `camera()`, …). Each `actual fun` references only the handler classes for its permission family. When a consumer omits an extension, the K/N linker walks the call graph, finds nothing reachable for that handler, and DCEs the handler class along with its `import platform.X.*` statements — taking the unused frameworks out of the final binary. Apple's static analyzer then no longer demands `NSUsageDescription` keys for frameworks the app never uses.
+
+  ```kotlin
+  // New (recommended): only LOCATION, LOCATION_ALWAYS, BLUETOOTH, NOTIFICATION
+  // CoreMotion, EventKit, Contacts not linked.
+  val grantManager = GrantFactory.create {
+      location()
+      locationAlways()
+      bluetooth()
+      notification()
+  }
+  ```
+
+- **`GrantFactory.create()` (no-arg) deprecated** — Kept working via a backward-compat shim that calls `registerAll()` internally. Existing consumers continue to function with no source changes; the deprecation `ReplaceWith` quote points at the block form.
+
+- **Android parity** — `GrantBuilder` extensions are also declared `actual` for Android, but registrations are ignored on that platform (the Android delegate dispatches through the Activity Result API directly). The DSL exists primarily to gate iOS handler linking; Android consumers can use either form with no link-time effect on the APK.
+
+- **`registerAll()` helper** — Provided on `GrantBuilder` for consumers that intentionally want the legacy "all handlers linked" behavior (rare; usually only useful during migration or for libraries that wrap Grant).
+
+---
+
 ## [1.4.2] - 2026-05-14
 
 ### 🐛 Critical Bug Fixes
