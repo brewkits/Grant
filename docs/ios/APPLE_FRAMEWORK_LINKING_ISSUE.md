@@ -1,332 +1,228 @@
 # Apple App Store Rejection: Unused Permission Frameworks
 
-> **Related:** Issue #25 — *"Apple wants me to add why I have used them, but I have not used them"*  
-> **Severity:** 🔴 Critical (causes App Store rejection)  
-> **Status:** ✅ RESOLVED in v1.3.1
+> **Related:** Issue #25, Issue #38  
+> **Severity:** 🔴 Critical (causes App Store rejection at upload time)  
+> **Status:** ✅ FULLY RESOLVED in v2.0.0 — see [Section 5](#5-resolution-v200)
 
 ---
 
 ## 1. Problem Description
 
-Users report that Apple rejects their app submission with the following message, even though they never use the listed permissions in their app:
+Apps using Grant receive App Store Connect rejections at upload time (before the app runs), even when they only use a small number of permissions:
 
 ```
-Your app's Info.plist file should contain:
+ITMS-90683: Missing purpose string in Info.plist file.
+Your app's code references one or more APIs that access sensitive user data.
+The Info.plist file should contain:
   - NSCalendarsUsageDescription
+  - NSContactsUsageDescription
   - NSMotionUsageDescription
-  - NSLocationAlwaysAndWhenInUseUsageDescription
-  - NSLocationWhenInUseUsageDescription
-  - NSBluetoothAlwaysUsageDescription
 ```
 
-Simply adding Grant as a dependency is enough for Apple to require all of these keys — regardless of which permissions the app actually uses.
+This happens even when the app only requests `LOCATION`, `BLUETOOTH`, and `NOTIFICATION` — no Calendar, Contacts, or Motion code anywhere. Grant is the only source of these references.
 
 ---
 
-## 2. Root Cause — Kotlin/Native Static Linking
+## 2. Root Cause — Three Distinct Layers
 
-### 2.1 How Kotlin/Native compiles iOS code
+Understanding the fix requires understanding exactly where in the build pipeline the problem occurs. There are three distinct layers, and only the deepest one matters for App Store rejection.
 
-Unlike JVM (where classes are loaded lazily at runtime), **Kotlin/Native compiles directly to machine code** and must **link all dependencies at compile time**.
+### Layer 1 — Kotlin/Native `import platform.X.*` (compile time → `.klib` metadata)
 
-When `PlatformGrantDelegate.ios.kt` contains:
-
-```kotlin
-import platform.CoreLocation.CLLocationManager       // → links CoreLocation.framework
-import platform.EventKit.EKEventStore                // → links EventKit.framework
-import platform.CoreMotion.CMMotionActivityManager   // → links CoreMotion.framework
-import platform.CoreBluetooth.*                      // → links CoreBluetooth.framework
-```
-
-The Kotlin/Native compiler **must embed** all these frameworks into the binary output (`.framework` / `.kexe`) as **`LC_LOAD_DYLIB`** records — even if the user never calls the associated `AppGrant` values at runtime.
-
-### 2.2 How Apple inspects the binary
-
-When you upload to App Store Connect, Apple's static analyzer (equivalent to running `otool -L`) scans the binary:
-
-```bash
-otool -L YourApp.app/Frameworks/GrantCore.framework/GrantCore
-# Output:
-#   /System/Library/Frameworks/CoreLocation.framework/CoreLocation
-#   /System/Library/Frameworks/EventKit.framework/EventKit
-#   /System/Library/Frameworks/CoreMotion.framework/CoreMotion
-#   /System/Library/Frameworks/CoreBluetooth.framework/CoreBluetooth
-```
-
-Apple detects these frameworks → **automatically requires** `NSLocationWhenInUseUsageDescription`, `NSCalendarsUsageDescription`, etc. — **regardless of whether the code paths are ever executed**.
-
-### 2.3 Why the `hasInfoPlistKey` guard does not help
-
-Grant already has this runtime guard:
+When a `.kt` file in `iosMain` contains:
 
 ```kotlin
-private fun checkLocationStatus(forAlways: Boolean): GrantStatus {
-    if (!hasInfoPlistKey("NSLocationWhenInUseUsageDescription")) {
-        return GrantStatus.DENIED_ALWAYS  // ← prevents SIGABRT crash at runtime
-    }
-    // ...
-}
+import platform.EventKit.EKEventStore
+import platform.CoreMotion.CMMotionActivityManager
+import platform.Contacts.CNContactStore
 ```
 
-This guard works correctly **at runtime** (prevents SIGABRT crashes). However, the Apple rejection happens **before the app runs even once** — at upload time. These are two entirely separate phases:
+The K/N ObjC interop toolchain processes these declarations at **compile time** and registers the framework names as metadata inside the output `.klib`. This happens before DCE, before the linker, before anything else. The framework name string is baked into the klib artifact.
 
-| Phase | Who checks | Effect |
-|---|---|---|
-| **Compile time** | Kotlin/Native compiler | Links framework into binary |
-| **Upload time** | Apple static analyzer | Detects framework, requires Usage Description key |
-| **Runtime** | `hasInfoPlistKey` guard | Prevents crash if key is missing |
+**This is the layer Apple's static analyzer reads.** It does not matter whether the class is instantiated at runtime, whether it is reachable by DCE, or whether it is linked strongly or weakly. The metadata string is present in the artifact and that is sufficient for the scanner to require the corresponding `NSUsageDescription` key.
+
+### Layer 2 — Kotlin/Native DCE (build time)
+
+Dead Code Elimination runs after compilation. It strips **Kotlin class bodies** that are unreachable from the call graph. DCE operates on Kotlin-level constructs — it can remove a handler class (`MotionPermissionHandler`) if nothing calls it.
+
+**DCE does not touch compile-time ObjC interop metadata.** The framework name strings emitted by `import platform.X.*` during compilation are already in the `.klib` at this point. DCE has no mechanism to retract them.
+
+### Layer 3 — Linker flags (`-weak_framework`)
+
+`-weak_framework CoreMotion` changes the Mach-O load command from `LC_LOAD_DYLIB` to `LC_LOAD_WEAK_DYLIB`. This affects runtime behavior (the OS does not abort if the framework is missing) and influences `otool -L` output.
+
+**`-weak_framework` does not affect Apple's static analyzer.** The analyzer reads the ObjC interop metadata embedded by the compiler, not the Mach-O load commands written by the linker. The framework name strings are still present regardless of link strength.
+
+### Summary
+
+```
+import platform.CoreMotion.*
+        │
+        ▼  K/N ObjC interop (COMPILE TIME)
+   .klib metadata: "CoreMotion" ◄── Apple static analyzer reads HERE
+        │
+        ▼  K/N DCE (BUILD TIME)
+   Strips Kotlin class bodies — cannot retract metadata already emitted
+        │
+        ▼  Linker (-weak_framework)
+   Changes LC_LOAD_DYLIB → LC_LOAD_WEAK_DYLIB — analyzer unaffected
+        │
+        ▼  Apple static analyzer (UPLOAD TIME)
+   Finds "CoreMotion" in metadata → requires NSMotionUsageDescription
+        │
+        ▼  Runtime
+   hasInfoPlistKey guard — prevents crash, too late for App Store
+```
 
 ---
 
-## 3. Why This Is a Fundamental Architectural Trade-off
+## 3. Why Previous Fixes Were Incomplete
 
-### 3.1 The "Monolithic Permission Library" problem
+### v1.3.0 / v1.3.1 — Handler Pattern
 
-Grant currently bundles **all 17 permissions** into a single `grant-core` module. This is convenient for users (one dependency line) but creates an unavoidable conflict with Apple's review model:
+Moved each permission's `import platform.X.*` declarations into dedicated handler files (`CalendarPermissionHandler.kt`, `MotionPermissionHandler.kt`, etc.) instead of a monolithic `PlatformGrantDelegate.ios.kt`.
 
-```
-User only needs CAMERA + MICROPHONE
-       ↓
-Add dependency: implementation("dev.brewkits:grant-core:1.3.1")
-       ↓
-Binary ships with: CoreLocation + EventKit + CoreMotion + CoreBluetooth + ...
-       ↓
-Apple: "You must declare usage descriptions for all linked frameworks."
-```
+**What it fixed:** Code organization, single-responsibility design.
 
-### 3.2 Comparison with similar libraries
+**What it did not fix:** All handler files still lived in `grant-core`. Every `.kt` file in `grant-core/src/iosMain/` is compiled into `grant-core.klib`. The `import platform.EventKit.*` in `CalendarPermissionHandler.kt` was still processed by K/N ObjC interop at compile time and the framework name was still registered in the klib metadata — regardless of which handler file the import lived in.
 
-| Library | Approach | Trade-off |
-|---|---|---|
-| **moko-permissions** | Multi-module (`moko-permissions-location`, `moko-permissions-camera`, …) | Worse DX, technically correct |
-| **flutter permission_handler** | Single plugin, native code split per file | Similar to Grant — same issue |
-| **Grant** | Single module | Best DX, Apple review conflict |
+### Attempted v1.5.0 approach — Opt-in Builder DSL (PR #39)
+
+Proposed `GrantFactory.create { location(); bluetooth() }` where each `actual fun GrantBuilder.contacts()` only references `ContactsPermissionHandler`. If a consumer never calls `contacts()`, K/N DCE strips `ContactsPermissionHandler` from the binary.
+
+**What it fixed:** Kotlin-level DCE correctly removes unreachable handler class bodies.
+
+**What it did not fix:** `ContactsPermissionHandler.kt` still lives in `grant-core/src/iosMain/`. It is still compiled into `grant-core.klib`. The `import platform.Contacts.*` declaration is still processed by K/N ObjC interop at compile time and the framework name is still registered in the klib metadata. DCE operates after compilation and cannot retract it. This was confirmed by testing: the handler Kotlin classes were stripped, but the App Store scanner still found the framework references.
+
+> **Key insight, confirmed by user testing (issue #38, RoryKelly):**  
+> DCE removes *class bodies*. It does not remove *framework metadata strings* that were emitted during ObjC interop compilation. These are separate artifacts produced at separate build stages. A fix that relies on DCE alone is insufficient.
 
 ---
 
-## 4. Solution Analysis
+## 4. Why the Correct Fix Must Happen at the Dependency Graph Level
 
-### ❌ Option A: Conditional Compilation via Gradle Properties
+The only way to prevent a framework name from appearing in the final binary is to ensure the source file containing `import platform.X.*` is **never compiled as part of the consuming app's build** in the first place.
 
-**Idea:**
-```kotlin
-// grant-core/build.gradle.kts
-val includeLocation = project.findProperty("grant.permissions.location")
-    ?.toString()?.toBoolean() ?: true
+This requires a **dependency graph boundary** — the source file must be in a separate artifact that the consumer simply does not add to their build. If the file exists in any artifact the consumer depends on (directly or transitively), K/N ObjC interop will process it and emit the framework name.
 
-if (includeLocation) {
-    kotlin.srcDir("src/iosMain/location/active")
-} else {
-    kotlin.srcDir("src/iosMain/location/dummy")
-}
-```
-
-Users add to their `gradle.properties`:
-```properties
-grant.permissions.location=false
-grant.permissions.bluetooth=false
-```
-
-**Why this does NOT work with binary distribution:**
-
-When published to Maven Central, the library is compiled **once** into a binary artifact (`.klib`). Users download the pre-compiled binary — they cannot change the library's `srcDirs` after the fact. The user's `gradle.properties` only affects **their own** source code compilation, not the library binary.
-
-> **Rule:** Conditional source sets only work when users build the library from source. This does not scale for a distributed library.
+The corollary: no amount of DCE, linker flags, conditional initialization, or dispatch-table tricks can fix this once the source file is in a dependency. The fix is architectural — move the source file out of the dependency.
 
 ---
 
-### ✅ Option B: `weak_framework` Linker Flags
-
-**How it works:**
-```kotlin
-// grant-core/build.gradle.kts
-listOf(iosX64(), iosArm64(), iosSimulatorArm64()).forEach { target ->
-    target.binaries.framework {
-        baseName = "GrantCore"
-        isStatic = true
-        linkerOpts(
-            "-weak_framework", "CoreLocation",
-            "-weak_framework", "EventKit",
-            "-weak_framework", "CoreMotion",
-            "-weak_framework", "CoreBluetooth"
-        )
-    }
-}
-```
-
-**Technical difference:**
-
-| Link type | Mach-O record | Apple scanner behavior |
-|---|---|---|
-| Strong (default) | `LC_LOAD_DYLIB` | **Requires** Usage Description key |
-| Weak | `LC_LOAD_WEAK_DYLIB` | Often **skipped** in privacy manifest check |
-
-Verify with `otool -l`:
-```bash
-# Strong link (before):
-cmd LC_LOAD_DYLIB
-    name /System/Library/Frameworks/CoreLocation.framework/CoreLocation
-
-# Weak link (after):
-cmd LC_LOAD_WEAK_DYLIB
-    name /System/Library/Frameworks/CoreLocation.framework/CoreLocation
-```
-
-**Pros:**
-- No public API changes
-- No breaking changes
-- Minimal code modification
-
-**Cons:**
-- Apple may change scanner behavior at any time
-- Not a complete technical solution — the framework is still embedded
-
----
-
-### ✅✅ Option C: Handler Pattern (Recommended long-term fix)
-
-Instead of a single `PlatformGrantDelegate.ios.kt` that imports all frameworks, split each permission into a dedicated handler file.
-
-**Proposed structure:**
-```
-iosMain/kotlin/dev/brewkits/grant/
-├── impl/
-│   └── PlatformGrantDelegate.ios.kt     ← dispatch logic only, no native imports
-└── handlers/
-    ├── IosPermissionHandler.kt           ← common interface
-    ├── CameraPermissionHandler.kt        ← import platform.AVFoundation.*
-    ├── LocationPermissionHandler.kt      ← import platform.CoreLocation.*
-    ├── CalendarPermissionHandler.kt      ← import platform.EventKit.*
-    ├── MotionPermissionHandler.kt        ← import platform.CoreMotion.*
-    ├── BluetoothPermissionHandler.kt     ← import platform.CoreBluetooth.*
-    ├── ContactsPermissionHandler.kt      ← import platform.Contacts.*
-    ├── PhotoPermissionHandler.kt         ← import platform.Photos.*
-    └── NotificationPermissionHandler.kt  ← import platform.UserNotifications.*
-```
-
-**`IosPermissionHandler.kt`:**
-```kotlin
-internal interface IosPermissionHandler {
-    fun checkStatus(): GrantStatus
-    suspend fun request(): GrantStatus
-}
-```
-
-**`LocationPermissionHandler.kt`** — CoreLocation imports isolated to this file:
-```kotlin
-import platform.CoreLocation.CLLocationManager
-import platform.CoreLocation.kCLAuthorizationStatusAuthorizedAlways
-// ... only CoreLocation imports here
-
-internal class LocationPermissionHandler(
-    private val forAlways: Boolean
-) : IosPermissionHandler {
-    override fun checkStatus(): GrantStatus { /* ... */ }
-    override suspend fun request(): GrantStatus { /* ... */ }
-}
-```
-
-**`PlatformGrantDelegate.ios.kt`** — dispatch only, zero native framework imports:
-```kotlin
-// No more: import platform.CoreLocation.*, import platform.EventKit.*, ...
-// Only internal handler references
-
-internal class PlatformGrantDelegate(private val store: GrantStore) {
-
-    private val locationHandler by lazy { LocationPermissionHandler(forAlways = false) }
-    private val calendarHandler by lazy { CalendarPermissionHandler() }
-    // ...
-
-    fun checkStatus(grant: AppGrant): GrantStatus = when (grant) {
-        AppGrant.LOCATION  -> locationHandler.checkStatus()
-        AppGrant.CALENDAR  -> calendarHandler.checkStatus()
-        // ...
-    }
-}
-```
-
-**Why this is better:**
-- Kotlin/Native can tree-shake at the **file level** when handlers are lazily initialized
-- Codebase becomes easier to maintain (Single Responsibility Principle)
-- Sets the foundation for a future "slim" artifact that excludes sensitive handlers
-
----
-
-### ✅✅✅ Option D: Multi-artifact Distribution (Future roadmap)
-
-Publish separate artifacts to Maven Central:
-- `grant-core` — Camera, Microphone, Gallery, Notification (safe frameworks)
-- `grant-core-location` — adds Location support
-- `grant-core-calendar` — adds Calendar support
-- `grant-core-full` — all permissions
-
----
-
-## 5. Resolution
-
-The Handler Pattern (Option C) was implemented directly — deferring to a later version would only create additional technical debt that every user would eventually have to migrate through. Since the refactor carries zero breaking API changes, there was no reason to delay it.
+## 5. Resolution — v2.0.0
 
 ### What changed
 
-Each permission's native framework imports are now **isolated to a dedicated handler file** inside `grant-core/src/iosMain/kotlin/dev/brewkits/grant/handlers/`:
+`CalendarPermissionHandler.kt`, `ContactsPermissionHandler.kt`, and `MotionPermissionHandler.kt` were moved from `grant-core` into three new independent Gradle/Maven modules:
 
-| Handler file | Isolated framework |
-|---|---|
-| `AVPermissionHandler.kt` | `AVFoundation` (Camera + Microphone) |
-| `PhotoPermissionHandler.kt` | `Photos` |
-| `LocationPermissionHandler.kt` | `CoreLocation` ⚠️ |
-| `CalendarPermissionHandler.kt` | `EventKit` ⚠️ |
-| `MotionPermissionHandler.kt` | `CoreMotion` ⚠️ |
-| `BluetoothPermissionHandler.kt` | delegates to `BluetoothManagerDelegate` (`CoreBluetooth`) ⚠️ |
-| `ContactsPermissionHandler.kt` | `Contacts` |
-| `NotificationPermissionHandler.kt` | `UserNotifications` |
+| Module | Source file moved | Framework isolated |
+|---|---|---|
+| `grant-contacts` | `ContactsPermissionHandler.kt` | `Contacts.framework` |
+| `grant-calendar` | `CalendarPermissionHandler.kt` | `EventKit.framework` |
+| `grant-motion` | `MotionPermissionHandler.kt` | `CoreMotion.framework` |
 
-> ⚠️ = Frameworks that previously triggered Apple's rejection. Now isolated so the linker only embeds them when they are actually referenced.
+`grant-core` retains Camera (`AVFoundation`), Gallery (`Photos`), Location (`CoreLocation`), Bluetooth (`CoreBluetooth`), and Notification (`UserNotifications`) — frameworks that are expected in the vast majority of iOS apps and that Apple does not reject for when unused.
 
-`PlatformGrantDelegate.ios.kt` now contains **zero native framework imports**. It only references handler classes and dispatches operations to them.
+### Why this works
 
-All handlers are initialized lazily (`by lazy`), meaning a framework's static initializers are not triggered until the handler is first accessed.
+A consumer who only adds `grant-core` to their dependencies never downloads `grant-contacts.klib`, `grant-calendar.klib`, or `grant-motion.klib`. The source files containing `import platform.Contacts.*`, `import platform.EventKit.*`, and `import platform.CoreMotion.*` are never processed by K/N ObjC interop for that consumer's project. The framework name strings are never emitted into the consumer's binary. Apple's scanner finds nothing.
 
-### User-side workaround (if still rejected on older Grant versions)
+```
+Consumer build.gradle.kts:
+  implementation("dev.brewkits:grant-core:2.0.0")
+  // grant-contacts NOT added
 
-If using a version of Grant prior to this fix, Apple may still reject the submission. In that case, add the following keys to `Info.plist` as a temporary workaround. Apple requires these keys to exist but does not validate their content:
+        ▼  Dependency resolution
+  grant-core.klib downloaded ✅
+  grant-contacts.klib NOT downloaded — never compiled
 
-```xml
-<key>NSCalendarsUsageDescription</key>
-<string>This app does not use calendar access.</string>
-<key>NSMotionUsageDescription</key>
-<string>This app does not use motion sensors.</string>
-<key>NSLocationWhenInUseUsageDescription</key>
-<string>This app does not use location services.</string>
-<key>NSBluetoothAlwaysUsageDescription</key>
-<string>This app does not use Bluetooth.</string>
+        ▼  K/N ObjC interop
+  ContactsPermissionHandler.kt NEVER processed
+  "Contacts" framework string NEVER emitted into metadata
+
+        ▼  Apple static analyzer
+  No "Contacts" metadata found
+  NSContactsUsageDescription NOT required ✅
 ```
 
-Upgrade to the fixed version as soon as possible to remove the need for these entries.
+### How to use optional modules
+
+Only add the modules your app actually uses:
+
+```kotlin
+// shared/build.gradle.kts
+commonMain.dependencies {
+    implementation("dev.brewkits:grant-core:2.0.0")
+
+    // Add only what you use:
+    implementation("dev.brewkits:grant-contacts:2.0.0")  // Contacts
+    implementation("dev.brewkits:grant-calendar:2.0.0")  // Calendar / EventKit
+    implementation("dev.brewkits:grant-motion:2.0.0")    // CoreMotion / Step Counter
+}
+```
+
+On iOS, call `initialize()` once at app start for each module you add:
+
+```kotlin
+// iosMain — call once, e.g. in ApplicationDelegate
+GrantContacts.initialize()
+GrantCalendar.initialize()
+GrantMotion.initialize()
+```
+
+Android requires no changes — the module split has no effect on Android builds.
+
+### Info.plist keys required per module
+
+Only add keys for modules you actually include:
+
+| Module added | Required Info.plist key |
+|---|---|
+| `grant-contacts` | `NSContactsUsageDescription` |
+| `grant-calendar` | `NSCalendarsUsageDescription` |
+| `grant-motion` | `NSMotionUsageDescription` |
+
+If you don't add the module, **do not add the key**. An app with a usage description key but no corresponding code path will show that permission in the iOS Privacy Report, which is inaccurate and misleading to users.
 
 ---
 
-## 6. Key Takeaways
+## 6. Build Stage Reference
 
-> **Lesson 1 — Import means link in Kotlin/Native.**  
-> Unlike JVM, there is no lazy class loading. Every `import platform.X.*` creates a hard static dependency on framework X, regardless of whether that code path is ever reached at runtime.
-
-> **Lesson 2 — Apple audits what you link, not what you call.**  
-> The App Store static analyzer runs before the app executes even once. Runtime guards like `hasInfoPlistKey` protect against crashes but cannot prevent the upload-time rejection.
-
-> **Lesson 3 — Monolithic permission libraries conflict with Apple's privacy model.**  
-> The convenience of a single dependency comes at the cost of forcing every user to declare usage descriptions for every permission the library supports — even unused ones.
-
-> **Lesson 4 — Gradle properties cannot configure pre-compiled binaries.**  
-> In binary distribution (Maven Central / CocoaPods), conditional source sets must be decided before publishing. Users consume a fixed binary and cannot influence the library's compilation.
+| Build stage | Who runs it | What it produces | Affects App Store rejection? |
+|---|---|---|---|
+| K/N ObjC interop | `kotlinc` | Framework names in `.klib` metadata | **Yes — this is what the scanner reads** |
+| Kotlin/Native DCE | K/N linker | Strips unreachable Kotlin class bodies | No — runs after metadata is already emitted |
+| `-weak_framework` | Xcode linker | `LC_LOAD_WEAK_DYLIB` Mach-O record | No — scanner reads metadata, not Mach-O load commands |
+| `hasInfoPlistKey` guard | Runtime | Prevents SIGABRT crash | No — upload rejection is before any runtime |
+| Dependency exclusion | Gradle | Source files never compiled | **Yes — the only complete fix** |
 
 ---
 
-## 7. References
+## 7. Key Takeaways
 
+> **Lesson 1 — `import platform.X.*` registers the framework at compile time, not link time.**  
+> The K/N ObjC interop toolchain emits framework name metadata into the `.klib` when it processes `import` declarations. DCE and linker flags run later and cannot retract this metadata.
+
+> **Lesson 2 — DCE removes class bodies, not interop metadata.**  
+> K/N DCE can prove `MotionPermissionHandler` is unreachable and strip its Kotlin bytecode. It cannot remove the `CoreMotion` framework name string that was registered in the `.klib` metadata when the source file was compiled.
+
+> **Lesson 3 — Apple audits compile-time metadata, not runtime code paths.**  
+> The App Store static analyzer runs before the app executes even once. It reads the ObjC interop metadata embedded by the compiler. Runtime guards like `hasInfoPlistKey` protect against crashes but cannot prevent the upload-time rejection.
+
+> **Lesson 4 — The fix must be at the dependency graph level.**  
+> Any source file containing `import platform.X.*` that is part of a dependency the consumer adds will cause the framework to be registered — regardless of DCE, lazy initialization, dispatch tables, or linker flags. The only complete fix is to put the source file in a separate artifact the consumer does not add unless they need it.
+
+> **Lesson 5 — Handler pattern inside a single module is necessary but not sufficient.**  
+> Isolating framework imports into dedicated handler files (v1.3.1) improves code organization and is a prerequisite for the module split. But as long as those handler files are compiled into the same `.klib`, the framework metadata is still present for every consumer of that artifact.
+
+---
+
+## 8. References
+
+- [Issue #25](https://github.com/brewkits/Grant/issues/25) — Original App Store rejection report
+- [Issue #38](https://github.com/brewkits/Grant/issues/38) — Regression confirmed in v1.4.1; DCE limitation discovered via testing
+- [PR #39](https://github.com/brewkits/Grant/pull/39) — Opt-in Builder DSL (considered, found insufficient due to compile-time metadata)
 - [Apple — Describing use of required reason APIs](https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_use_of_required_reason_api)
 - [Apple — Privacy manifest files](https://developer.apple.com/documentation/bundleresources/privacy_manifest_files)
-- [Apple WWDC 2023 — Privacy manifests and signatures](https://developer.apple.com/videos/play/wwdc2023/10060/)
-- [Kotlin/Native — Interoperability with C](https://kotlinlang.org/docs/native-app-with-c-and-libcurl.html)
-- [Apple — Mach-O Programming Topics: Weak Linking](https://developer.apple.com/library/archive/documentation/DeveloperTools/Conceptual/MachOTopics/1-Articles/executing_files.html)
-- [moko-permissions — Multi-module approach reference](https://github.com/icerockdev/moko-permissions)
+- [Kotlin/Native — Interoperability with Objective-C](https://kotlinlang.org/docs/native-objc-interop.html)
+- [Apple — Mach-O Programming Topics](https://developer.apple.com/library/archive/documentation/DeveloperTools/Conceptual/MachOTopics/1-Articles/executing_files.html)
