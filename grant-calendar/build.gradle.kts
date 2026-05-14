@@ -88,6 +88,20 @@ publishing {
                         url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
                     }
                 }
+
+                developers {
+                    developer {
+                        id.set("brewkits")
+                        name.set("Brewkits")
+                        email.set("vietnguyentuan@gmail.com")
+                    }
+                }
+
+                scm {
+                    connection.set("scm:git:git://github.com/brewkits/Grant.git")
+                    developerConnection.set("scm:git:ssh://github.com/brewkits/Grant.git")
+                    url.set("https://github.com/brewkits/Grant")
+                }
             }
         }
     }
