@@ -10,11 +10,8 @@ import dev.brewkits.grant.delegates.BluetoothManagerDelegate
 import dev.brewkits.grant.delegates.LocationManagerDelegate
 import dev.brewkits.grant.handlers.AVPermissionHandler
 import dev.brewkits.grant.handlers.BluetoothPermissionHandler
-import dev.brewkits.grant.handlers.CalendarPermissionHandler
-import dev.brewkits.grant.handlers.ContactsPermissionHandler
 import dev.brewkits.grant.handlers.IosPermissionHandler
 import dev.brewkits.grant.handlers.LocationPermissionHandler
-import dev.brewkits.grant.handlers.MotionPermissionHandler
 import dev.brewkits.grant.handlers.NotificationPermissionHandler
 import dev.brewkits.grant.handlers.PhotoPermissionHandler
 import dev.brewkits.grant.handlers.IosPermissionHandlerRegistry
@@ -108,9 +105,6 @@ actual class PlatformGrantDelegate(
     private val locationWhenInUseHandler by lazy { LocationPermissionHandler(forAlways = false, delegate = locationDelegate) }
     private val locationAlwaysHandler by lazy { LocationPermissionHandler(forAlways = true, delegate = locationDelegate) }
     private val notificationHandler by lazy { NotificationPermissionHandler() }
-    private val contactsHandler by lazy { ContactsPermissionHandler() }
-    private val calendarHandler by lazy { CalendarPermissionHandler() }
-    private val motionHandler by lazy { MotionPermissionHandler() }
     private val bluetoothHandler by lazy { BluetoothPermissionHandler(delegate = bluetoothDelegate) }
 
     // ====================================================================
@@ -126,12 +120,17 @@ actual class PlatformGrantDelegate(
                 }
             }
             
-            // Perform actual status check logic inline
             val status = if (grant is RawPermission) {
-                val iosKey = grant.iosUsageKey
-                if (iosKey != null && !hasInfoPlistKey(iosKey)) GrantStatus.DENIED_ALWAYS
-                else if (store.isRawPermissionRequested(grant.identifier)) GrantStatus.DENIED
-                else GrantStatus.NOT_DETERMINED
+                // Registered handlers take precedence — they own both checkStatus and request.
+                val registeredHandler = IosPermissionHandlerRegistry.get(grant.identifier)
+                if (registeredHandler != null) {
+                    runOnMain { registeredHandler.checkStatus() }
+                } else {
+                    val iosKey = grant.iosUsageKey
+                    if (iosKey != null && !hasInfoPlistKey(iosKey)) GrantStatus.DENIED_ALWAYS
+                    else if (store.isRawPermissionRequested(grant.identifier)) GrantStatus.DENIED
+                    else GrantStatus.NOT_DETERMINED
+                }
             } else if ((grant as AppGrant) == AppGrant.NOTIFICATION) {
                 notificationHandler.checkStatusAsync()
             } else {
@@ -285,18 +284,22 @@ actual class PlatformGrantDelegate(
         AppGrant.NOTIFICATION         -> notificationHandler   // unreachable here; handled above
 
         AppGrant.CONTACTS,
-        AppGrant.READ_CONTACTS        -> contactsHandler
+        AppGrant.READ_CONTACTS        -> getOptionalHandler(grant, "dev.brewkits:grant-contacts", "GrantContacts.initialize()")
 
         AppGrant.CALENDAR,
-        AppGrant.READ_CALENDAR        -> calendarHandler
+        AppGrant.READ_CALENDAR        -> getOptionalHandler(grant, "dev.brewkits:grant-calendar", "GrantCalendar.initialize()")
 
-        AppGrant.MOTION               -> motionHandler
+        AppGrant.MOTION               -> getOptionalHandler(grant, "dev.brewkits:grant-motion", "GrantMotion.initialize()")
 
         AppGrant.BLUETOOTH,
         AppGrant.BLUETOOTH_ADVERTISE  -> bluetoothHandler
 
         AppGrant.SCHEDULE_EXACT_ALARM,
         AppGrant.NEARBY_WIFI_DEVICES  -> AlwaysGrantedHandler
+    }
+
+    private fun getOptionalHandler(grant: AppGrant, moduleName: String, initCode: String): IosPermissionHandler {
+        return IosPermissionHandlerRegistry.get(grant.identifier) ?: NotRegisteredHandler(moduleName, initCode)
     }
 
     // ====================================================================
@@ -323,4 +326,19 @@ actual class PlatformGrantDelegate(
 private object AlwaysGrantedHandler : IosPermissionHandler {
     override fun checkStatus(): GrantStatus = GrantStatus.GRANTED
     override suspend fun request(): GrantStatus = GrantStatus.GRANTED
+}
+
+/**
+ * A fallback handler for modular permissions that haven't been registered.
+ */
+private class NotRegisteredHandler(private val moduleName: String, private val initCode: String) : IosPermissionHandler {
+    override fun checkStatus(): GrantStatus {
+        GrantLogger.w(TAG, "Module $moduleName is not registered. Please add the dependency and call $initCode.")
+        return GrantStatus.NOT_DETERMINED
+    }
+    
+    override suspend fun request(): GrantStatus {
+        GrantLogger.w(TAG, "Module $moduleName is not registered. Please add the dependency and call $initCode.")
+        return GrantStatus.NOT_DETERMINED
+    }
 }

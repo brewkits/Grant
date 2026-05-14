@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "dev.brewkits"
-version = "1.4.2"
+version = "2.0.0"
 
 kotlin {
     androidTarget {
@@ -38,9 +38,6 @@ kotlin {
             // flagging unused frameworks during App Store static analysis scans.
             linkerOpts("-weak_framework", "CoreLocation")
             linkerOpts("-weak_framework", "CoreBluetooth")
-            linkerOpts("-weak_framework", "CoreMotion")
-            linkerOpts("-weak_framework", "EventKit")
-            linkerOpts("-weak_framework", "Contacts")
             linkerOpts("-weak_framework", "Photos")
             linkerOpts("-weak_framework", "AVFoundation")
         }
@@ -133,7 +130,7 @@ publishing {
     publications.configureEach {
         (this as? MavenPublication)?.let {
             groupId = "dev.brewkits"
-            version = "1.4.2"
+            version = "2.0.0"
 
             pom {
                 name.set("KMP Grant")

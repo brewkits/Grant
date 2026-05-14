@@ -16,7 +16,7 @@ import platform.Foundation.NSBundle
  * @param key   The Info.plist key to validate (e.g. "NSCameraUsageDescription").
  * @return `true` if the key exists and is non-null, `false` otherwise.
  */
-internal fun hasInfoPlistKey(tag: String, key: String): Boolean {
+fun hasInfoPlistKey(tag: String, key: String): Boolean {
     val value = NSBundle.mainBundle.objectForInfoDictionaryKey(key)
     if (value == null) {
         GrantLogger.e(

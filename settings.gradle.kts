@@ -28,6 +28,9 @@ dependencyResolutionManagement {
 }
 
 include(":grant-core")
+include(":grant-contacts")
+include(":grant-calendar")
+include(":grant-motion")
 include(":grant-core-koin")
 include(":grant-compose")
 include(":demo")
