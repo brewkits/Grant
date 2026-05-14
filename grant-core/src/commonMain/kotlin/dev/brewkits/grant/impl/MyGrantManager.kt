@@ -41,7 +41,7 @@ class DefaultGrantManager(
  * Backwards-compatibility alias. Prefer [DefaultGrantManager] for new code.
  */
 @Deprecated(
-    message = "Use DefaultGrantManager. MyGrantManager is a placeholder name and will be removed in v2.0.",
+    message = "Renamed to DefaultGrantManager in v2.0. Use DefaultGrantManager for all new code.",
     replaceWith = ReplaceWith("DefaultGrantManager", "dev.brewkits.grant.impl.DefaultGrantManager"),
     level = DeprecationLevel.WARNING
 )

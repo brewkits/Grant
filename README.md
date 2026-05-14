@@ -174,19 +174,35 @@ Most KMP permission libraries are simple wrappers around native APIs. Grant is a
 kotlin {
     sourceSets {
         commonMain.dependencies {
-            implementation("dev.brewkits:grant-core:1.4.2")
-            implementation("dev.brewkits:grant-compose:1.4.2")    // Optional: Compose dialogs
-            implementation("dev.brewkits:grant-core-koin:1.4.2")  // Optional: Koin DI support
+            implementation("dev.brewkits:grant-core:2.0.0")
+            implementation("dev.brewkits:grant-compose:2.0.0")         // Optional: Compose dialogs
+            implementation("dev.brewkits:grant-core-koin:2.0.0")       // Optional: Koin DI support
+
+            // Optional: add only the permission modules you actually use on iOS.
+            // Omitting a module means its iOS framework is never linked — no phantom
+            // NSUsageDescription keys, no App Store rejections.
+            implementation("dev.brewkits:grant-contacts:2.0.0")        // Optional: Contacts (iOS CNContactStore)
+            implementation("dev.brewkits:grant-calendar:2.0.0")        // Optional: Calendar (iOS EventKit)
+            implementation("dev.brewkits:grant-motion:2.0.0")          // Optional: Motion (iOS CoreMotion)
         }
     }
 }
+```
+
+**iOS-only step**: call `initialize()` once at app startup for each optional module you added:
+
+```swift
+// iOS — AppDelegate / @main entry point
+GrantContacts.shared.initialize()   // if you added grant-contacts
+GrantCalendar.shared.initialize()   // if you added grant-calendar
+GrantMotion.shared.initialize()     // if you added grant-motion
 ```
 
 > [!IMPORTANT]
 > For projects targeting **Web (JS)** or **Desktop (JVM)**, use an intermediate `mobileMain` source set to avoid linking iOS/Android dependencies on unsupported platforms. [Read the Guide](docs/DEPENDENCY_MANAGEMENT.md).
 
 > [!NOTE]
-> **Koin users**: The Koin integration was moved to `grant-core-koin` in v1.4.2. Add the new artifact alongside `grant-core` and replace `GrantPlatformModule` imports. See the [Migration Guide](docs/MIGRATION_GUIDE.md).
+> **Migrating from v1.x?** Contacts, Calendar, and Motion permissions are now opt-in modules. Add the corresponding artifact and call `initialize()` on iOS. Android behavior is unchanged — no code changes required on Android. See the [Migration Guide](docs/MIGRATION_GUIDE.md).
 
 ---
 
@@ -196,7 +212,7 @@ kotlin {
 | :--- | :--- |
 | [Architecture](docs/grant-core/ARCHITECTURE.md) | How concurrency, state machines, and the mutex flow work |
 | [iOS Setup](docs/platform-specific/ios/info-plist.md) | Critical `Info.plist` configuration — read before shipping |
-| [Migration Guide](docs/MIGRATION_GUIDE.md) | Upgrading from v1.2.x to v1.4.2 |
+| [Migration Guide](docs/MIGRATION_GUIDE.md) | Upgrading from v1.x to v2.0.0 |
 | [Service Checking](docs/grant-core/SERVICES.md) | Combining permission + hardware service checks |
 | [Manual Injection](docs/MANUAL_INJECTION.md) | Using Grant without any DI framework |
 | [Android Reliability](docs/FIX_DEAD_CLICK_ANDROID.md) | How we fix "Dead Clicks" on Android |

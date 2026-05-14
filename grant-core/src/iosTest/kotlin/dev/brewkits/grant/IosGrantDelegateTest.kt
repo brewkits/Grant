@@ -307,6 +307,36 @@ class IosGrantDelegateTest {
     }
 
     @Test
+    fun `request READ_CONTACTS does not deadlock on simulator`() = kotlinx.coroutines.test.runTest {
+        // NotRegisteredHandler path — module not initialized in this test.
+        // Must return NOT_DETERMINED and must not deadlock.
+        val result = withTimeout(3_000L) { delegate.request(AppGrant.READ_CONTACTS) }
+        assertTrue(result in validStatuses, "request(READ_CONTACTS) must complete and return a valid status")
+    }
+
+    @Test
+    fun `request CALENDAR does not deadlock on simulator`() = kotlinx.coroutines.test.runTest {
+        // NotRegisteredHandler path — grant-calendar module not initialized in this test.
+        val result = withTimeout(3_000L) { delegate.request(AppGrant.CALENDAR) }
+        assertTrue(result in validStatuses, "request(CALENDAR) must complete and return a valid status")
+    }
+
+    @Test
+    fun `request READ_CALENDAR does not deadlock on simulator`() = kotlinx.coroutines.test.runTest {
+        val result = withTimeout(3_000L) { delegate.request(AppGrant.READ_CALENDAR) }
+        assertTrue(result in validStatuses, "request(READ_CALENDAR) must complete and return a valid status")
+    }
+
+    @Test
+    fun `request MOTION does not deadlock on simulator`() = kotlinx.coroutines.test.runTest {
+        // grant-motion module not initialized — goes through NotRegisteredHandler path.
+        // On a real device with CMMotionActivityManager.isActivityAvailable() = false,
+        // this would return DENIED_ALWAYS. On simulator, behavior depends on stub.
+        val result = withTimeout(3_000L) { delegate.request(AppGrant.MOTION) }
+        assertTrue(result in validStatuses, "request(MOTION) must complete and return a valid status")
+    }
+
+    @Test
     fun `request BLUETOOTH does not deadlock on simulator`() = kotlinx.coroutines.test.runTest {
         val result = withTimeout(3_000L) { delegate.request(AppGrant.BLUETOOTH) }
         assertTrue(result in validStatuses, "request(BLUETOOTH) must complete and return a valid status")

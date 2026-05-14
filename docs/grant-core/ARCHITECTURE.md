@@ -53,31 +53,30 @@ This document explains the architectural decisions behind KMP Grant library and 
 └──────────────────┘           └──────────────────┘
 ```
 
-## 🍎 iOS Framework Isolation (NEW in v1.3.1)
+## 🍎 iOS Framework Isolation (v2.0.0)
 
-To avoid Apple App Store rejections due to "unused sensitive permissions" (e.g., your app doesn't use Location but the library contains Location code), Grant v1.3.1 introduced a strict isolation architecture.
+To avoid App Store rejections due to "unused sensitive permissions", Grant isolates `Contacts.framework`, `EventKit.framework`, and `CoreMotion.framework` into separate Gradle/Maven artifacts. Apps that don't add these optional modules never link these frameworks — Apple's static scanner never requires the corresponding `NSUsageDescription` keys.
 
 ### The Problem
 Kotlin/Native's dead code elimination (DCE) sometimes fails to remove framework linkages if they are referenced in a large, monolithic platform delegate. This causes the App Store static scanner to detect frameworks like `CoreLocation` or `CoreBluetooth` even if your app never requests them.
 
-### The Solution: Isolated Handlers
-Grant refactored `PlatformGrantDelegate.ios.kt` to move framework-specific logic into separate files:
-- `LocationGrantHandler.ios.kt` (CoreLocation)
-- `BluetoothGrantHandler.ios.kt` (CoreBluetooth)
-- `CalendarGrantHandler.ios.kt` (EventKit)
-- ...and so on.
+### The Solution: Opt-In Modules (v2.0.0)
+As of v2.0.0, the three sensitive frameworks are isolated into their own Gradle modules:
+- `grant-contacts` — links `Contacts.framework` only when added
+- `grant-calendar` — links `EventKit.framework` only when added
+- `grant-motion` — links `CoreMotion.framework` only when added
 
-These handlers are only linked if the corresponding `AppGrant` enum is referenced in your code. This ensures a zero-overhead binary and a smooth App Store review process.
+`CoreLocation`, `CoreBluetooth`, `Photos`, and `AVFoundation` remain in `grant-core` and are weak-linked there. Each optional module also uses `-weak_framework` for defense in depth.
 
-### Custom Registry (NEW in v1.4.0)
-For permissions not natively supported by the core library, or for developers wanting to override default behavior, v1.4.0 introduced the `IosPermissionHandlerRegistry`. This allows runtime registration of custom `IosPermissionHandler` implementations for any `RawPermission` identifier.
+### Custom Registry
+For permissions not natively supported by the core library, or for developers wanting to override default behavior, `IosPermissionHandlerRegistry` allows runtime registration of custom `IosPermissionHandler` implementations for any `RawPermission` identifier.
 
 ## 🔒 Robust Concurrency (Reentrant Locking)
 
 Mobile permission flows are notoriously prone to race conditions and deadlocks, especially when multiple requests are triggered rapidly or when a status check is nested within a request flow.
 
 ### ReentrantMutex
-Standard Kotlin `Mutex` is non-reentrant. In v1.4.0, Grant introduced a custom `ReentrantMutex` that identifies the current coroutine `Job`. This allows the same coroutine to acquire the lock multiple times without deadlocking, while still maintaining strict mutual exclusion for concurrent requests from different scopes.
+Standard Kotlin `Mutex` is non-reentrant. Grant uses a custom `ReentrantMutex` that identifies the current coroutine `Job`. This allows the same coroutine to acquire the lock multiple times without deadlocking, while still maintaining strict mutual exclusion for concurrent requests from different scopes.
 
 ## 🎨 Design Patterns
 

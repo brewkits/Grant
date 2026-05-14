@@ -6,6 +6,48 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.0.0] - 2026-05-14
+
+### Breaking Changes
+
+- **iOS framework isolation** — Contacts, Calendar, and Motion permissions are now opt-in modules. Apps that request these permissions on iOS must add the corresponding artifact and call `initialize()` once at startup. Android behavior is unchanged.
+
+### New Modules
+
+| Artifact | iOS Framework | Initialize |
+|---|---|---|
+| `dev.brewkits:grant-contacts:2.0.0` | `Contacts.framework` | `GrantContacts.initialize()` |
+| `dev.brewkits:grant-calendar:2.0.0` | `EventKit.framework` | `GrantCalendar.initialize()` |
+| `dev.brewkits:grant-motion:2.0.0` | `CoreMotion.framework` | `GrantMotion.initialize()` |
+
+### Why This Change
+
+Apple's App Store static scanner rejects apps that link frameworks without declaring the corresponding `NSUsageDescription` keys in `Info.plist`. When `grant-core` directly imported `CNContactStore`, `EKEventStore`, and `CMMotionActivityManager`, those symbols appeared in every app's binary — even apps that never requested those permissions.
+
+The `by lazy` and `-weak_framework` mitigations used in v1.x did not solve this: `by lazy` defers initialization but not class linking, and `-weak_framework` only prevents runtime crashes (not symbol presence). The only correct fix is to move each framework's import to a separate Gradle module so apps that don't add the module never link the framework.
+
+### Migration
+
+Apps that use `AppGrant.CONTACTS`, `AppGrant.CALENDAR`, or `AppGrant.MOTION`:
+
+```kotlin
+// build.gradle.kts — add the modules you need
+implementation("dev.brewkits:grant-contacts:2.0.0")
+implementation("dev.brewkits:grant-calendar:2.0.0")
+implementation("dev.brewkits:grant-motion:2.0.0")
+```
+
+```swift
+// iOS entry point — call initialize() for each module added
+GrantContacts.shared.initialize()
+GrantCalendar.shared.initialize()
+GrantMotion.shared.initialize()
+```
+
+Apps that do not use these permissions: bump version to 2.0.0, no other changes needed.
+
+---
+
 ## [1.4.2] - 2026-05-14
 
 ### 🐛 Critical Bug Fixes

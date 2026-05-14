@@ -56,6 +56,11 @@ kotlin {
             implementation(project(":grant-core"))
             implementation(project(":grant-core-koin"))
             implementation(project(":grant-compose"))
+
+            // Optional permission modules (required for Contacts/Calendar/Motion on iOS)
+            implementation(project(":grant-contacts"))
+            implementation(project(":grant-calendar"))
+            implementation(project(":grant-motion"))
         }
 
         androidMain.dependencies {

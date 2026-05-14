@@ -4,12 +4,12 @@
 
 iOS requires you to declare **usage descriptions** in `Info.plist` for each permission before requesting it. **If you forget to add these keys, your app will crash immediately** when requesting the permission.
 
-### 🍎 v1.3.1 Architectural Improvement (Framework Isolation)
+### 🍎 v2.0.0 Framework Isolation
 
-Prior to version 1.3.1, Apple's static analysis would often require **all** usage description keys (Location, Bluetooth, Calendar, etc.) even if your app didn't use them, because the library linked those frameworks statically.
+As of v2.0.0, `Contacts.framework`, `EventKit.framework`, and `CoreMotion.framework` are isolated into their own Gradle/Maven artifacts (`grant-contacts`, `grant-calendar`, `grant-motion`). Apps that don't add these optional modules never link these frameworks, so Apple's static scanner never requires the corresponding `NSUsageDescription` keys.
 
-**Starting with v1.3.1, Grant uses a "Handler Pattern" to isolate framework imports.** This means:
-1.  **Only requested permissions are linked**: If you don't use Location in your code, the `CoreLocation` framework will not be linked to your binary.
+**This means:**
+1.  **Only requested permissions are linked**: If you don't use Contacts in your code, `Contacts.framework` will not be linked to your binary.
 2.  **No more "Dummy" keys**: You no longer need to add usage descriptions for permissions your app doesn't use.
 3.  **App Store Connect safety**: Apple's scanners will only flag frameworks that are actually referenced in your binary.
 

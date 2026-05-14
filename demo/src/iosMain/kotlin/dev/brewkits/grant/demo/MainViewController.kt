@@ -1,15 +1,25 @@
 package dev.brewkits.grant.demo
 
 import androidx.compose.ui.window.ComposeUIViewController
+import dev.brewkits.grant.calendar.GrantCalendar
+import dev.brewkits.grant.contacts.GrantContacts
 import dev.brewkits.grant.di.grantModule
+import dev.brewkits.grant.motion.GrantMotion
 import org.koin.core.context.startKoin
 import platform.UIKit.UIViewController
 
 /**
- * iOS app entry point
+ * iOS app entry point.
+ *
+ * Optional permission modules must be initialized before their permissions can be
+ * requested. Without these calls, CONTACTS/CALENDAR/MOTION return NOT_DETERMINED.
  */
 fun MainViewController(): UIViewController {
-    // Initialize Koin for iOS
+    // Register optional permission handlers before Koin starts DI graph.
+    GrantContacts.initialize()
+    GrantCalendar.initialize()
+    GrantMotion.initialize()
+
     startKoin {
         modules(
             grantModule,

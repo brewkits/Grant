@@ -1,12 +1,12 @@
 # Grant Library — Roadmap
 
-> Last updated: 2026-05-13 | Current stable: **v1.4.2** | Next major: **v1.5.0**
+> Last updated: 2026-05-15 | Current stable: **v2.0.0** | Next major: **v2.1.0**
 
 ---
 
 ## 🛠️ In Progress / Upcoming
 
-### v1.5.0 — Expanded Ecosystem & UX
+### v2.1.0 — Expanded Ecosystem & UX
 *Focus: Wearables, Large Screens, and Fine-grained UX control.*
 
 **1. Platform Expansion**
@@ -21,6 +21,13 @@
 - [ ] **Android 16 photo picker (`PICK_IMAGES` intent) — full library integration**. Recipe is shipped at `docs/recipes/photo-picker-fallback.md`; turning it into a built-in `AppGrant`-level surface.
 
 ## ✅ Released
+
+### v2.0.0 (2026-05-15)
+- **iOS Framework Isolation**: `Contacts.framework`, `EventKit.framework`, `CoreMotion.framework` moved to opt-in modules (`grant-contacts`, `grant-calendar`, `grant-motion`). Apps that don't add these modules never link these frameworks — Apple's static scanner no longer requires the corresponding `NSUsageDescription` keys.
+- **New modules**: `grant-contacts`, `grant-calendar`, `grant-motion` as separate Gradle/Maven artifacts.
+- **`IosPermissionHandlerRegistry`**: Registry fix — `checkStatus()` for `RawPermission` now correctly dispatches to registered custom handlers.
+- **Test suite expanded**: 1131 tests across 6 modules (Android JVM + iOS Simulator), 100% pass rate.
+- **Breaking change**: iOS apps using Contacts/Calendar/Motion permissions must add the new optional module and call `initialize()` once. Android is unaffected.
 
 ### v1.4.2 (2026-05-13)
 - **FINAL FIX**: Resolved 60s timeout in `LOCATION_ALWAYS` flow (Issue #33).
