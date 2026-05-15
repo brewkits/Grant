@@ -15,6 +15,7 @@ import androidx.lifecycle.ViewModel
 import dev.brewkits.grant.utils.GrantLogger
 import kotlinx.coroutines.CompletableDeferred
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.UUID
 
 class GrantRequestViewModel(private val savedStateHandle: SavedStateHandle) : ViewModel() {
@@ -49,7 +50,7 @@ class GrantRequestActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         
         // Ensure the static guard is set even if recreated by OS after process death
-        isActivityActive = true
+        isActivityActive.set(true)
         lastActivityLaunchTime = System.currentTimeMillis()
 
         try {
@@ -95,8 +96,10 @@ class GrantRequestActivity : ComponentActivity() {
                         val deferred = pendingResults[rid]
                         if (deferred?.isActive == true) {
                             setResult(rid, GrantResult.ERROR)
+                            pendingResults.remove(rid)
+                            pendingTimestamps.remove(rid)
                         }
-                        isActivityActive = false
+                        isActivityActive.set(false)
                     }
                     requestMultipleGrantsLauncher?.unregister()
                     requestMultipleGrantsLauncher = null
@@ -128,7 +131,7 @@ class GrantRequestActivity : ComponentActivity() {
     }
 
     private fun finishAndCleanup() {
-        isActivityActive = false
+        isActivityActive.set(false)
         finish()
         overridePendingTransition(0, 0)
     }
@@ -148,23 +151,13 @@ class GrantRequestActivity : ComponentActivity() {
         // Increase cleanup threshold to handle slow devices or long rationale reading
         private const val ORPHAN_CLEANUP_THRESHOLD_MS = 300_000L // 5 minutes
 
-        @Volatile
-        private var isActivityActive = false
+        private val isActivityActive = AtomicBoolean(false)
         private var lastActivityLaunchTime = 0L
 
         /**
          * Check if any GrantRequestActivity is currently active.
          */
-        fun isAnyActivityActive(): Boolean {
-            val now = System.currentTimeMillis()
-            // Robust check: If activity is marked active but launch was long ago, 
-            // it's either stuck or finished without clearing.
-            if (isActivityActive && (now - lastActivityLaunchTime > 60_000L)) {
-                GrantLogger.w(TAG, "Activity guard reset after 60s timeout.")
-                isActivityActive = false
-            }
-            return isActivityActive
-        }
+        fun isAnyActivityActive(): Boolean = isActivityActive.get()
 
         /**
          * Launch this Activity to request one or more grants.
@@ -180,14 +173,20 @@ class GrantRequestActivity : ComponentActivity() {
 
             cleanupOrphanedEntries()
 
-            if (isAnyActivityActive()) {
+            // Apply timeout reset before CAS to handle stuck guard state
+            if (isActivityActive.get() && (now - lastActivityLaunchTime > 60_000L)) {
+                GrantLogger.w(TAG, "Activity guard reset after 60s timeout.")
+                isActivityActive.set(false)
+            }
+
+            // Atomic check-and-set: only one concurrent caller proceeds
+            if (!isActivityActive.compareAndSet(false, true)) {
                 GrantLogger.w(TAG, "Activity Launch Guard: Another GrantRequestActivity is already active. Yielding.")
                 pendingResults[requestId]?.complete(GrantResult.ERROR)
                 cleanup(requestId)
                 return requestId
             }
-            
-            isActivityActive = true
+
             lastActivityLaunchTime = now
 
             val intent = Intent(appContext, GrantRequestActivity::class.java).apply {
@@ -202,7 +201,7 @@ class GrantRequestActivity : ComponentActivity() {
                 appContext.startActivity(intent)
             } catch (e: Exception) {
                 GrantLogger.e(TAG, "Failed to start GrantRequestActivity", e)
-                isActivityActive = false
+                isActivityActive.set(false)
                 pendingResults[requestId]?.complete(GrantResult.ERROR)
                 cleanup(requestId)
             }
@@ -238,7 +237,7 @@ class GrantRequestActivity : ComponentActivity() {
         internal fun cleanup(requestId: String) {
             pendingResults.remove(requestId)
             pendingTimestamps.remove(requestId)
-            isActivityActive = false
+            isActivityActive.set(false)
         }
     }
 

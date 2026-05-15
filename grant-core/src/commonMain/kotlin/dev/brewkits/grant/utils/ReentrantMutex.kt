@@ -37,7 +37,11 @@ internal class ReentrantMutex {
         }
         
         if (isOwner) {
-            return block()
+            return try {
+                block()
+            } finally {
+                lock.withLock { count-- }
+            }
         }
         
         // Use a new context that carries the mutex ownership

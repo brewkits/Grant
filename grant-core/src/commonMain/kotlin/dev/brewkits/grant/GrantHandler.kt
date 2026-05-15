@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -268,6 +269,9 @@ class GrantHandler(
                 val currentStatus = grantManager.checkStatus(grant)
                 _status.value = currentStatus
                 handleStatus(currentStatus, rationaleMessage, settingsMessage)
+            } catch (e: CancellationException) {
+                clearCallbacks()
+                throw e
             } catch (e: Exception) {
                 GrantLogger.e(TAG, "Error during grant request for ${grant.identifier}", e)
                 clearCallbacks()
@@ -303,6 +307,9 @@ class GrantHandler(
                 val currentStatus = grantManager.checkStatus(grant)
                 _status.value = currentStatus
                 handleStatus(currentStatus, rationaleMessage, settingsMessage)
+            } catch (e: CancellationException) {
+                clearCallbacks()
+                throw e
             } catch (e: Exception) {
                 GrantLogger.e(TAG, "Error during suspending grant request for ${grant.identifier}", e)
                 clearCallbacks()
@@ -312,11 +319,8 @@ class GrantHandler(
             }
         }
 
-        cont.invokeOnCancellation { 
-            job.cancel() 
-            if (requestMutex.isLocked) {
-                try { requestMutex.unlock() } catch (e: Exception) {}
-            }
+        cont.invokeOnCancellation {
+            job.cancel()
         }
     }
 
