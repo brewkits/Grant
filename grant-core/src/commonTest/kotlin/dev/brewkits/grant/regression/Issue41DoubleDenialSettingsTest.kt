@@ -182,4 +182,40 @@ class Issue41DoubleDenialSettingsTest {
         assertFalse(group.state.value.showRationale, "group must NOT loop back to the rationale dialog")
         assertEquals(0, allGranted, "onAllGranted must not fire while a permission stays denied")
     }
+
+    @Test
+    fun `Issue-41 - rationale memory resets after a grant-via-settings completion`() = testScope.runTest {
+        if (!PlatformConfig.isRationaleSupported) return@runTest
+
+        val manager = FakeGrantManager().apply {
+            mockStatus = GrantStatus.DENIED
+            mockRequestResult = GrantStatus.DENIED
+        }
+        val handler = GrantHandler(manager, AppGrant.CAMERA, this)
+
+        // Show the rationale, confirm, OS re-denies → settings guide (rationale memory set).
+        handler.request { }
+        advanceUntilIdle()
+        assertTrue(handler.state.value.showRationale)
+        handler.onRationaleConfirmed()
+        advanceUntilIdle()
+        assertTrue(handler.state.value.showSettingsGuide)
+
+        // User grants the permission in Settings and returns → refreshStatus completes.
+        manager.mockStatus = GrantStatus.GRANTED
+        handler.refreshStatus()
+        advanceUntilIdle()
+        assertFalse(handler.state.value.isVisible, "flow completes once granted via settings")
+
+        // The permission is later revoked; a fresh attempt must explain the rationale
+        // AGAIN (memory was reset), not jump straight to the settings guide.
+        manager.mockStatus = GrantStatus.DENIED
+        handler.request { }
+        advanceUntilIdle()
+        assertTrue(
+            handler.state.value.showRationale,
+            "rationale memory must reset after a grant-via-settings completion"
+        )
+        assertFalse(handler.state.value.showSettingsGuide)
+    }
 }

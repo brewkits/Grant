@@ -244,6 +244,10 @@ class GrantHandler(
             // settings guide must remain so the user can grant background access.
             if (state.value.isVisible && isSatisfied(newStatus)) {
                 resetState()
+                // The flow is complete (user granted, likely via Settings). Reset the
+                // rationale memory so a later fresh attempt explains the rationale again,
+                // mirroring the GRANTED branch of handleStatus().
+                hasShownRationaleDialog = false
                 _grantedEvents.tryEmit(Unit)
                 onGrantedCallback?.invoke(newStatus)
                 clearCallbacks(newStatus)
