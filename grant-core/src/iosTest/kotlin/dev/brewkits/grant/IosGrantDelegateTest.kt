@@ -342,6 +342,43 @@ class IosGrantDelegateTest {
         assertTrue(result in validStatuses, "request(BLUETOOTH) must complete and return a valid status")
     }
 
+    // NOTE: request(NOTIFICATION) cannot be exercised in the K/N test runner — calling
+    // UNUserNotificationCenter.currentNotificationCenter() crashes with
+    // "bundleProxyForCurrentProcess is nil" because the test binary has no UIKit bundle.
+    // Notification permission is covered by the checkStatus tests above (Group E).
+
+    @Test
+    fun `request LOCATION_ALWAYS does not deadlock on simulator`() = kotlinx.coroutines.test.runTest {
+        // Missing plist key → returns DENIED_ALWAYS before any system dialog.
+        val result = withTimeout(3_000L) { delegate.request(AppGrant.LOCATION_ALWAYS) }
+        assertTrue(result in validStatuses, "request(LOCATION_ALWAYS) must complete and return a valid status")
+    }
+
+    @Test
+    fun `request GALLERY_IMAGES_ONLY does not deadlock on simulator`() = kotlinx.coroutines.test.runTest {
+        val result = withTimeout(3_000L) { delegate.request(AppGrant.GALLERY_IMAGES_ONLY) }
+        assertTrue(result in validStatuses, "request(GALLERY_IMAGES_ONLY) must complete and return a valid status")
+    }
+
+    @Test
+    fun `request GALLERY_VIDEO_ONLY does not deadlock on simulator`() = kotlinx.coroutines.test.runTest {
+        val result = withTimeout(3_000L) { delegate.request(AppGrant.GALLERY_VIDEO_ONLY) }
+        assertTrue(result in validStatuses, "request(GALLERY_VIDEO_ONLY) must complete and return a valid status")
+    }
+
+    @Test
+    fun `request BLUETOOTH_ADVERTISE does not deadlock on simulator`() = kotlinx.coroutines.test.runTest {
+        val result = withTimeout(3_000L) { delegate.request(AppGrant.BLUETOOTH_ADVERTISE) }
+        assertTrue(result in validStatuses, "request(BLUETOOTH_ADVERTISE) must complete and return a valid status")
+    }
+
+    @Test
+    fun `request NEARBY_WIFI_DEVICES does not deadlock on simulator`() = kotlinx.coroutines.test.runTest {
+        // NEARBY_WIFI_DEVICES is always GRANTED on iOS (no-op).
+        val result = withTimeout(3_000L) { delegate.request(AppGrant.NEARBY_WIFI_DEVICES) }
+        assertTrue(result in validStatuses, "request(NEARBY_WIFI_DEVICES) must complete and return a valid status")
+    }
+
     @Test
     fun `request batch of permissions does not deadlock`() = kotlinx.coroutines.test.runTest {
         val grants = listOf(
@@ -359,10 +396,13 @@ class IosGrantDelegateTest {
 
     @Test
     fun `checkStatus followed immediately by request does not deadlock`() = kotlinx.coroutines.test.runTest {
-        withTimeout(5_000L) {
-            delegate.checkStatus(AppGrant.SCHEDULE_EXACT_ALARM)
-            delegate.request(AppGrant.SCHEDULE_EXACT_ALARM)
-            delegate.checkStatus(AppGrant.SCHEDULE_EXACT_ALARM)
+        val results = withTimeout(5_000L) {
+            val status1 = delegate.checkStatus(AppGrant.SCHEDULE_EXACT_ALARM)
+            val reqStatus = delegate.request(AppGrant.SCHEDULE_EXACT_ALARM)
+            val status2 = delegate.checkStatus(AppGrant.SCHEDULE_EXACT_ALARM)
+            listOf(status1, reqStatus, status2)
         }
+        assertEquals(3, results.size, "Should complete all operations")
+        assertTrue(results.all { it == GrantStatus.GRANTED }, "SCHEDULE_EXACT_ALARM should return GRANTED")
     }
 }

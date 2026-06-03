@@ -29,7 +29,7 @@ private const val TAG = "AVPermissionHandler"
 internal class AVPermissionHandler private constructor(
     private val mediaType: String,
     private val plistKey: String
-) : IosPermissionHandler {
+) : PermissionHandler {
 
     override fun checkStatus(): GrantStatus {
         if (!hasInfoPlistKey(TAG, plistKey)) return GrantStatus.DENIED_ALWAYS

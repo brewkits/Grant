@@ -1,6 +1,5 @@
 package dev.brewkits.grant.impl
 
-import android.Manifest
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import dev.brewkits.grant.AppGrant
@@ -11,7 +10,7 @@ import org.robolectric.annotation.Config
 import kotlinx.coroutines.test.runTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
-import kotlin.test.assertTrue
+import kotlin.test.assertNotNull
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -29,7 +28,8 @@ class PlatformGrantDelegateMappingTest {
     @Test
     fun `test mapping for all AppGrant values`() = runTest {
         AppGrant.entries.forEach { grant ->
-            delegate.checkStatus(grant)
+            val status = delegate.checkStatus(grant)
+            assertNotNull(status, "Status mapping for $grant should not be null on SDK 33")
         }
     }
     
@@ -37,26 +37,27 @@ class PlatformGrantDelegateMappingTest {
     @Config(sdk = [30]) // Android 11
     fun `test mapping for all AppGrant values on Android 11`() = runTest {
         AppGrant.entries.forEach { grant ->
-            delegate.checkStatus(grant)
+            val status = delegate.checkStatus(grant)
+            assertNotNull(status, "Status mapping for $grant should not be null on SDK 30")
         }
     }
 
     @Test
     @Config(sdk = [28])
     fun `test location and storage on Android 9`() = runTest {
-        delegate.checkStatus(AppGrant.LOCATION_ALWAYS)
-        delegate.checkStatus(AppGrant.STORAGE)
+        assertNotNull(delegate.checkStatus(AppGrant.LOCATION_ALWAYS), "LOCATION_ALWAYS mapping should work on SDK 28")
+        assertNotNull(delegate.checkStatus(AppGrant.STORAGE), "STORAGE mapping should work on SDK 28")
     }
 
     @Test
     @Config(sdk = [29])
     fun `test location always on Android 10`() = runTest {
-        delegate.checkStatus(AppGrant.LOCATION_ALWAYS)
+        assertNotNull(delegate.checkStatus(AppGrant.LOCATION_ALWAYS), "LOCATION_ALWAYS mapping should work on SDK 29")
     }
 
     @Test
     @Config(sdk = [33])
     fun `test storage on Android 13`() = runTest {
-        delegate.checkStatus(AppGrant.STORAGE)
+        assertNotNull(delegate.checkStatus(AppGrant.STORAGE), "STORAGE mapping should work on SDK 33")
     }
 }

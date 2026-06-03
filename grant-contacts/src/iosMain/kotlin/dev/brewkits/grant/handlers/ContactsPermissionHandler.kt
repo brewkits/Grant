@@ -7,6 +7,7 @@ import dev.brewkits.grant.utils.mainContinuation
 import kotlinx.coroutines.suspendCancellableCoroutine
 import platform.Contacts.CNAuthorizationStatusAuthorized
 import platform.Contacts.CNAuthorizationStatusDenied
+import platform.Contacts.CNAuthorizationStatusLimited
 import platform.Contacts.CNAuthorizationStatusNotDetermined
 import platform.Contacts.CNAuthorizationStatusRestricted
 import platform.Contacts.CNContactStore
@@ -22,14 +23,14 @@ private const val TAG = "ContactsPermissionHandler"
  * Linking the Contacts framework causes Apple to require NSContactsUsageDescription
  * in Info.plist. Isolating this import prevents that for apps that don't use contacts.
  */
-internal class ContactsPermissionHandler : IosPermissionHandler {
+internal class ContactsPermissionHandler : PermissionHandler {
 
     override fun checkStatus(): GrantStatus {
         if (!hasInfoPlistKey(TAG, "NSContactsUsageDescription")) return GrantStatus.DENIED_ALWAYS
         val status = CNContactStore.authorizationStatusForEntityType(CNEntityType.CNEntityTypeContacts)
         return when {
             status == CNAuthorizationStatusAuthorized -> GrantStatus.GRANTED
-            status == 4L /* CNAuthorizationStatusLimited (iOS 18+) */ -> GrantStatus.PARTIAL_GRANTED
+            status == CNAuthorizationStatusLimited -> GrantStatus.PARTIAL_GRANTED
             status == CNAuthorizationStatusDenied || status == CNAuthorizationStatusRestricted -> GrantStatus.DENIED_ALWAYS
             status == CNAuthorizationStatusNotDetermined -> GrantStatus.NOT_DETERMINED
             else -> GrantStatus.NOT_DETERMINED

@@ -3,7 +3,7 @@ package dev.brewkits.grant.impl
 import dev.brewkits.grant.AppGrant
 import dev.brewkits.grant.GrantStatus
 import dev.brewkits.grant.InMemoryGrantStore
-import dev.brewkits.grant.handlers.IosPermissionHandler
+import dev.brewkits.grant.handlers.PermissionHandler
 import dev.brewkits.grant.handlers.IosPermissionHandlerRegistry
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
@@ -46,7 +46,7 @@ class ModuleSplitRegistryTest {
     @Test
     fun `registry returns correct handler after register`() {
         val key = "com.test.fake.permission"
-        val fakeHandler = object : IosPermissionHandler {
+        val fakeHandler = object : PermissionHandler {
             override fun checkStatus(): GrantStatus = GrantStatus.GRANTED
             override suspend fun request(): GrantStatus = GrantStatus.GRANTED
         }
@@ -60,11 +60,11 @@ class ModuleSplitRegistryTest {
     @Test
     fun `registry overwrites handler on re-register`() {
         val key = "com.test.overwrite.permission"
-        val handler1 = object : IosPermissionHandler {
+        val handler1 = object : PermissionHandler {
             override fun checkStatus(): GrantStatus = GrantStatus.DENIED
             override suspend fun request(): GrantStatus = GrantStatus.DENIED
         }
-        val handler2 = object : IosPermissionHandler {
+        val handler2 = object : PermissionHandler {
             override fun checkStatus(): GrantStatus = GrantStatus.GRANTED
             override suspend fun request(): GrantStatus = GrantStatus.GRANTED
         }
@@ -183,7 +183,7 @@ class ModuleSplitRegistryTest {
     fun `registered custom handler is dispatched for RawPermission`() = runTest {
         val customKey = "com.test.custom.v2.permission"
         var checkStatusCalled = false
-        val customHandler = object : IosPermissionHandler {
+        val customHandler = object : PermissionHandler {
             override fun checkStatus(): GrantStatus {
                 checkStatusCalled = true
                 return GrantStatus.GRANTED

@@ -2,6 +2,7 @@ package dev.brewkits.grant.security
 
 import dev.brewkits.grant.*
 import dev.brewkits.grant.fakes.FakeGrantManager
+import dev.brewkits.grant.fakes.MultiGrantFakeManager
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -43,13 +44,10 @@ class SecurityIntegrityTest {
             handler.request { }
             advanceUntilIdle()
             
+            // Second request skips rationale and goes straight to settings guide
             handler.request { }
             advanceUntilIdle()
-            assertTrue(handler.state.value.showRationale, "Rationale should be visible on Android after denial")
-            
-            handler.onRationaleConfirmed()
-            advanceUntilIdle()
-            assertFalse(handler.state.value.isVisible, "Dialog should hide after denial to prevent loop")
+            assertTrue(handler.state.value.showSettingsGuide, "Settings Guide should be visible on Android after denial")
         } else {
             // iOS-like logic: Rationale is NEVER shown
             handler.request { }
@@ -123,5 +121,40 @@ class SecurityIntegrityTest {
         assertNull(store.getStatus(AppGrant.CAMERA))
         assertFalse(store.isRequestedBefore(AppGrant.CAMERA))
         assertEquals(GrantStatus.DENIED, store.getStatus(AppGrant.LOCATION))
+    }
+
+    /**
+     * SEC-005: Infinite Rationale Loop Protection (GrantGroupHandler)
+     * Ensures that if an OS keeps returning DENIED for a group grant, we don't loop indefinitely.
+     */
+    @Test
+    fun `should prevent infinite rationale loop in GrantGroupHandler`() = runTest {
+        val manager = MultiGrantFakeManager().apply {
+            setStatus(AppGrant.CAMERA, GrantStatus.DENIED)
+            setRequestResult(AppGrant.CAMERA, GrantStatus.DENIED)
+        }
+        val group = GrantGroupHandler(manager, listOf(AppGrant.CAMERA), this)
+
+        if (PlatformConfig.isRationaleSupported) {
+            // Android: rationale on the first denial, then the settings guide after the
+            // second denial — the rationale must NOT loop forever (the #41 guard).
+            group.request { }
+            advanceUntilIdle()
+            assertTrue(group.state.value.showRationale, "rationale is shown on the first denial")
+
+            group.onRationaleConfirmed()
+            advanceUntilIdle()
+            assertTrue(
+                group.state.value.showSettingsGuide,
+                "settings guide MUST show after the second denial — the rationale must NOT loop"
+            )
+            assertFalse(group.state.value.showRationale, "must not loop back to the rationale dialog")
+        } else {
+            // iOS has no soft-denial rationale concept — straight to the settings guide.
+            group.request { }
+            advanceUntilIdle()
+            assertFalse(group.state.value.showRationale, "rationale is never shown on iOS")
+            assertTrue(group.state.value.showSettingsGuide, "settings guide shown immediately on iOS")
+        }
     }
 }

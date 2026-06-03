@@ -1,6 +1,6 @@
 # Grant Library — Roadmap
 
-> Last updated: 2026-05-15 | Current stable: **v2.0.0** | Next major: **v2.1.0**
+> Last updated: 2026-05-15 | Current stable: **v2.1.0** | Next major: **v2.1.0**
 
 ---
 
@@ -10,8 +10,8 @@
 *Focus: Opt-in handler DSL, Wearables, Large Screens, and Fine-grained UX control.*
 
 **1. Opt-in Handler Registration DSL (from PR #39 by @RoryKelly)**
-- [ ] **`GrantFactory.create { }` block API** — per-permission `expect/actual` extension functions (`location()`, `bluetooth()`, `camera()`, …) so K/N DCE can strip *any* unused handler, not just the three covered by v2.0.0 module isolation. Apps that only use Bluetooth + Notification will no longer link `AVFoundation`, `Photos`, or `CoreLocation` either.
-- [ ] Layer the DSL on top of v2.0.0 module split — unconditional safety by default, optional granular control for consumers who want to minimize binary size further.
+- [ ] **`GrantFactory.create { }` block API** — per-permission `expect/actual` extension functions (`location()`, `bluetooth()`, `camera()`, …) so K/N DCE can strip *any* unused handler, not just the three covered by v2.1.0 module isolation. Apps that only use Bluetooth + Notification will no longer link `AVFoundation`, `Photos`, or `CoreLocation` either.
+- [ ] Layer the DSL on top of v2.1.0 module split — unconditional safety by default, optional granular control for consumers who want to minimize binary size further.
 - [ ] Backward-compatible: `create()` no-arg stays functional via `registerAll()` shim.
 
 **2. Platform Expansion**
@@ -27,7 +27,7 @@
 
 ## ✅ Released
 
-### v2.0.0 (2026-05-15)
+### v2.1.0 (2026-05-15)
 - **iOS Framework Isolation**: `Contacts.framework`, `EventKit.framework`, `CoreMotion.framework` moved to opt-in modules (`grant-contacts`, `grant-calendar`, `grant-motion`). Apps that don't add these modules never link these frameworks — Apple's static scanner no longer requires the corresponding `NSUsageDescription` keys.
 - **New modules**: `grant-contacts`, `grant-calendar`, `grant-motion` as separate Gradle/Maven artifacts.
 - **`IosPermissionHandlerRegistry`**: Registry fix — `checkStatus()` for `RawPermission` now correctly dispatches to registered custom handlers.

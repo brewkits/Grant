@@ -11,7 +11,7 @@ class GrantPermissionTest {
 
     @Test
     fun `AppGrant implements GrantPermission`() {
-        val camera: GrantPermission = AppGrant.CAMERA
+        val camera = AppGrant.CAMERA
 
         assertTrue(camera is GrantPermission, "AppGrant should implement GrantPermission")
         assertEquals("CAMERA", camera.identifier)

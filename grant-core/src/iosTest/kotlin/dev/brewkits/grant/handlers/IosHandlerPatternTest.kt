@@ -12,7 +12,7 @@ import kotlin.test.assertEquals
  *
  * **Issue #14:** These tests establish a regression safety net for the v1.3.0
  * architectural refactor (Handler Pattern). They verify:
- * 1. The `IosPermissionHandler` interface contract is implemented by all handlers.
+ * 1. The `PermissionHandler` interface contract is implemented by all handlers.
  * 2. `AlwaysGrantedHandler` returns GRANTED without side effects.
  * 3. The handler dispatch table covers all [AppGrant] values.
  *
@@ -74,7 +74,7 @@ class IosHandlerPatternTest {
  * Test proxy for the private [AlwaysGrantedHandler] object inside [PlatformGrantDelegate].
  * Validates the interface without instantiating [PlatformGrantDelegate].
  */
-private object AlwaysGrantedHandlerTestProxy : IosPermissionHandler {
+private object AlwaysGrantedHandlerTestProxy : PermissionHandler {
     override fun checkStatus(): GrantStatus = GrantStatus.GRANTED
     override suspend fun request(): GrantStatus = GrantStatus.GRANTED
 }
@@ -86,7 +86,7 @@ private object AlwaysGrantedHandlerTestProxy : IosPermissionHandler {
  * Keep this in sync with [PlatformGrantDelegate.handlerFor].
  */
 private object IosHandlerDispatchValidator {
-    fun handlerFor(grant: AppGrant): IosPermissionHandler? = when (grant) {
+    fun handlerFor(grant: AppGrant): PermissionHandler? = when (grant) {
         AppGrant.CAMERA               -> stubHandler("CAMERA")
         AppGrant.MICROPHONE           -> stubHandler("MICROPHONE")
 
@@ -115,7 +115,7 @@ private object IosHandlerDispatchValidator {
         AppGrant.NEARBY_WIFI_DEVICES  -> stubHandler("ALWAYS_GRANTED")
     }
 
-    private fun stubHandler(name: String) = object : IosPermissionHandler {
+    private fun stubHandler(name: String) = object : PermissionHandler {
         override fun checkStatus() = GrantStatus.NOT_DETERMINED
         override suspend fun request() = GrantStatus.NOT_DETERMINED
         override fun toString() = "StubHandler($name)"

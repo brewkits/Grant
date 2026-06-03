@@ -1,5 +1,7 @@
 package dev.brewkits.grant.integration
 
+import dev.brewkits.grant.PlatformConfig
+
 import app.cash.turbine.test
 import dev.brewkits.grant.*
 import dev.brewkits.grant.fakes.FakeGrantManager
@@ -31,6 +33,7 @@ class ComplexGroupIntegrationTest {
 
     @Test
     fun `group request - partially granted scenario`() = runTest {
+        if (!PlatformConfig.isRationaleSupported) return@runTest  // group skips rationale on iOS
         // Setup: Camera will be granted, Microphone denied
         mockGrantManager.configure(AppGrant.CAMERA, GrantStatus.NOT_DETERMINED, GrantStatus.GRANTED)
         mockGrantManager.configure(AppGrant.MICROPHONE, GrantStatus.NOT_DETERMINED, GrantStatus.DENIED)

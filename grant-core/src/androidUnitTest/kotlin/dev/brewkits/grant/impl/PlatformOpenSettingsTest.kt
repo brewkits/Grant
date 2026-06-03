@@ -29,12 +29,23 @@ class PlatformOpenSettingsTest {
     @Test
     fun `test openSettings`() {
         grantDelegate.openSettings()
+        val application = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val shadowApp = org.robolectric.Shadows.shadowOf(application)
+        val nextIntent = shadowApp.nextStartedActivity
+        kotlin.test.assertNotNull(nextIntent, "Settings intent should be fired")
+        kotlin.test.assertEquals(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, nextIntent.action)
     }
 
     @Test
     fun `test openServiceSettings`() = runTest {
+        val application = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val shadowApp = org.robolectric.Shadows.shadowOf(application)
+        
         ServiceType.entries.forEach { type ->
             serviceDelegate.openServiceSettings(type)
+            val nextIntent = shadowApp.nextStartedActivity
+            kotlin.test.assertNotNull(nextIntent, "Service settings intent should be fired for $type")
+            kotlin.test.assertTrue(nextIntent.action != null, "Intent action should not be null for $type")
         }
     }
 }

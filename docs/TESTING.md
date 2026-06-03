@@ -6,7 +6,7 @@ Comprehensive test coverage for the Grant permission management library.
 
 ## Test Coverage Summary
 
-### Total Tests (v2.0.0)
+### Total Tests (v2.1.0)
 
 | Module | Android | iOS Simulator | Total |
 |--------|---------|---------------|-------|
@@ -176,4 +176,4 @@ Per CLAUDE.md, every method on `PlatformGrantDelegate` (including `request()`) m
 
 ---
 
-*Last updated: 2026-05-15 — v2.0.0 (1131 tests, 100% pass rate)*
+*Last updated: 2026-05-15 — v2.1.0 (1131 tests, 100% pass rate)*

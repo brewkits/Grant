@@ -23,7 +23,7 @@ private const val TAG = "BluetoothPermissionHandler"
  */
 internal class BluetoothPermissionHandler(
     private val delegate: BluetoothManagerDelegate
-) : IosPermissionHandler {
+) : PermissionHandler {
 
     override fun checkStatus(): GrantStatus = delegate.checkStatus()
 

@@ -4,9 +4,9 @@
 
 iOS requires you to declare **usage descriptions** in `Info.plist` for each permission before requesting it. **If you forget to add these keys, your app will crash immediately** when requesting the permission.
 
-### 🍎 v2.0.0 Framework Isolation
+### 🍎 v2.1.0 Framework Isolation
 
-As of v2.0.0, `Contacts.framework`, `EventKit.framework`, and `CoreMotion.framework` are isolated into their own Gradle/Maven artifacts (`grant-contacts`, `grant-calendar`, `grant-motion`). Apps that don't add these optional modules never link these frameworks, so Apple's static scanner never requires the corresponding `NSUsageDescription` keys.
+As of v2.1.0, `Contacts.framework`, `EventKit.framework`, and `CoreMotion.framework` are isolated into their own Gradle/Maven artifacts (`grant-contacts`, `grant-calendar`, `grant-motion`). Apps that don't add these optional modules never link these frameworks, so Apple's static scanner never requires the corresponding `NSUsageDescription` keys.
 
 **This means:**
 1.  **Only requested permissions are linked**: If you don't use Contacts in your code, `Contacts.framework` will not be linked to your binary.

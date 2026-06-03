@@ -2,7 +2,7 @@
 
 > **Related:** Issue #25, Issue #38  
 > **Severity:** 🔴 Critical (causes App Store rejection at upload time)  
-> **Status:** ✅ FULLY RESOLVED in v2.0.0 — see [Section 5](#5-resolution-v200)
+> **Status:** ✅ FULLY RESOLVED in v2.1.0 — see [Section 5](#5-resolution-v200)
 
 ---
 
@@ -109,7 +109,7 @@ The corollary: no amount of DCE, linker flags, conditional initialization, or di
 
 ---
 
-## 5. Resolution — v2.0.0
+## 5. Resolution — v2.1.0
 
 ### What changed
 
@@ -129,7 +129,7 @@ A consumer who only adds `grant-core` to their dependencies never downloads `gra
 
 ```
 Consumer build.gradle.kts:
-  implementation("dev.brewkits:grant-core:2.0.0")
+  implementation("dev.brewkits:grant-core:2.1.0")
   // grant-contacts NOT added
 
         ▼  Dependency resolution
@@ -152,12 +152,12 @@ Only add the modules your app actually uses:
 ```kotlin
 // shared/build.gradle.kts
 commonMain.dependencies {
-    implementation("dev.brewkits:grant-core:2.0.0")
+    implementation("dev.brewkits:grant-core:2.1.0")
 
     // Add only what you use:
-    implementation("dev.brewkits:grant-contacts:2.0.0")  // Contacts
-    implementation("dev.brewkits:grant-calendar:2.0.0")  // Calendar / EventKit
-    implementation("dev.brewkits:grant-motion:2.0.0")    // CoreMotion / Step Counter
+    implementation("dev.brewkits:grant-contacts:2.1.0")  // Contacts
+    implementation("dev.brewkits:grant-calendar:2.1.0")  // Calendar / EventKit
+    implementation("dev.brewkits:grant-motion:2.1.0")    // CoreMotion / Step Counter
 }
 ```
 

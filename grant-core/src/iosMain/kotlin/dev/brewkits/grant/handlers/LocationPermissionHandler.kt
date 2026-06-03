@@ -35,7 +35,7 @@ private const val TAG = "LocationPermissionHandler"
 internal class LocationPermissionHandler(
     private val forAlways: Boolean,
     private val delegate: LocationManagerDelegate
-) : IosPermissionHandler {
+) : PermissionHandler {
 
     private val requiredPlistKey: String
         get() = if (forAlways) "NSLocationAlwaysAndWhenInUseUsageDescription"

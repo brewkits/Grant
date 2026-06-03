@@ -35,7 +35,7 @@ private const val TAG = "MotionPermissionHandler"
  * on a completed coroutine, throwing `IllegalStateException`. The fix guards with
  * `cont.isActive` before every resume.
  */
-internal class MotionPermissionHandler : IosPermissionHandler {
+internal class MotionPermissionHandler : PermissionHandler {
 
     override fun checkStatus(): GrantStatus {
         if (!hasInfoPlistKey(TAG, "NSMotionUsageDescription")) return GrantStatus.DENIED_ALWAYS

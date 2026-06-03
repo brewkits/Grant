@@ -82,7 +82,8 @@ class GrantAndServiceHandler(
     private val grant: GrantPermission,
     private val serviceType: ServiceType,
     private val scope: CoroutineScope,
-    private val savedStateDelegate: SavedStateDelegate = NoOpSavedStateDelegate()
+    private val savedStateDelegate: SavedStateDelegate = NoOpSavedStateDelegate(),
+    private val eventListener: GrantEventListener? = null,
 ) {
     private companion object {
         const val KEY_IS_VISIBLE      = "gsh_is_visible"
@@ -256,6 +257,7 @@ class GrantAndServiceHandler(
             pendingRationale = null
             pendingPermSettings = null
             pendingSvcSettings = null
+            eventListener?.onSettingsOpened(grant)
             grantManager.openSettings()
         } finally {
             requestMutex.unlock()
@@ -308,6 +310,8 @@ class GrantAndServiceHandler(
         val permStatus = permStatusDef.await()
         val svcStatus = svcStatusDef.await()
 
+        eventListener?.onRequested(grant, permStatus)
+
         if (permStatus == GrantStatus.NOT_DETERMINED || (permStatus == GrantStatus.PARTIAL_GRANTED && grant.requiresBackgroundUpgrade)) {
             val result = grantManager.request(grant)
             if (isSufficient(result)) {
@@ -343,6 +347,7 @@ class GrantAndServiceHandler(
 
     private fun checkServiceAndFinishWithStatus(svcStatus: ServiceStatus, svcSettings: String?) {
         if (svcStatus != ServiceStatus.ENABLED) {
+            eventListener?.onSettingsGuideShown(grant)
             updateState {
                 it.copy(
                     isVisible = true,
@@ -354,6 +359,7 @@ class GrantAndServiceHandler(
         }
         resetState()
         _state.update { it.copy(isReady = true) }
+        eventListener?.onGranted(grant, GrantStatus.GRANTED)
         val callback = onReadyCallback
         onReadyCallback = null
         callback?.invoke()
@@ -366,6 +372,7 @@ class GrantAndServiceHandler(
     ) {
         when (status) {
             GrantStatus.NOT_DETERMINED, GrantStatus.DENIED -> {
+                eventListener?.onRationaleShown(grant)
                 updateState {
                     it.copy(
                         isVisible = true,
@@ -377,6 +384,7 @@ class GrantAndServiceHandler(
                 }
             }
             GrantStatus.DENIED_ALWAYS, GrantStatus.PARTIAL_GRANTED -> {
+                eventListener?.onSettingsGuideShown(grant)
                 updateState {
                     it.copy(
                         isVisible = true,
