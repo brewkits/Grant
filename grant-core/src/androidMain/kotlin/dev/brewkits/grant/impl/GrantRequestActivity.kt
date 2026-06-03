@@ -117,8 +117,11 @@ class GrantRequestActivity : ComponentActivity() {
             }
 
             if (!viewModel.alreadyLaunched) {
-                viewModel.alreadyLaunched = true
+                // Set the flag AFTER launch() so that a crash in launch() doesn't leave
+                // alreadyLaunched=true with no launcher ever fired — which would hang
+                // the request forever on process-death restoration.
                 requestMultipleGrantsLauncher?.launch(currentGrants)
+                viewModel.alreadyLaunched = true
             }
         } catch (e: Exception) {
             GrantLogger.e(TAG, "Error in onCreate: ${e.message}", e)
