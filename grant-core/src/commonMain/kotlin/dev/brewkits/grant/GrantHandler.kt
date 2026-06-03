@@ -293,7 +293,7 @@ class GrantHandler(
                 this@GrantHandler.onGrantedCallback = onGranted
                 val currentStatus = grantManager.checkStatus(grant)
                 _status.value = currentStatus
-                eventListener?.onRequested(grant, currentStatus)
+                eventListener?.onRequested(grant, currentStatus)  // after checkStatus: carries initial status for richer context
                 handleStatus(currentStatus, rationaleMessage, settingsMessage)
             } catch (e: CancellationException) {
                 clearCallbacks()
@@ -508,6 +508,7 @@ class GrantHandler(
             try {
                 val currentStatus = grantManager.checkStatus(grant)
                 _status.value = currentStatus
+                eventListener?.onRequested(grant, currentStatus)
                 handleStatusWithCustomUi(
                     status = currentStatus,
                     rationaleMessage = rationaleMessage,
