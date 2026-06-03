@@ -75,9 +75,9 @@ class GrantHandlerEventStressTest {
         // Actually, if it returns early (already granted), does it call onRequested? We should just verify it doesn't crash
         // and doesn't drop events.
         
-        // As long as no crash and grantedCount > 0, we pass.
-        assertEquals(100, coroutines.size)
-        // If they all succeeded, we should have at least 1 granted event (depending on deduplication)
-        assertTrue(listener.grantedCount > 0)
+        // Each of the 100 callers should receive their own result callback, 
+        // leading to 100 onRequested and 100 onGranted events.
+        assertEquals(100, listener.requestedCount, "Should have 100 onRequested events")
+        assertEquals(100, listener.grantedCount, "Should have 100 onGranted events")
     }
 }
