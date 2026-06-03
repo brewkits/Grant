@@ -74,7 +74,7 @@ fun GrantDialog(
         DialogKind.None -> Unit
         DialogKind.Rationale -> GrantRationaleDialog(
             message = state.rationaleMessage
-                ?: "This permission is needed for this feature to work properly.",
+                ?: strings.rationaleMessage,
             title = strings.rationaleTitle,
             confirmText = strings.rationaleConfirm,
             dismissText = strings.rationaleDismiss,
@@ -83,7 +83,7 @@ fun GrantDialog(
         )
         DialogKind.Settings -> GrantSettingsDialog(
             message = state.settingsMessage
-                ?: "This permission was denied. Please enable it in Settings.",
+                ?: strings.settingsMessage,
             title = strings.settingsTitle,
             confirmText = strings.settingsConfirm,
             dismissText = strings.settingsDismiss,
@@ -128,7 +128,7 @@ fun GrantGroupDialog(
         DialogKind.None -> Unit
         DialogKind.Rationale -> GrantRationaleDialog(
             message = state.rationaleMessage
-                ?: "This permission is needed for this feature to work properly.",
+                ?: strings.rationaleMessage,
             title = strings.rationaleTitle,
             confirmText = strings.rationaleConfirm,
             dismissText = strings.rationaleDismiss,
@@ -137,7 +137,7 @@ fun GrantGroupDialog(
         )
         DialogKind.Settings -> GrantSettingsDialog(
             message = state.settingsMessage
-                ?: "This permission was denied. Please enable it in Settings.",
+                ?: strings.settingsMessage,
             title = strings.settingsTitle,
             confirmText = strings.settingsConfirm,
             dismissText = strings.settingsDismiss,
@@ -182,7 +182,7 @@ fun GrantAndServiceDialog(
         ServiceDialogKind.None -> Unit
         ServiceDialogKind.Rationale -> GrantRationaleDialog(
             message = state.rationaleMessage
-                ?: "This permission is needed for this feature to work properly.",
+                ?: strings.rationaleMessage,
             title = strings.rationaleTitle,
             confirmText = strings.rationaleConfirm,
             dismissText = strings.rationaleDismiss,
@@ -191,7 +191,7 @@ fun GrantAndServiceDialog(
         )
         ServiceDialogKind.PermissionSettings -> GrantSettingsDialog(
             message = state.permissionSettingsMessage
-                ?: "This permission was denied. Please enable it in Settings.",
+                ?: strings.settingsMessage,
             title = strings.settingsTitle,
             confirmText = strings.settingsConfirm,
             dismissText = strings.settingsDismiss,
@@ -200,7 +200,7 @@ fun GrantAndServiceDialog(
         )
         ServiceDialogKind.ServiceSettings -> GrantSettingsDialog(
             message = state.serviceSettingsMessage
-                ?: "This service needs to be enabled for this feature to work.",
+                ?: strings.serviceSettingsMessage,
             title = strings.serviceSettingsTitle,
             confirmText = strings.serviceSettingsConfirm,
             dismissText = strings.settingsDismiss,

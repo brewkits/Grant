@@ -42,6 +42,12 @@ data class GrantDialogStrings(
     val settingsDismiss: String = "Cancel",
     val serviceSettingsTitle: String = "Service Required",
     val serviceSettingsConfirm: String = "Enable Service",
+    /** Shown in the rationale dialog body when the caller does not supply a [dev.brewkits.grant.GrantHandler.request] rationaleMessage. */
+    val rationaleMessage: String = "This permission is needed for this feature to work properly.",
+    /** Shown in the settings guide body when the caller does not supply a settingsMessage. */
+    val settingsMessage: String = "This permission was denied. Please enable it in Settings.",
+    /** Shown in the service-settings guide body when the caller does not supply a serviceSettingsMessage. */
+    val serviceSettingsMessage: String = "This service needs to be enabled for this feature to work.",
 )
 
 /**
