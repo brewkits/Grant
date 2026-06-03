@@ -118,7 +118,6 @@ class Issue41DoubleDenialSettingsTest {
 
     @Test
     fun `Issue-41 - requestWithCustomUi double denial surfaces settings guidance`() = testScope.runTest {
-        // The custom-UI flow is platform-agnostic (it does not gate on isRationaleSupported).
         val manager = FakeGrantManager().apply {
             mockStatus = GrantStatus.DENIED
             mockRequestResult = GrantStatus.DENIED
@@ -142,8 +141,14 @@ class Issue41DoubleDenialSettingsTest {
         )
         advanceUntilIdle()
 
-        assertEquals(1, rationaleShown, "rationale must be offered exactly once")
-        assertEquals(1, settingsShown, "settings guidance MUST be offered after the second denial (Issue #41)")
+        if (PlatformConfig.isRationaleSupported) {
+            // Android: rationale offered once, then the OS re-denies → settings guidance.
+            assertEquals(1, rationaleShown, "rationale must be offered exactly once on Android")
+        } else {
+            // iOS: no soft-denial rationale — straight to settings guidance.
+            assertEquals(0, rationaleShown, "rationale must NOT be shown on iOS")
+        }
+        assertEquals(1, settingsShown, "settings guidance MUST be offered after denial (Issue #41)")
         assertEquals(0, granted, "onGranted must not fire while denied")
     }
 

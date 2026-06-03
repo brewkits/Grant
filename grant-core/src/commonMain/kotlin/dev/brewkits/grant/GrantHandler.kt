@@ -725,7 +725,11 @@ class GrantHandler(
                             currentState = FlowState.Done
                         }
                         GrantStatus.DENIED -> {
-                            if (state.isFirstRequest) {
+                            if (!PlatformConfig.isRationaleSupported) {
+                                // iOS has no soft-denial rationale concept — route straight to the
+                                // settings guidance, mirroring the state-based handleStatus() branch.
+                                currentState = FlowState.HandleResult(GrantStatus.DENIED_ALWAYS, state.isFirstRequest)
+                            } else if (state.isFirstRequest) {
                                 if (hasShownRationaleDialog) {
                                     currentState = FlowState.HandleResult(GrantStatus.DENIED_ALWAYS, isFirstRequest = true)
                                 } else {
