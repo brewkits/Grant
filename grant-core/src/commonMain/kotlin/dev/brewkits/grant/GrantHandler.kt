@@ -202,14 +202,31 @@ class GrantHandler(
             val currentStatus = grantManager.checkStatus(grant)
             _status.value = currentStatus
             
-            // IF we were visible before process death AND now we are GRANTED,
+            // IF we were visible before process death AND now we are satisfied,
             // it means the user likely granted it and then process death occurred,
             // or they granted it in Settings. We should trigger the success event.
-            if (wasVisible && (currentStatus == GrantStatus.GRANTED || currentStatus == GrantStatus.PARTIAL_GRANTED)) {
+            // LOCATION_ALWAYS PARTIAL_GRANTED is NOT satisfied (background still missing).
+            if (wasVisible && isSatisfied(currentStatus)) {
                 resetState()
                 _grantedEvents.tryEmit(Unit)
             }
         }
+    }
+
+    /**
+     * Whether [status] fully satisfies this grant.
+     *
+     * Most permissions accept [GrantStatus.PARTIAL_GRANTED] as a success state, but
+     * grants that require a background upgrade (e.g. LOCATION_ALWAYS) need full
+     * background access — for those, PARTIAL_GRANTED means foreground was granted
+     * but background was denied, so the user must still be routed to Settings and it
+     * is NOT treated as satisfied. Mirrors the [handleStatus] PARTIAL_GRANTED branch
+     * and GrantGroupHandler.isFullyGranted.
+     */
+    private fun isSatisfied(status: GrantStatus): Boolean = when (status) {
+        GrantStatus.GRANTED -> true
+        GrantStatus.PARTIAL_GRANTED -> !grant.requiresBackgroundUpgrade
+        else -> false
     }
 
     /**
@@ -221,9 +238,11 @@ class GrantHandler(
             val newStatus = grantManager.checkStatus(grant)
             val oldStatus = _status.value
             _status.value = newStatus
-            
-            // Auto-complete flow if status changed to GRANTED while a dialog was showing
-            if (state.value.isVisible && (newStatus == GrantStatus.GRANTED || newStatus == GrantStatus.PARTIAL_GRANTED)) {
+
+            // Auto-complete flow if status became satisfied while a dialog was showing.
+            // For LOCATION_ALWAYS, a PARTIAL_GRANTED result is NOT satisfied — the
+            // settings guide must remain so the user can grant background access.
+            if (state.value.isVisible && isSatisfied(newStatus)) {
                 resetState()
                 _grantedEvents.tryEmit(Unit)
                 onGrantedCallback?.invoke(newStatus)
