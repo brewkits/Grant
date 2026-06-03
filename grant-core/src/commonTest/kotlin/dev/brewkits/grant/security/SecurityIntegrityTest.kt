@@ -2,6 +2,7 @@ package dev.brewkits.grant.security
 
 import dev.brewkits.grant.*
 import dev.brewkits.grant.fakes.FakeGrantManager
+import dev.brewkits.grant.fakes.MultiGrantFakeManager
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -120,5 +121,36 @@ class SecurityIntegrityTest {
         assertNull(store.getStatus(AppGrant.CAMERA))
         assertFalse(store.isRequestedBefore(AppGrant.CAMERA))
         assertEquals(GrantStatus.DENIED, store.getStatus(AppGrant.LOCATION))
+    }
+
+    /**
+     * SEC-005: Infinite Rationale Loop Protection (GrantGroupHandler)
+     * Ensures that if an OS keeps returning DENIED for a group grant, we don't loop indefinitely.
+     */
+    @Test
+    fun `should prevent infinite rationale loop in GrantGroupHandler`() = runTest {
+        val manager = MultiGrantFakeManager().apply {
+            setStatus(AppGrant.CAMERA, GrantStatus.DENIED)
+            setRequestResult(AppGrant.CAMERA, GrantStatus.DENIED)
+        }
+        val group = GrantGroupHandler(manager, listOf(AppGrant.CAMERA), this)
+
+        // NOTE: Unlike the single GrantHandler (which skips the rationale on iOS via
+        // PlatformConfig.isRationaleSupported), GrantGroupHandler surfaces its app-level
+        // rationale on ALL platforms — that is the established group contract, exercised
+        // by GrantGroupHandlerTest and the integration tests. What the infinite-loop
+        // guard MUST ensure is that the SECOND denial escalates to the settings guide
+        // instead of re-showing the rationale forever.
+        group.request { }
+        advanceUntilIdle()
+        assertTrue(group.state.value.showRationale, "rationale is shown on the first denial")
+
+        group.onRationaleConfirmed()
+        advanceUntilIdle()
+        assertTrue(
+            group.state.value.showSettingsGuide,
+            "settings guide MUST show after the second denial — the rationale must NOT loop"
+        )
+        assertFalse(group.state.value.showRationale, "must not loop back to the rationale dialog")
     }
 }
