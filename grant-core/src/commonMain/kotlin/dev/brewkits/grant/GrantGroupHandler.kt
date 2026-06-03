@@ -121,6 +121,9 @@ class GrantGroupHandler(
     @kotlin.concurrent.Volatile
     private var currentSettingsMessages: Map<GrantPermission, String> = emptyMap()
 
+    @kotlin.concurrent.Volatile
+    private var shownRationaleGrants = mutableSetOf<GrantPermission>()
+
     private val requestMutex = Mutex()
 
     init {
@@ -297,6 +300,7 @@ class GrantGroupHandler(
     fun onDismiss() {
         if (!requestMutex.tryLock()) return
         try {
+            shownRationaleGrants.clear()
             resetState()
             onAllGrantedCallback = null
         } finally {
@@ -329,16 +333,30 @@ class GrantGroupHandler(
             }
 
             GrantStatus.NOT_DETERMINED, GrantStatus.DENIED -> {
-                _state.update {
-                    it.copy(
-                        isVisible        = true,
-                        currentGrant     = grant,
-                        showRationale    = true,
-                        showSettingsGuide = false,
-                        rationaleMessage = currentRationaleMessages[grant]
-                    )
+                if (shownRationaleGrants.contains(grant)) {
+                    _state.update {
+                        it.copy(
+                            isVisible        = true,
+                            currentGrant     = grant,
+                            showRationale    = false,
+                            showSettingsGuide = true,
+                            settingsMessage  = currentSettingsMessages[grant]
+                        )
+                    }
+                    false
+                } else {
+                    shownRationaleGrants.add(grant)
+                    _state.update {
+                        it.copy(
+                            isVisible        = true,
+                            currentGrant     = grant,
+                            showRationale    = true,
+                            showSettingsGuide = false,
+                            rationaleMessage = currentRationaleMessages[grant]
+                        )
+                    }
+                    false
                 }
-                false
             }
 
             GrantStatus.DENIED_ALWAYS -> {

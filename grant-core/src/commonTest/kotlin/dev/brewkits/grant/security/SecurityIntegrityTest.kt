@@ -43,13 +43,10 @@ class SecurityIntegrityTest {
             handler.request { }
             advanceUntilIdle()
             
+            // Second request skips rationale and goes straight to settings guide
             handler.request { }
             advanceUntilIdle()
-            assertTrue(handler.state.value.showRationale, "Rationale should be visible on Android after denial")
-            
-            handler.onRationaleConfirmed()
-            advanceUntilIdle()
-            assertFalse(handler.state.value.isVisible, "Dialog should hide after denial to prevent loop")
+            assertTrue(handler.state.value.showSettingsGuide, "Settings Guide should be visible on Android after denial")
         } else {
             // iOS-like logic: Rationale is NEVER shown
             handler.request { }

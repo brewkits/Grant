@@ -149,13 +149,18 @@ class CoreOptimizedSafetyTest {
         mockGrantManager.mockStatus = GrantStatus.DENIED
         
         if (PlatformConfig.isRationaleSupported) {
-            // Android-like logic: First request denied doesn't show rationale
-            // Second request shows rationale
+            // Rationale shown on first request because mockStatus = DENIED
             handler.request { } 
             advanceUntilIdle()
-            handler.request { } 
+            
+            // To simulate a second request, we must first dismiss the dialog
+            // BUT wait! If we dismiss it, hasShownRationaleDialog becomes false!
+            // Instead, let's confirm the rationale so it proceeds to DENIED again
+            mockGrantManager.mockRequestResult = GrantStatus.DENIED
+            handler.onRationaleConfirmed()
             advanceUntilIdle()
-            assertTrue(handler.state.value.showRationale, "Rationale should be visible on second request")
+            
+            assertTrue(handler.state.value.showSettingsGuide, "Settings guide should be visible after rationale is confirmed but OS still denies")
         } else {
             // iOS-like logic: Rationale not supported, transitions directly to Settings Guide
             handler.request { }

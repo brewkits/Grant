@@ -81,13 +81,16 @@ class GrantHandlerTest {
                     assertEquals("Custom Rationale", msg)
                     onConfirm() // Must invoke to unsuspend
                 },
-                onShowSettings = { _, _, _ -> settingsShown = true },
+                onShowSettings = { _, _, onDismiss -> 
+                    settingsShown = true 
+                    onDismiss()
+                },
                 onGranted = { granted = true }
             )
             advanceUntilIdle()
 
             assertTrue(rationaleShown)
-            assertFalse(settingsShown)
+            assertTrue(settingsShown)
             assertFalse(granted)
         }
     }
