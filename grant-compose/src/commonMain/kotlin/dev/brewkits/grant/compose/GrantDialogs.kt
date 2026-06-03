@@ -203,7 +203,7 @@ fun GrantAndServiceDialog(
                 ?: strings.serviceSettingsMessage,
             title = strings.serviceSettingsTitle,
             confirmText = strings.serviceSettingsConfirm,
-            dismissText = strings.settingsDismiss,
+            dismissText = strings.serviceSettingsDismiss,
             onConfirm = { handler.onServiceSettingsConfirmed() },
             onDismiss = { handler.onDismiss() }
         )

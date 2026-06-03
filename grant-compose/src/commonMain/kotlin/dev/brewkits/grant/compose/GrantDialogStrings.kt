@@ -1,6 +1,8 @@
 package dev.brewkits.grant.compose
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.staticCompositionLocalOf
 
@@ -9,20 +11,20 @@ import androidx.compose.runtime.staticCompositionLocalOf
  * [GrantAndServiceDialog].
  *
  * **The library ships English defaults as a last-resort fallback only.**
- * Host apps own the translation responsibility — set your own strings once at
- * the top of the composition tree via [GrantDialogStringsProvider] and every
- * `GrantDialog` call below it picks them up automatically.
+ * Host apps own the translation responsibility — set your strings once at the
+ * top of the composition tree via [GrantDialogStringsProvider] and every
+ * `GrantDialog` call in the subtree picks them up automatically.
  *
  * ```kotlin
  * // In your app theme / root composable — do this ONCE:
  * GrantDialogStringsProvider(
  *     strings = GrantDialogStrings(
- *         rationaleTitle   = stringResource(R.string.grant_rationale_title),
- *         rationaleConfirm = stringResource(R.string.grant_ok),
- *         rationaleDismiss = stringResource(R.string.grant_cancel),
- *         settingsTitle    = stringResource(R.string.grant_settings_title),
- *         settingsConfirm  = stringResource(R.string.grant_open_settings),
- *         settingsDismiss  = stringResource(R.string.grant_cancel),
+ *         rationaleTitle   = stringResource(Res.string.grant_rationale_title),
+ *         rationaleConfirm = stringResource(Res.string.grant_ok),
+ *         rationaleDismiss = stringResource(Res.string.grant_cancel),
+ *         settingsTitle    = stringResource(Res.string.grant_settings_title),
+ *         settingsConfirm  = stringResource(Res.string.grant_open_settings),
+ *         settingsDismiss  = stringResource(Res.string.grant_cancel),
  *     )
  * ) {
  *     // Every GrantDialog() call inside here uses the strings above.
@@ -33,6 +35,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
  * Individual call sites can still override a single dialog's text by passing
  * a `strings` parameter directly to [GrantDialog].
  */
+@Immutable
 data class GrantDialogStrings(
     val rationaleTitle: String = "Permission Required",
     val rationaleConfirm: String = "Continue",
@@ -42,7 +45,8 @@ data class GrantDialogStrings(
     val settingsDismiss: String = "Cancel",
     val serviceSettingsTitle: String = "Service Required",
     val serviceSettingsConfirm: String = "Enable Service",
-    /** Shown in the rationale dialog body when the caller does not supply a [dev.brewkits.grant.GrantHandler.request] rationaleMessage. */
+    val serviceSettingsDismiss: String = "Cancel",
+    /** Shown in the rationale dialog body when the caller does not supply a rationaleMessage. */
     val rationaleMessage: String = "This permission is needed for this feature to work properly.",
     /** Shown in the settings guide body when the caller does not supply a settingsMessage. */
     val settingsMessage: String = "This permission was denied. Please enable it in Settings.",
@@ -70,7 +74,7 @@ fun GrantDialogStringsProvider(
     strings: GrantDialogStrings,
     content: @Composable () -> Unit,
 ) {
-    androidx.compose.runtime.CompositionLocalProvider(
+    CompositionLocalProvider(
         LocalGrantDialogStrings provides strings,
         content = content,
     )
