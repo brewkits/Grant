@@ -165,19 +165,22 @@ class Issue41DoubleDenialSettingsTest {
         group.request(onAllGranted = { allGranted++ })
         advanceUntilIdle()
 
-        // First denial surfaces the rationale for the offending grant.
-        assertTrue(group.state.value.showRationale, "group must show the rationale on the first denial")
-        assertEquals(AppGrant.CAMERA, group.state.value.currentGrant)
-        assertFalse(group.state.value.showSettingsGuide)
+        if (PlatformConfig.isRationaleSupported) {
+            // Android: the first denial surfaces the rationale; confirming it and being
+            // denied again must escalate (not loop).
+            assertTrue(group.state.value.showRationale, "group must show the rationale on the first denial")
+            assertEquals(AppGrant.CAMERA, group.state.value.currentGrant)
+            assertFalse(group.state.value.showSettingsGuide)
 
-        // User taps "Continue"; the OS denies again.
-        group.onRationaleConfirmed()
-        advanceUntilIdle()
+            group.onRationaleConfirmed()
+            advanceUntilIdle()
+        }
 
-        // The bug: the group used to re-emit showRationale forever (infinite loop).
+        // Both platforms must END at the settings guide (iOS routes there directly),
+        // never re-emitting the rationale forever (the original infinite-loop bug).
         assertTrue(
             group.state.value.showSettingsGuide,
-            "group MUST escalate to the settings guide after the second denial (Issue #41)"
+            "group MUST show the settings guide (Issue #41 — no infinite rationale loop)"
         )
         assertFalse(group.state.value.showRationale, "group must NOT loop back to the rationale dialog")
         assertEquals(0, allGranted, "onAllGranted must not fire while a permission stays denied")

@@ -1,5 +1,7 @@
 package dev.brewkits.grant.integration
 
+import dev.brewkits.grant.PlatformConfig
+
 import app.cash.turbine.test
 import dev.brewkits.grant.AppGrant
 import dev.brewkits.grant.GrantGroupHandler
@@ -70,6 +72,7 @@ class GrantGroupHandlerIntegrationTest {
 
     @Test
     fun `Video recording flow Camera granted Microphone denied`() = runTest {
+        if (!PlatformConfig.isRationaleSupported) return@runTest  // group skips rationale on iOS
         // Setup: First request
         mockGrantManager.setStatus(AppGrant.CAMERA, GrantStatus.NOT_DETERMINED)
         mockGrantManager.setStatus(AppGrant.MICROPHONE, GrantStatus.NOT_DETERMINED)
@@ -198,6 +201,7 @@ class GrantGroupHandlerIntegrationTest {
 
     @Test
     fun `Complex flow Denial rationale re-request then grant`() = runTest {
+        if (!PlatformConfig.isRationaleSupported) return@runTest  // group skips rationale on iOS
         // Setup: Both not determined initially
         mockGrantManager.setStatus(AppGrant.CAMERA, GrantStatus.NOT_DETERMINED)
         mockGrantManager.setStatus(AppGrant.MICROPHONE, GrantStatus.NOT_DETERMINED)
@@ -349,6 +353,7 @@ class GrantGroupHandlerIntegrationTest {
 
     @Test
     fun `Dialog dismissal during multi-permission flow`() = runTest {
+        if (!PlatformConfig.isRationaleSupported) return@runTest  // group skips rationale on iOS
         mockGrantManager.setStatus(AppGrant.CAMERA, GrantStatus.DENIED)
         mockGrantManager.setStatus(AppGrant.MICROPHONE, GrantStatus.NOT_DETERMINED)
         mockGrantManager.setRequestResult(AppGrant.CAMERA, GrantStatus.DENIED)

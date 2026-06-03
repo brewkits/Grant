@@ -135,22 +135,26 @@ class SecurityIntegrityTest {
         }
         val group = GrantGroupHandler(manager, listOf(AppGrant.CAMERA), this)
 
-        // NOTE: Unlike the single GrantHandler (which skips the rationale on iOS via
-        // PlatformConfig.isRationaleSupported), GrantGroupHandler surfaces its app-level
-        // rationale on ALL platforms — that is the established group contract, exercised
-        // by GrantGroupHandlerTest and the integration tests. What the infinite-loop
-        // guard MUST ensure is that the SECOND denial escalates to the settings guide
-        // instead of re-showing the rationale forever.
-        group.request { }
-        advanceUntilIdle()
-        assertTrue(group.state.value.showRationale, "rationale is shown on the first denial")
+        if (PlatformConfig.isRationaleSupported) {
+            // Android: rationale on the first denial, then the settings guide after the
+            // second denial — the rationale must NOT loop forever (the #41 guard).
+            group.request { }
+            advanceUntilIdle()
+            assertTrue(group.state.value.showRationale, "rationale is shown on the first denial")
 
-        group.onRationaleConfirmed()
-        advanceUntilIdle()
-        assertTrue(
-            group.state.value.showSettingsGuide,
-            "settings guide MUST show after the second denial — the rationale must NOT loop"
-        )
-        assertFalse(group.state.value.showRationale, "must not loop back to the rationale dialog")
+            group.onRationaleConfirmed()
+            advanceUntilIdle()
+            assertTrue(
+                group.state.value.showSettingsGuide,
+                "settings guide MUST show after the second denial — the rationale must NOT loop"
+            )
+            assertFalse(group.state.value.showRationale, "must not loop back to the rationale dialog")
+        } else {
+            // iOS has no soft-denial rationale concept — straight to the settings guide.
+            group.request { }
+            advanceUntilIdle()
+            assertFalse(group.state.value.showRationale, "rationale is never shown on iOS")
+            assertTrue(group.state.value.showSettingsGuide, "settings guide shown immediately on iOS")
+        }
     }
 }

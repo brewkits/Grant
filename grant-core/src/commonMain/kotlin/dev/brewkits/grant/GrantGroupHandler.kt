@@ -333,7 +333,10 @@ class GrantGroupHandler(
             }
 
             GrantStatus.NOT_DETERMINED, GrantStatus.DENIED -> {
-                if (shownRationaleGrants.contains(grant)) {
+                // iOS has no soft-denial rationale concept (mirrors the single GrantHandler),
+                // or the rationale was already shown once on Android → escalate to the
+                // settings guide instead of (re-)showing the rationale.
+                if (!PlatformConfig.isRationaleSupported || shownRationaleGrants.contains(grant)) {
                     _state.update {
                         it.copy(
                             isVisible        = true,

@@ -241,6 +241,7 @@ class GrantGroupHandlerTest {
 
     @Test
     fun `request should stop on first denial and show rationale`() = runTest {
+        if (!PlatformConfig.isRationaleSupported) return@runTest  // group skips rationale on iOS
         mockGrantManager.setStatus(AppGrant.CAMERA, GrantStatus.DENIED)
         mockGrantManager.setStatus(AppGrant.MICROPHONE, GrantStatus.NOT_DETERMINED)
         mockGrantManager.setRequestResult(AppGrant.CAMERA, GrantStatus.DENIED)
@@ -325,6 +326,7 @@ class GrantGroupHandlerTest {
 
     @Test
     fun `onRationaleConfirmed should request current grant and continue flow if granted`() = runTest {
+        if (!PlatformConfig.isRationaleSupported) return@runTest  // group skips rationale on iOS
         mockGrantManager.setStatus(AppGrant.CAMERA, GrantStatus.DENIED)
         mockGrantManager.setStatus(AppGrant.MICROPHONE, GrantStatus.NOT_DETERMINED)
         mockGrantManager.setRequestResult(AppGrant.CAMERA, GrantStatus.DENIED)
@@ -485,6 +487,8 @@ class GrantGroupHandlerTest {
 
     @Test
     fun `request should use custom rationale messages per grant`() = runTest {
+        if (!PlatformConfig.isRationaleSupported) return@runTest  // group skips rationale on iOS
+
         mockGrantManager.setStatus(AppGrant.CAMERA, GrantStatus.DENIED)
         mockGrantManager.setStatus(AppGrant.MICROPHONE, GrantStatus.DENIED)
         mockGrantManager.setRequestResult(AppGrant.CAMERA, GrantStatus.DENIED)
@@ -553,6 +557,7 @@ class GrantGroupHandlerTest {
 
     @Test
     fun `three grants with middle one denied should show rationale for first denied`() = runTest {
+        if (!PlatformConfig.isRationaleSupported) return@runTest  // group skips rationale on iOS
         mockGrantManager.setStatus(AppGrant.CAMERA, GrantStatus.NOT_DETERMINED)
         mockGrantManager.setStatus(AppGrant.MICROPHONE, GrantStatus.NOT_DETERMINED)
         mockGrantManager.setStatus(AppGrant.LOCATION, GrantStatus.NOT_DETERMINED)
@@ -579,6 +584,7 @@ class GrantGroupHandlerTest {
     }
     @Test
     fun `three grants with middle one denied should continue flow after rationale confirmed`() = runTest {
+        if (!PlatformConfig.isRationaleSupported) return@runTest  // group skips rationale on iOS
         // Initial setup: Camera is granted, Mic and Location are denied initially
         mockGrantManager.setStatus(AppGrant.CAMERA, GrantStatus.NOT_DETERMINED)
         mockGrantManager.setStatus(AppGrant.MICROPHONE, GrantStatus.NOT_DETERMINED)
@@ -624,6 +630,7 @@ class GrantGroupHandlerTest {
 
     @Test
     fun `mixed DENIED and DENIED_ALWAYS in group should handle correctly`() = runTest {
+        if (!PlatformConfig.isRationaleSupported) return@runTest  // group skips rationale on iOS
         mockGrantManager.setStatus(AppGrant.CAMERA, GrantStatus.NOT_DETERMINED)
         mockGrantManager.setStatus(AppGrant.MICROPHONE, GrantStatus.NOT_DETERMINED)
         
