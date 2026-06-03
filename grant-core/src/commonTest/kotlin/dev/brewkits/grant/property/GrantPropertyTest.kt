@@ -5,6 +5,7 @@ import dev.brewkits.grant.fakes.FakeGrantManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
@@ -13,16 +14,20 @@ class GrantPropertyTest {
     @Test
     fun testGrantHandlerTermination() = runTest {
         val mockGrantManager = FakeGrantManager()
-        val testScope = CoroutineScope(StandardTestDispatcher())
-
         GrantStatus.values().forEach { status ->
             mockGrantManager.mockStatus = status
-            val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, testScope)
+            mockGrantManager.mockRequestResult = status
+            val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, this)
             
-            // Should not throw, should finish flow
-            handler.request { }
+            // Should finish flow and invoke callback if applicable
+            var callbackInvoked = false
+            handler.request { callbackInvoked = true }
             
-            assertTrue(true)
+            advanceUntilIdle()
+            
+            // Just assert it doesn't crash and status is updated correctly.
+            // onGranted might not be invoked for DENIED statuses.
+            kotlin.test.assertEquals(status, handler.status.value, "Handler status should match the mocked status")
         }
     }
 }

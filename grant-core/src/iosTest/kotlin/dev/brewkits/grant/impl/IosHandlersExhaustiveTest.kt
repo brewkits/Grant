@@ -26,17 +26,19 @@ class IosHandlersExhaustiveTest {
         val allAppGrants = AppGrant.values()
         
         allAppGrants.forEach { grant ->
-            // Skip NOTIFICATION in unit tests because UNUserNotificationCenter 
-            // throws NSInternalInconsistencyException when bundleProxyForCurrentProcess is nil.
             if (grant == AppGrant.NOTIFICATION) return@forEach
-
             try {
-                delegate.checkStatus(grant)
+                val status = delegate.checkStatus(grant)
+                assertNotNull(status, "Status for $grant should not be null")
             } catch (e: Exception) {
-                // Ignore other native crashes, we only care about Kotlin dispatch logic coverage
+                // Re-throw genuine crashes. Ignore specific simulator limits if absolutely necessary.
+                if (e.message?.contains("bundleProxyForCurrentProcess") == true) {
+                    // known simulator limitation for some framework calls
+                } else {
+                    throw e
+                }
             }
         }
-        assertTrue(true, "Successfully dispatched all AppGrants")
     }
 
     @Test
@@ -51,33 +53,41 @@ class IosHandlersExhaustiveTest {
             AppGrant.CALENDAR,
             AppGrant.MOTION,
             AppGrant.BLUETOOTH
-            // AppGrant.NOTIFICATION excluded here as well
         )
 
         targetGrants.forEach { grant ->
             try {
-                delegate.checkStatus(grant)
+                val status = delegate.checkStatus(grant)
+                assertNotNull(status, "Status for $grant should not be null")
             } catch (e: Exception) {
-                // Logic coverage achieved even if native call fails
+                if (e.message?.contains("bundleProxyForCurrentProcess") != true) {
+                    throw e
+                }
             }
         }
     }
 
     @Test
     fun testGalleryVariants() = runTest {
-        delegate.checkStatus(AppGrant.GALLERY_IMAGES_ONLY)
-        delegate.checkStatus(AppGrant.GALLERY_VIDEO_ONLY)
-        delegate.checkStatus(AppGrant.STORAGE)
+        assertNotNull(delegate.checkStatus(AppGrant.GALLERY_IMAGES_ONLY))
+        assertNotNull(delegate.checkStatus(AppGrant.GALLERY_VIDEO_ONLY))
+        assertNotNull(delegate.checkStatus(AppGrant.STORAGE))
     }
 
     @Test
     fun testBluetoothVariants() = runTest {
-        delegate.checkStatus(AppGrant.BLUETOOTH_ADVERTISE)
+        assertNotNull(delegate.checkStatus(AppGrant.BLUETOOTH_ADVERTISE))
     }
 
     @Test
     fun testContactsAndCalendarVariants() = runTest {
-        delegate.checkStatus(AppGrant.READ_CONTACTS)
-        delegate.checkStatus(AppGrant.READ_CALENDAR)
+        try {
+            assertNotNull(delegate.checkStatus(AppGrant.READ_CONTACTS))
+            assertNotNull(delegate.checkStatus(AppGrant.READ_CALENDAR))
+        } catch (e: Exception) {
+             if (e.message?.contains("bundleProxyForCurrentProcess") != true) {
+                throw e
+            }
+        }
     }
 }

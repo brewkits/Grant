@@ -396,10 +396,13 @@ class IosGrantDelegateTest {
 
     @Test
     fun `checkStatus followed immediately by request does not deadlock`() = kotlinx.coroutines.test.runTest {
-        withTimeout(5_000L) {
-            delegate.checkStatus(AppGrant.SCHEDULE_EXACT_ALARM)
-            delegate.request(AppGrant.SCHEDULE_EXACT_ALARM)
-            delegate.checkStatus(AppGrant.SCHEDULE_EXACT_ALARM)
+        val results = withTimeout(5_000L) {
+            val status1 = delegate.checkStatus(AppGrant.SCHEDULE_EXACT_ALARM)
+            val reqStatus = delegate.request(AppGrant.SCHEDULE_EXACT_ALARM)
+            val status2 = delegate.checkStatus(AppGrant.SCHEDULE_EXACT_ALARM)
+            listOf(status1, reqStatus, status2)
         }
+        assertEquals(3, results.size, "Should complete all operations")
+        assertTrue(results.all { it == GrantStatus.GRANTED }, "SCHEDULE_EXACT_ALARM should return GRANTED")
     }
 }

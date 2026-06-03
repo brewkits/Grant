@@ -52,7 +52,7 @@ class PlatformCacheTest {
         // This call should be a fresh hit (though we can't easily measure hit count, 
         // we verify it still works correctly after expiration)
         val statusAfterExp = delegate.checkStatus(AppGrant.CAMERA)
-        // No crash and returns valid status
-        assertTrue(true)
+        org.junit.Assert.assertNotNull("Status after expiration should not be null", statusAfterExp)
+        org.junit.Assert.assertEquals("Status should remain consistent after expiration", status1, statusAfterExp)
     }
 }
