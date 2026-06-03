@@ -30,6 +30,16 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import dev.brewkits.grant.GrantAndServiceHandler
 import dev.brewkits.grant.GrantGroupHandler
 import dev.brewkits.grant.GrantHandler
+import dev.brewkits.grant_compose.generated.resources.Res
+import dev.brewkits.grant_compose.generated.resources.grant_rationale_confirm
+import dev.brewkits.grant_compose.generated.resources.grant_rationale_dismiss
+import dev.brewkits.grant_compose.generated.resources.grant_rationale_title
+import dev.brewkits.grant_compose.generated.resources.grant_service_settings_confirm
+import dev.brewkits.grant_compose.generated.resources.grant_service_settings_title
+import dev.brewkits.grant_compose.generated.resources.grant_settings_confirm
+import dev.brewkits.grant_compose.generated.resources.grant_settings_dismiss
+import dev.brewkits.grant_compose.generated.resources.grant_settings_title
+import org.jetbrains.compose.resources.stringResource
 
 private enum class DialogKind { None, Rationale, Settings }
 private enum class ServiceDialogKind { None, Rationale, PermissionSettings, ServiceSettings }
@@ -45,12 +55,12 @@ private enum class ServiceDialogKind { None, Rationale, PermissionSettings, Serv
 @Composable
 fun GrantDialog(
     handler: GrantHandler,
-    rationaleTitle: String = "Permission Required",
-    rationaleConfirm: String = "Continue",
-    rationaleDismiss: String = "Cancel",
-    settingsTitle: String = "Permission Denied",
-    settingsConfirm: String = "Open Settings",
-    settingsDismiss: String = "Cancel"
+    rationaleTitle: String = stringResource(Res.string.grant_rationale_title),
+    rationaleConfirm: String = stringResource(Res.string.grant_rationale_confirm),
+    rationaleDismiss: String = stringResource(Res.string.grant_rationale_dismiss),
+    settingsTitle: String = stringResource(Res.string.grant_settings_title),
+    settingsConfirm: String = stringResource(Res.string.grant_settings_confirm),
+    settingsDismiss: String = stringResource(Res.string.grant_settings_dismiss)
 ) {
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         handler.refreshStatus()
@@ -101,12 +111,12 @@ fun GrantDialog(
 @Composable
 fun GrantGroupDialog(
     handler: GrantGroupHandler,
-    rationaleTitle: String = "Permission Required",
-    rationaleConfirm: String = "Continue",
-    rationaleDismiss: String = "Cancel",
-    settingsTitle: String = "Permission Denied",
-    settingsConfirm: String = "Open Settings",
-    settingsDismiss: String = "Cancel"
+    rationaleTitle: String = stringResource(Res.string.grant_rationale_title),
+    rationaleConfirm: String = stringResource(Res.string.grant_rationale_confirm),
+    rationaleDismiss: String = stringResource(Res.string.grant_rationale_dismiss),
+    settingsTitle: String = stringResource(Res.string.grant_settings_title),
+    settingsConfirm: String = stringResource(Res.string.grant_settings_confirm),
+    settingsDismiss: String = stringResource(Res.string.grant_settings_dismiss)
 ) {
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         handler.refreshAllStatuses()
@@ -156,14 +166,14 @@ fun GrantGroupDialog(
 @Composable
 fun GrantAndServiceDialog(
     handler: GrantAndServiceHandler,
-    rationaleTitle: String = "Permission Required",
-    rationaleConfirm: String = "Continue",
-    rationaleDismiss: String = "Cancel",
-    permissionSettingsTitle: String = "Permission Denied",
-    permissionSettingsConfirm: String = "Open Settings",
-    serviceSettingsTitle: String = "Service Required",
-    serviceSettingsConfirm: String = "Enable Service",
-    dismissText: String = "Cancel"
+    rationaleTitle: String = stringResource(Res.string.grant_rationale_title),
+    rationaleConfirm: String = stringResource(Res.string.grant_rationale_confirm),
+    rationaleDismiss: String = stringResource(Res.string.grant_rationale_dismiss),
+    permissionSettingsTitle: String = stringResource(Res.string.grant_settings_title),
+    permissionSettingsConfirm: String = stringResource(Res.string.grant_settings_confirm),
+    serviceSettingsTitle: String = stringResource(Res.string.grant_service_settings_title),
+    serviceSettingsConfirm: String = stringResource(Res.string.grant_service_settings_confirm),
+    dismissText: String = stringResource(Res.string.grant_rationale_dismiss)
 ) {
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         handler.refreshStatus()

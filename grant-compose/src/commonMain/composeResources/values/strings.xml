@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Rationale dialog -->
+    <string name="grant_rationale_title">Permission Required</string>
+    <string name="grant_rationale_confirm">Continue</string>
+    <string name="grant_rationale_dismiss">Cancel</string>
+
+    <!-- Settings guide dialog -->
+    <string name="grant_settings_title">Permission Denied</string>
+    <string name="grant_settings_confirm">Open Settings</string>
+    <string name="grant_settings_dismiss">Cancel</string>
+
+    <!-- GrantAndServiceDialog extras -->
+    <string name="grant_service_settings_title">Service Required</string>
+    <string name="grant_service_settings_confirm">Enable Service</string>
+</resources>
