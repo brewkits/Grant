@@ -293,8 +293,8 @@ class GrantHandler(
                 this@GrantHandler.onGrantedCallback = onGranted
                 val currentStatus = grantManager.checkStatus(grant)
                 _status.value = currentStatus
-                eventListener?.onRequested(grant, currentStatus)  // after checkStatus: carries initial status for richer context
-                handleStatus(currentStatus, rationaleMessage, settingsMessage)
+                eventListener?.onRequested(grant, currentStatus)
+                handleStatus(currentStatus, UiStrategy.StateBased(rationaleMessage, settingsMessage))
             } catch (e: CancellationException) {
                 clearCallbacks()
                 throw e
@@ -333,7 +333,7 @@ class GrantHandler(
                 val currentStatus = grantManager.checkStatus(grant)
                 _status.value = currentStatus
                 eventListener?.onRequested(grant, currentStatus)
-                handleStatus(currentStatus, rationaleMessage, settingsMessage)
+                handleStatus(currentStatus, UiStrategy.StateBased(rationaleMessage, settingsMessage))
             } catch (e: CancellationException) {
                 clearCallbacks()
                 throw e
@@ -378,7 +378,7 @@ class GrantHandler(
                 resetState()
                 val newStatus = grantManager.request(grant)
                 _status.value = newStatus
-                handleStatus(newStatus, currentRationaleMsg, currentSettingsMsg, isFirstRequest = true)
+                handleStatus(newStatus, UiStrategy.StateBased(currentRationaleMsg, currentSettingsMsg), isFirstRequest = true)
             } catch (e: Exception) {
                 clearCallbacks()
             } finally {
@@ -509,12 +509,9 @@ class GrantHandler(
                 val currentStatus = grantManager.checkStatus(grant)
                 _status.value = currentStatus
                 eventListener?.onRequested(grant, currentStatus)
-                handleStatusWithCustomUi(
+                handleStatus(
                     status = currentStatus,
-                    rationaleMessage = rationaleMessage,
-                    settingsMessage = settingsMessage,
-                    onShowRationale = onShowRationale,
-                    onShowSettings = onShowSettings
+                    ui = UiStrategy.CustomUi(rationaleMessage, settingsMessage, onShowRationale, onShowSettings),
                 )
             } finally {
                 clearCallbacks()
@@ -523,17 +520,57 @@ class GrantHandler(
         }
     }
 
+    /**
+     * Describes how the flow surfaces UI to the user.
+     *
+     * [StateBased] updates [GrantUiState] and exits the state machine — the Compose
+     * layer observes the state and the flow resumes via [onRationaleConfirmed] /
+     * [onSettingsConfirmed]. [CustomUi] invokes caller-supplied callbacks and suspends
+     * inside the same coroutine until the user responds.
+     */
+    private sealed class UiStrategy {
+        abstract val rationaleMessage: String?
+        abstract val settingsMessage: String?
+
+        data class StateBased(
+            override val rationaleMessage: String?,
+            override val settingsMessage: String?,
+        ) : UiStrategy()
+
+        data class CustomUi(
+            override val rationaleMessage: String?,
+            override val settingsMessage: String?,
+            val onShowRationale: (message: String, onConfirm: () -> Unit, onDismiss: () -> Unit) -> Unit,
+            val onShowSettings: (message: String, onConfirm: () -> Unit, onDismiss: () -> Unit) -> Unit,
+        ) : UiStrategy()
+    }
+
     private sealed class FlowState {
         data class Check(val isFirstRequest: Boolean = false) : FlowState()
         data class HandleResult(val status: GrantStatus, val isFirstRequest: Boolean = false) : FlowState()
         object Done : FlowState()
     }
 
+    /**
+     * Unified state machine for all request paths.
+     *
+     * The only behavioural difference between [UiStrategy.StateBased] and
+     * [UiStrategy.CustomUi] is how rationale and settings dialogs are presented:
+     *
+     * - **StateBased**: emits [GrantUiState] changes and sets [FlowState.Done]; the
+     *   Compose layer shows the dialog and restarts the flow via [onRationaleConfirmed]
+     *   or [onSettingsConfirmed].
+     * - **CustomUi**: invokes the caller-supplied lambda and suspends until the user
+     *   responds within the same coroutine; the flow never exits mid-dialog.
+     *
+     * All other transitions (GRANTED, PARTIAL_GRANTED, NOT_DETERMINED, BUSY, the
+     * [hasShownRationaleDialog] guard, and all [GrantEventListener] emissions) are
+     * identical for both strategies.
+     */
     private suspend fun handleStatus(
         status: GrantStatus,
-        rationaleMessage: String?,
-        settingsMessage: String?,
-        isFirstRequest: Boolean = false
+        ui: UiStrategy,
+        isFirstRequest: Boolean = false,
     ) {
         var currentState: FlowState = FlowState.HandleResult(status, isFirstRequest)
 
@@ -542,13 +579,12 @@ class GrantHandler(
                 is FlowState.Check -> {
                     val result = grantManager.request(grant)
                     _status.value = result
-                    
-                    if (result != GrantStatus.NOT_DETERMINED) {
-                        currentState = FlowState.HandleResult(result, isFirstRequest = true)
-                    } else {
-                        currentState = FlowState.HandleResult(GrantStatus.DENIED, isFirstRequest = state.isFirstRequest)
-                    }
+                    currentState = if (result != GrantStatus.NOT_DETERMINED)
+                        FlowState.HandleResult(result, isFirstRequest = true)
+                    else
+                        FlowState.HandleResult(GrantStatus.DENIED, isFirstRequest = state.isFirstRequest)
                 }
+
                 is FlowState.HandleResult -> {
                     when (state.status) {
                         GrantStatus.GRANTED -> {
@@ -562,16 +598,15 @@ class GrantHandler(
                         }
                         GrantStatus.PARTIAL_GRANTED -> {
                             if (grant.requiresBackgroundUpgrade) {
-                                if (state.isFirstRequest) {
-                                    // Landed here after an OS dialog interaction in this flow.
-                                    // The user must have denied the background step, so jump
-                                    // straight to the settings guide.
-                                    currentState = FlowState.HandleResult(GrantStatus.DENIED_ALWAYS, isFirstRequest = false)
-                                } else {
-                                    // Flow just started, and we are currently PARTIAL.
+                                // Landed here after an OS dialog interaction in this flow.
+                                // The user must have denied the background step, so jump
+                                // straight to the settings guide.
+                                currentState = if (state.isFirstRequest)
+                                    FlowState.HandleResult(GrantStatus.DENIED_ALWAYS, isFirstRequest = false)
+                                else
+                                    // Flow just started and we are currently PARTIAL.
                                     // Trigger an OS request to attempt background upgrade.
-                                    currentState = FlowState.Check(isFirstRequest = false)
-                                }
+                                    FlowState.Check(isFirstRequest = false)
                             } else {
                                 resetState()
                                 hasShownRationaleDialog = false
@@ -592,59 +627,109 @@ class GrantHandler(
                         }
                         GrantStatus.DENIED -> {
                             if (!PlatformConfig.isRationaleSupported) {
+                                // iOS has no soft-denial concept — route straight to the settings guide.
                                 currentState = FlowState.HandleResult(GrantStatus.DENIED_ALWAYS, state.isFirstRequest)
-                            } else {
-                                if (state.isFirstRequest) {
-                                    if (hasShownRationaleDialog) {
-                                        currentState = FlowState.HandleResult(GrantStatus.DENIED_ALWAYS, isFirstRequest = true)
-                                    } else {
-                                        eventListener?.onDenied(grant, GrantStatus.DENIED)
-                                        resetState()
-                                        clearCallbacks()
-                                        currentState = FlowState.Done
-                                    }
+                            } else if (state.isFirstRequest) {
+                                if (hasShownRationaleDialog) {
+                                    currentState = FlowState.HandleResult(GrantStatus.DENIED_ALWAYS, isFirstRequest = true)
                                 } else {
-                                    if (hasShownRationaleDialog) {
-                                        currentState = FlowState.HandleResult(GrantStatus.DENIED_ALWAYS, isFirstRequest = false)
-                                    } else {
-                                        hasShownRationaleDialog = true
-                                        eventListener?.onRationaleShown(grant)
-                                        updateState {
-                                            it.copy(
-                                                isVisible = true,
-                                                showRationale = true,
-                                                showSettingsGuide = false,
-                                                rationaleMessage = rationaleMessage,
-                                                settingsMessage = settingsMessage
-                                            )
+                                    eventListener?.onDenied(grant, GrantStatus.DENIED)
+                                    resetState()
+                                    clearCallbacks()
+                                    currentState = FlowState.Done
+                                }
+                            } else {
+                                if (hasShownRationaleDialog) {
+                                    currentState = FlowState.HandleResult(GrantStatus.DENIED_ALWAYS, isFirstRequest = false)
+                                } else {
+                                    hasShownRationaleDialog = true
+                                    eventListener?.onRationaleShown(grant)
+                                    when (ui) {
+                                        is UiStrategy.StateBased -> {
+                                            // Show state; flow exits — resumed by onRationaleConfirmed().
+                                            updateState {
+                                                it.copy(
+                                                    isVisible = true,
+                                                    showRationale = true,
+                                                    showSettingsGuide = false,
+                                                    rationaleMessage = ui.rationaleMessage,
+                                                    settingsMessage = ui.settingsMessage,
+                                                )
+                                            }
+                                            currentState = FlowState.Done
                                         }
-                                        currentState = FlowState.Done
+                                        is UiStrategy.CustomUi -> {
+                                            val message = ui.rationaleMessage ?: "This grant is required for this feature to work."
+                                            val confirmed = suspendCancellableCoroutine { cont ->
+                                                ui.onShowRationale(
+                                                    message,
+                                                    { if (cont.isActive) cont.resume(true) },
+                                                    { if (cont.isActive) cont.resume(false) },
+                                                )
+                                            }
+                                            if (confirmed) {
+                                                val newStatus = grantManager.request(grant)
+                                                _status.value = newStatus
+                                                currentState = FlowState.HandleResult(newStatus, isFirstRequest = true)
+                                            } else {
+                                                clearCallbacks()
+                                                currentState = FlowState.Done
+                                            }
+                                        }
                                     }
                                 }
                             }
                         }
                         GrantStatus.DENIED_ALWAYS -> {
-                            val shouldShowSettingsGuide = hasShownRationaleDialog || !state.isFirstRequest
-                            if (shouldShowSettingsGuide) {
-                                eventListener?.onSettingsGuideShown(grant)
-                                updateState {
-                                    it.copy(
-                                        isVisible = true,
-                                        showRationale = false,
-                                        showSettingsGuide = true,
-                                        rationaleMessage = rationaleMessage,
-                                        settingsMessage = settingsMessage
-                                    )
+                            when (ui) {
+                                is UiStrategy.StateBased -> {
+                                    // Only show the settings guide if the user has already seen the rationale
+                                    // or this is not the very first request — avoids a dialog on cold-start
+                                    // when the user has previously permanently denied the permission.
+                                    val shouldShow = hasShownRationaleDialog || !state.isFirstRequest
+                                    if (shouldShow) {
+                                        eventListener?.onSettingsGuideShown(grant)
+                                        updateState {
+                                            it.copy(
+                                                isVisible = true,
+                                                showRationale = false,
+                                                showSettingsGuide = true,
+                                                rationaleMessage = ui.rationaleMessage,
+                                                settingsMessage = ui.settingsMessage,
+                                            )
+                                        }
+                                        // Flow exits; resumed by onSettingsConfirmed() or refreshStatus().
+                                    } else {
+                                        eventListener?.onDenied(grant, GrantStatus.DENIED_ALWAYS)
+                                        resetState()
+                                        clearCallbacks()
+                                    }
+                                    currentState = FlowState.Done
                                 }
-                            } else {
-                                eventListener?.onDenied(grant, GrantStatus.DENIED_ALWAYS)
-                                resetState()
-                                clearCallbacks()
+                                is UiStrategy.CustomUi -> {
+                                    // Custom-UI always shows the settings guide so the caller's
+                                    // callback has a chance to present UI regardless of history.
+                                    eventListener?.onSettingsGuideShown(grant)
+                                    val message = ui.settingsMessage ?: "Grant denied. Please enable it in Settings."
+                                    val confirmed = suspendCancellableCoroutine { cont ->
+                                        ui.onShowSettings(
+                                            message,
+                                            { if (cont.isActive) cont.resume(true) },
+                                            { if (cont.isActive) cont.resume(false) },
+                                        )
+                                    }
+                                    if (confirmed) {
+                                        eventListener?.onSettingsOpened(grant)
+                                        grantManager.openSettings()
+                                    }
+                                    clearCallbacks()
+                                    currentState = FlowState.Done
+                                }
                             }
-                            currentState = FlowState.Done
                         }
                     }
                 }
+
                 else -> {}
             }
         }
@@ -663,8 +748,8 @@ class GrantHandler(
         _state.update(block)
         val newState = _state.value
 
-        // Optimization: Only save to delegate if visible state changed
-        // We only care about persisting visibility and dialog types for process death
+        // Optimization: Only save to delegate if visible state changed.
+        // We only care about persisting visibility and dialog types for process death.
         if (oldState.isVisible != newState.isVisible ||
             oldState.showRationale != newState.showRationale ||
             oldState.showSettingsGuide != newState.showSettingsGuide ||
@@ -674,125 +759,17 @@ class GrantHandler(
             savedStateDelegate.saveState(KEY_IS_VISIBLE, newState.isVisible.toString())
             savedStateDelegate.saveState(KEY_SHOW_RATIONALE, newState.showRationale.toString())
             savedStateDelegate.saveState(KEY_SHOW_SETTINGS, newState.showSettingsGuide.toString())
-            
+
             if (newState.rationaleMessage != null) {
                 savedStateDelegate.saveState(KEY_RATIONALE_MSG, newState.rationaleMessage)
             } else {
                 savedStateDelegate.clear(KEY_RATIONALE_MSG)
             }
-            
+
             if (newState.settingsMessage != null) {
                 savedStateDelegate.saveState(KEY_SETTINGS_MSG, newState.settingsMessage)
             } else {
                 savedStateDelegate.clear(KEY_SETTINGS_MSG)
-            }
-        }
-    }
-
-    private suspend fun handleStatusWithCustomUi(
-        status: GrantStatus,
-        rationaleMessage: String?,
-        settingsMessage: String?,
-        onShowRationale: (message: String, onConfirm: () -> Unit, onDismiss: () -> Unit) -> Unit,
-        onShowSettings: (message: String, onConfirm: () -> Unit, onDismiss: () -> Unit) -> Unit,
-        isFirstRequest: Boolean = false
-    ) {
-        var currentState: FlowState = FlowState.HandleResult(status, isFirstRequest)
-
-        while (currentState !is FlowState.Done) {
-            when (val state = currentState) {
-                is FlowState.Check -> {
-                    val result = grantManager.request(grant)
-                    _status.value = result
-                    
-                    if (result != GrantStatus.NOT_DETERMINED) {
-                        currentState = FlowState.HandleResult(result, isFirstRequest = true)
-                    } else {
-                        currentState = FlowState.HandleResult(GrantStatus.DENIED, isFirstRequest = state.isFirstRequest)
-                    }
-                }
-                is FlowState.HandleResult -> {
-                    when (state.status) {
-                        GrantStatus.GRANTED -> {
-                            _grantedEvents.tryEmit(Unit)
-                            onGrantedCallback?.invoke(state.status)
-                            clearCallbacks(state.status)
-                            currentState = FlowState.Done
-                        }
-                        GrantStatus.PARTIAL_GRANTED -> {
-                            if (grant.requiresBackgroundUpgrade) {
-                                if (state.isFirstRequest) {
-                                    currentState = FlowState.HandleResult(GrantStatus.DENIED_ALWAYS, isFirstRequest = false)
-                                } else {
-                                    currentState = FlowState.Check(isFirstRequest = false)
-                                }
-                            } else {
-                                _grantedEvents.tryEmit(Unit)
-                                onGrantedCallback?.invoke(state.status)
-                                clearCallbacks(state.status)
-                                currentState = FlowState.Done
-                            }
-                        }
-                        GrantStatus.NOT_DETERMINED -> {
-                            currentState = FlowState.Check(isFirstRequest = state.isFirstRequest)
-                        }
-                        GrantStatus.BUSY -> {
-                            clearCallbacks()
-                            currentState = FlowState.Done
-                        }
-                        GrantStatus.DENIED -> {
-                            if (!PlatformConfig.isRationaleSupported) {
-                                // iOS has no soft-denial rationale concept — route straight to the
-                                // settings guidance, mirroring the state-based handleStatus() branch.
-                                currentState = FlowState.HandleResult(GrantStatus.DENIED_ALWAYS, state.isFirstRequest)
-                            } else if (state.isFirstRequest) {
-                                if (hasShownRationaleDialog) {
-                                    currentState = FlowState.HandleResult(GrantStatus.DENIED_ALWAYS, isFirstRequest = true)
-                                } else {
-                                    clearCallbacks()
-                                    currentState = FlowState.Done
-                                }
-                            } else {
-                                if (hasShownRationaleDialog) {
-                                    currentState = FlowState.HandleResult(GrantStatus.DENIED_ALWAYS, isFirstRequest = false)
-                                } else {
-                                    hasShownRationaleDialog = true
-                                    val message = rationaleMessage ?: "This grant is required for this feature to work."
-                                    val confirmed = suspendCancellableCoroutine<Boolean> { cont ->
-                                        val onConfirm: () -> Unit = { if (cont.isActive) cont.resume(true) }
-                                        val onDismiss: () -> Unit = { if (cont.isActive) cont.resume(false) }
-                                        onShowRationale(message, onConfirm, onDismiss)
-                                    }
-                                    
-                                    if (confirmed) {
-                                        val newStatus = grantManager.request(grant)
-                                        _status.value = newStatus
-                                        refreshStatus()
-                                        currentState = FlowState.HandleResult(newStatus, isFirstRequest = true)
-                                    } else {
-                                        clearCallbacks()
-                                        currentState = FlowState.Done
-                                    }
-                                }
-                            }
-                        }
-                        GrantStatus.DENIED_ALWAYS -> {
-                            val message = settingsMessage ?: "Grant denied. Please enable it in Settings."
-                            val confirmed = suspendCancellableCoroutine<Boolean> { cont ->
-                                val onConfirm: () -> Unit = { if (cont.isActive) cont.resume(true) }
-                                val onDismiss: () -> Unit = { if (cont.isActive) cont.resume(false) }
-                                onShowSettings(message, onConfirm, onDismiss)
-                            }
-
-                            if (confirmed) {
-                                grantManager.openSettings()
-                            }
-                            clearCallbacks()
-                            currentState = FlowState.Done
-                        }
-                    }
-                }
-                else -> {}
             }
         }
     }
