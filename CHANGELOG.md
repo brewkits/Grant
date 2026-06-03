@@ -8,55 +8,118 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [2.1.0] - 2026-06-03
 
-### Breaking Changes
+### ⚠️ Breaking Changes (Compose UI layer only)
 
-- **iOS framework isolation** — Contacts, Calendar, and Motion permissions are now opt-in modules. Apps that request these permissions on iOS must add the corresponding artifact and call `initialize()` once at startup. Android behavior is unchanged.
+- **`GrantDialog` / `GrantGroupDialog` / `GrantAndServiceDialog` — string params replaced by `GrantDialogStrings`**
+  The six individual `String` parameters on each dialog composable (`rationaleTitle`, `rationaleConfirm`, `rationaleDismiss`, `settingsTitle`, `settingsConfirm`, `settingsDismiss`) have been replaced by a single `strings: GrantDialogStrings` parameter. See the [migration guide](docs/MIGRATION_GUIDE.md#upgrading-from-2x-to-21x) for the one-time callsite update.
+
+- **`IosPermissionHandler` renamed to `PermissionHandler`** *(iOS custom handler authors only)*
+  The interface used to implement custom `RawPermission` handlers on iOS has been renamed from `IosPermissionHandler` to `PermissionHandler`. `IosPermissionHandlerRegistry` retains its name. Affects only apps that implemented their own handler classes — update the `implements` clause from `IosPermissionHandler` to `PermissionHandler`.
+
+### ✨ New: `GrantEventListener` — Permission Funnel Analytics
+
+Attach an optional listener to any handler to observe the full permission flow lifecycle. Zero overhead when not used (null by default).
+
+```kotlin
+val cameraGrant = GrantHandler(
+    grantManager  = grantManager,
+    grant         = AppGrant.CAMERA,
+    scope         = viewModelScope,
+    eventListener = object : GrantEventListener {
+        override fun onRequested(grant: GrantPermission, status: GrantStatus) {
+            analytics.track("perm_requested", mapOf("grant" to grant.identifier, "initial_status" to status.name))
+        }
+        override fun onGranted(grant: GrantPermission, status: GrantStatus) {
+            analytics.track("perm_granted")
+        }
+        override fun onDenied(grant: GrantPermission, status: GrantStatus) {
+            analytics.track("perm_denied", mapOf("permanent" to (status == GrantStatus.DENIED_ALWAYS)))
+        }
+        override fun onRationaleShown(grant: GrantPermission) { analytics.track("perm_rationale_shown") }
+        override fun onSettingsGuideShown(grant: GrantPermission) { analytics.track("perm_settings_guide_shown") }
+        override fun onSettingsOpened(grant: GrantPermission) { analytics.track("perm_settings_opened") }
+    }
+)
+```
+
+All six callbacks have default no-op bodies — implement only what you need. `GrantGroupHandler` and `GrantAndServiceHandler` also accept `eventListener`.
+
+### ✨ New: `GrantDialogStrings` — i18n via CompositionLocal
+
+Replace per-callsite string overrides with a single app-level provider. The library now ships English as a last-resort fallback only; translation is the host app's responsibility.
+
+```kotlin
+// Set once in your app theme / root composable
+GrantDialogStringsProvider(
+    GrantDialogStrings(
+        rationaleTitle   = stringResource(R.string.grant_rationale_title),
+        rationaleConfirm = stringResource(R.string.grant_ok),
+        rationaleDismiss = stringResource(R.string.grant_cancel),
+        settingsTitle    = stringResource(R.string.grant_settings_title),
+        settingsConfirm  = stringResource(R.string.grant_open_settings),
+        settingsDismiss  = stringResource(R.string.grant_cancel),
+        // Body fallbacks — shown when caller omits rationaleMessage / settingsMessage
+        rationaleMessage = stringResource(R.string.grant_rationale_body),
+        settingsMessage  = stringResource(R.string.grant_settings_body),
+    )
+) {
+    MyAppContent()
+}
+
+// Every GrantDialog() below this point picks up the strings above — zero boilerplate.
+GrantDialog(handler = viewModel.cameraGrant)
+```
+
+### 🐛 Bug Fixes
+
+- **Issue #41 — Double-denial dead-end (Android)**: After denying a permission twice, the rationale dialog's "Continue" button appeared to do nothing. The OS returns `DENIED` (not `DENIED_ALWAYS`) when re-requesting a blocked permission. Both `GrantHandler` and `GrantGroupHandler` now escalate to the settings guide when the OS returns `DENIED` after a rationale has already been shown. `GrantGroupHandler` no longer loops the rationale infinitely. ([regression test](grant-core/src/commonTest/kotlin/dev/brewkits/grant/regression/Issue41DoubleDenialSettingsTest.kt))
+
+- **Issue #33 follow-up — `LOCATION_ALWAYS` PARTIAL stuck on `refreshStatus`**: `GrantDialog` calls `refreshStatus()` on every `ON_RESUME`. For `LOCATION_ALWAYS`, after the user granted foreground but denied background, returning to the app caused `refreshStatus()` to treat `PARTIAL_GRANTED` as success and fire `onGranted` — a false positive. `PARTIAL_GRANTED` is now correctly treated as unsatisfied for permissions that require a background upgrade. ([regression test](grant-core/src/commonTest/kotlin/dev/brewkits/grant/regression/Issue33RefreshStatusPartialTest.kt))
+
+- **iOS — `requestWithCustomUi` missing events**: The custom-UI flow was not emitting `GrantEventListener` events (`onGranted`, `onDenied`, `onRationaleShown`, `onSettingsGuideShown`). Also fixed missing `resetState()` and `hasShownRationaleDialog = false` in the `GRANTED`/`PARTIAL_GRANTED` branches, and removed a spurious `refreshStatus()` call after re-requesting through the custom-UI rationale path.
+
+- **iOS — rationale skipped for `GrantGroupHandler` on iOS**: `GrantGroupHandler` was showing its app-level rationale on all platforms, inconsistent with `GrantHandler` which already gates rationale on `PlatformConfig.isRationaleSupported`. Group handler now routes directly to the settings guide on iOS.
+
+- **iOS — spurious `requestWhenInUseAuthorization()` before `requestAlwaysAuthorization()`**: On iOS 15+, calling `requestAlwaysAuthorization()` directly shows the correct dialog. The prior pre-call to `requestWhenInUseAuthorization()` was synchronous but resolved asynchronously, causing the Always dialog to fire before the WhenInUse dialog closed — resulting in flicker or instant-dismiss on older devices.
+
+- **iOS Contacts — `CNAuthorizationStatusLimited` magic literal**: The iOS 18 Contacts partial access status was matched with the magic literal `4L`. Replaced with the proper named constant `CNAuthorizationStatusLimited` (available in Kotlin/Native interop since iOS 18.0).
+
+### ♻️ Internal Refactoring
+
+- **Unified state machine**: `handleStatus()` and `handleStatusWithCustomUi()` (~200 lines of duplicated logic) merged into a single `handleStatus(status, ui: UiStrategy)` via a `sealed class UiStrategy`. Future bug fixes apply once, benefit both Compose-state and custom-UI paths. This was the source of Issues #29, #33, and #41 — each required a manual mirror fix.
+
+- **`IosPermissionHandler` → `PermissionHandler`**: The `Ios` prefix is redundant in `iosMain` source sets per KMP convention. Renamed across all 14 handler files. `IosPermissionHandlerRegistry` keeps its name (public API used by optional modules).
+
+### ✅ Test Suite
+
+- 610 Android / 578 iOS tests, 0 failures across all 6 modules.
+- New: `GrantEventListenerTest` (15 tests covering all 6 events × 2 handlers × platform variants).
+- New: `Issue41DoubleDenialSettingsTest`, `Issue33RefreshStatusPartialTest`.
+- New: iOS `request()` withTimeout tests for `LOCATION_ALWAYS`, `GALLERY_IMAGES_ONLY`, `GALLERY_VIDEO_ONLY`, `BLUETOOTH_ADVERTISE`, `NEARBY_WIFI_DEVICES`.
+
+---
+
+## [2.0.0] - 2026-05-14
+
+### ⚠️ Breaking Changes (iOS only)
+
+- **iOS framework isolation** — `Contacts.framework`, `EventKit.framework`, and `CoreMotion.framework` are now opt-in modules. Apps that request these permissions on iOS must add the corresponding Gradle artifact and call `initialize()` once at startup. Android is completely unaffected.
 
 ### New Modules
 
 | Artifact | iOS Framework | Initialize |
 |---|---|---|
-| `dev.brewkits:grant-contacts:2.1.0` | `Contacts.framework` | `GrantContacts.initialize()` |
-| `dev.brewkits:grant-calendar:2.1.0` | `EventKit.framework` | `GrantCalendar.initialize()` |
-| `dev.brewkits:grant-motion:2.1.0` | `CoreMotion.framework` | `GrantMotion.initialize()` |
+| `dev.brewkits:grant-contacts:2.0.0` | `Contacts.framework` | `GrantContacts.initialize()` |
+| `dev.brewkits:grant-calendar:2.0.0` | `EventKit.framework` | `GrantCalendar.initialize()` |
+| `dev.brewkits:grant-motion:2.0.0` | `CoreMotion.framework` | `GrantMotion.initialize()` |
 
-### ✨ New APIs & Features
+### Why This Change
 
-- **`GrantEventListener` (Funnel Analytics)**: Added an observability layer with 6 specific callbacks (`onRequested`, `onGranted`, `onDenied`, `onRationaleShown`, `onSettingsGuideShown`, `onSettingsOpened`). Default no-op behavior ensures zero overhead when unused. Perfect for analytics tracking.
-- **Unified State Machine (`UiStrategy`)**: Refactored `handleStatus` and `handleStatusWithCustomUi` into a single, robust state machine. Eliminates logic duplication and ensures consistent behavior between Compose UI and custom imperative UI flows.
-- **i18n & `GrantDialogStrings` Polish**: The Compose UI layer is now completely independent of static `strings.xml`. Added `@Immutable` for optimized recomposition and added `serviceSettingsDismiss` to complete the symmetric API.
+Apple's App Store static scanner rejects apps that link frameworks without declaring the corresponding `NSUsageDescription` keys in `Info.plist`. When `grant-core` directly imported `CNContactStore`, `EKEventStore`, and `CMMotionActivityManager`, those symbols appeared in every app's binary — even apps that never requested those permissions. The only correct fix is to move each framework's import to a separate Gradle module.
 
-### 🧹 Code Quality & Testing
+### Migration from 1.x
 
-- Removed all temporary, obsolete, and non-English (Vietnamese) comments.
-- Updated `GrantDialogStrings` documentation to reflect proper KMP usages (`Res.string` instead of Android's `R.string`).
-- **100% Test Pass Rate**: Added unit tests for the new `GrantEventListener` (`GrantHandlerEventTest.kt`) achieving full coverage across unit, integration, and security edge cases.
-
-### Why This Change (Framework Isolation)
-
-Apple's App Store static scanner rejects apps that link frameworks without declaring the corresponding `NSUsageDescription` keys in `Info.plist`. When `grant-core` directly imported `CNContactStore`, `EKEventStore`, and `CMMotionActivityManager`, those symbols appeared in every app's binary — even apps that never requested those permissions.
-
-The `by lazy` and `-weak_framework` mitigations used in v1.x did not solve this: `by lazy` defers initialization but not class linking, and `-weak_framework` only prevents runtime crashes (not symbol presence). The only correct fix is to move each framework's import to a separate Gradle module so apps that don't add the module never link the framework.
-
-### Migration
-
-Apps that use `AppGrant.CONTACTS`, `AppGrant.CALENDAR`, or `AppGrant.MOTION`:
-
-```kotlin
-// build.gradle.kts — add the modules you need
-implementation("dev.brewkits:grant-contacts:2.1.0")
-implementation("dev.brewkits:grant-calendar:2.1.0")
-implementation("dev.brewkits:grant-motion:2.1.0")
-```
-
-```swift
-// iOS entry point — call initialize() for each module added
-GrantContacts.shared.initialize()
-GrantCalendar.shared.initialize()
-GrantMotion.shared.initialize()
-```
-
-Apps that do not use these permissions: bump version to 2.1.0, no other changes needed.
+See [Upgrading from Grant 1.x to 2.0.0](docs/MIGRATION_GUIDE.md#upgrading-from-1x-to-20x) in the migration guide.
 
 ---
 
