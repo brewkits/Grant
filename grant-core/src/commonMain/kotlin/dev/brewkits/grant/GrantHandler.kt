@@ -138,7 +138,8 @@ class GrantHandler(
     private val grantManager: GrantManager,
     private val grant: GrantPermission,
     private val scope: CoroutineScope,
-    private val savedStateDelegate: SavedStateDelegate = NoOpSavedStateDelegate()
+    private val savedStateDelegate: SavedStateDelegate = NoOpSavedStateDelegate(),
+    private val eventListener: GrantEventListener? = null,
 ) {
     private companion object {
         const val KEY_IS_VISIBLE     = "grant_handler_is_visible"
@@ -249,6 +250,7 @@ class GrantHandler(
                 // mirroring the GRANTED branch of handleStatus().
                 hasShownRationaleDialog = false
                 _grantedEvents.tryEmit(Unit)
+                eventListener?.onGranted(grant, newStatus)
                 onGrantedCallback?.invoke(newStatus)
                 clearCallbacks(newStatus)
             }
@@ -291,6 +293,7 @@ class GrantHandler(
                 this@GrantHandler.onGrantedCallback = onGranted
                 val currentStatus = grantManager.checkStatus(grant)
                 _status.value = currentStatus
+                eventListener?.onRequested(grant, currentStatus)
                 handleStatus(currentStatus, rationaleMessage, settingsMessage)
             } catch (e: CancellationException) {
                 clearCallbacks()
@@ -329,6 +332,7 @@ class GrantHandler(
                 }
                 val currentStatus = grantManager.checkStatus(grant)
                 _status.value = currentStatus
+                eventListener?.onRequested(grant, currentStatus)
                 handleStatus(currentStatus, rationaleMessage, settingsMessage)
             } catch (e: CancellationException) {
                 clearCallbacks()
@@ -391,6 +395,7 @@ class GrantHandler(
             if (!requestMutex.tryLock()) return@launch
             try {
                 resetState()
+                eventListener?.onSettingsOpened(grant)
                 grantManager.openSettings()
                 // Do NOT clear callbacks here. We wait for user to return from settings.
                 // refreshStatus() or onReturnFromSettings() will handle completion.
@@ -549,6 +554,7 @@ class GrantHandler(
                             resetState()
                             hasShownRationaleDialog = false
                             _grantedEvents.tryEmit(Unit)
+                            eventListener?.onGranted(grant, state.status)
                             onGrantedCallback?.invoke(state.status)
                             clearCallbacks(state.status)
                             currentState = FlowState.Done
@@ -569,6 +575,7 @@ class GrantHandler(
                                 resetState()
                                 hasShownRationaleDialog = false
                                 _grantedEvents.tryEmit(Unit)
+                                eventListener?.onGranted(grant, state.status)
                                 onGrantedCallback?.invoke(state.status)
                                 clearCallbacks(state.status)
                                 currentState = FlowState.Done
@@ -590,6 +597,7 @@ class GrantHandler(
                                     if (hasShownRationaleDialog) {
                                         currentState = FlowState.HandleResult(GrantStatus.DENIED_ALWAYS, isFirstRequest = true)
                                     } else {
+                                        eventListener?.onDenied(grant, GrantStatus.DENIED)
                                         resetState()
                                         clearCallbacks()
                                         currentState = FlowState.Done
@@ -599,6 +607,7 @@ class GrantHandler(
                                         currentState = FlowState.HandleResult(GrantStatus.DENIED_ALWAYS, isFirstRequest = false)
                                     } else {
                                         hasShownRationaleDialog = true
+                                        eventListener?.onRationaleShown(grant)
                                         updateState {
                                             it.copy(
                                                 isVisible = true,
@@ -616,6 +625,7 @@ class GrantHandler(
                         GrantStatus.DENIED_ALWAYS -> {
                             val shouldShowSettingsGuide = hasShownRationaleDialog || !state.isFirstRequest
                             if (shouldShowSettingsGuide) {
+                                eventListener?.onSettingsGuideShown(grant)
                                 updateState {
                                     it.copy(
                                         isVisible = true,
@@ -626,6 +636,7 @@ class GrantHandler(
                                     )
                                 }
                             } else {
+                                eventListener?.onDenied(grant, GrantStatus.DENIED_ALWAYS)
                                 resetState()
                                 clearCallbacks()
                             }

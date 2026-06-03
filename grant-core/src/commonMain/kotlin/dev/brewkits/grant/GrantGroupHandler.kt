@@ -91,7 +91,8 @@ data class GrantGroupUiState(
 class GrantGroupHandler(
     private val grantManager: GrantManager,
     private val grants: List<GrantPermission>,
-    private val scope: CoroutineScope
+    private val scope: CoroutineScope,
+    private val eventListener: GrantEventListener? = null,
 ) {
     init {
         require(grants.isNotEmpty()) {
@@ -191,6 +192,8 @@ class GrantGroupHandler(
                     }.awaitAll().toMap()
                 }
 
+                currentStatuses.forEach { (g, s) -> eventListener?.onRequested(g, s) }
+
                 val deniedGrants = currentStatuses
                     .filter { !isFullyGranted(it.key, it.value) }
                     .keys.toList()
@@ -202,6 +205,7 @@ class GrantGroupHandler(
                     .keys
 
                 if (deniedGrants.isEmpty()) {
+                    initiallyGranted.forEach { g -> eventListener?.onGranted(g, currentStatuses[g]!!) }
                     resetState()
                     _state.update { it.copy(grantedGrants = initiallyGranted) }
                     val callback = onAllGrantedCallback
@@ -214,6 +218,7 @@ class GrantGroupHandler(
                 _statuses.update { it + results }
 
                 val newlyGranted = results.filter { isFullyGranted(it.key, it.value) }.keys
+                newlyGranted.forEach { g -> eventListener?.onGranted(g, results[g]!!) }
                 _state.update { it.copy(grantedGrants = it.grantedGrants + newlyGranted) }
 
                 val stillDenied = results.filter { !isFullyGranted(it.key, it.value) }
@@ -288,6 +293,7 @@ class GrantGroupHandler(
         try {
             resetState()
             onAllGrantedCallback = null
+            _state.value.currentGrant?.let { eventListener?.onSettingsOpened(it) }
             grantManager.openSettings()
         } finally {
             requestMutex.unlock()
@@ -319,6 +325,7 @@ class GrantGroupHandler(
                 } else {
                     // Foreground granted but background denied; route the user
                     // to settings, consistent with single-permission handling.
+                    eventListener?.onSettingsGuideShown(grant)
                     _state.update {
                         it.copy(
                             isVisible        = true,
@@ -337,6 +344,7 @@ class GrantGroupHandler(
                 // or the rationale was already shown once on Android → escalate to the
                 // settings guide instead of (re-)showing the rationale.
                 if (!PlatformConfig.isRationaleSupported || shownRationaleGrants.contains(grant)) {
+                    eventListener?.onSettingsGuideShown(grant)
                     _state.update {
                         it.copy(
                             isVisible        = true,
@@ -349,6 +357,7 @@ class GrantGroupHandler(
                     false
                 } else {
                     shownRationaleGrants.add(grant)
+                    eventListener?.onRationaleShown(grant)
                     _state.update {
                         it.copy(
                             isVisible        = true,
@@ -363,6 +372,7 @@ class GrantGroupHandler(
             }
 
             GrantStatus.DENIED_ALWAYS -> {
+                eventListener?.onSettingsGuideShown(grant)
                 _state.update {
                     it.copy(
                         isVisible        = true,
