@@ -11,9 +11,12 @@
           <set>
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/demo" />
+            <option value="$PROJECT_DIR$/grant-calendar" />
             <option value="$PROJECT_DIR$/grant-compose" />
+            <option value="$PROJECT_DIR$/grant-contacts" />
             <option value="$PROJECT_DIR$/grant-core" />
             <option value="$PROJECT_DIR$/grant-core-koin" />
+            <option value="$PROJECT_DIR$/grant-motion" />
           </set>
         </option>
       </GradleProjectSettings>

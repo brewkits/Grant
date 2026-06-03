@@ -51,7 +51,6 @@ kotlin {
             // Apps using Material 2 or different Compose versions can override
             api(compose.material3)
             implementation(compose.ui)
-            implementation(compose.components.resources)
         }
 
         commonTest.dependencies {

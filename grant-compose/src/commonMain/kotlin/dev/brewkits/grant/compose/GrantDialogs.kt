@@ -30,22 +30,19 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import dev.brewkits.grant.GrantAndServiceHandler
 import dev.brewkits.grant.GrantGroupHandler
 import dev.brewkits.grant.GrantHandler
-import dev.brewkits.grant_compose.generated.resources.Res
-import dev.brewkits.grant_compose.generated.resources.grant_rationale_confirm
-import dev.brewkits.grant_compose.generated.resources.grant_rationale_dismiss
-import dev.brewkits.grant_compose.generated.resources.grant_rationale_title
-import dev.brewkits.grant_compose.generated.resources.grant_service_settings_confirm
-import dev.brewkits.grant_compose.generated.resources.grant_service_settings_title
-import dev.brewkits.grant_compose.generated.resources.grant_settings_confirm
-import dev.brewkits.grant_compose.generated.resources.grant_settings_dismiss
-import dev.brewkits.grant_compose.generated.resources.grant_settings_title
-import org.jetbrains.compose.resources.stringResource
 
 private enum class DialogKind { None, Rationale, Settings }
 private enum class ServiceDialogKind { None, Rationale, PermissionSettings, ServiceSettings }
 
 /**
  * A comprehensive Dialog Handler optimized for performance and accessibility.
+ *
+ * Button labels and titles are resolved from [LocalGrantDialogStrings] — set them
+ * once at the top of your composition via [GrantDialogStringsProvider] and every
+ * `GrantDialog` call in the subtree picks them up automatically.
+ *
+ * An explicit [strings] parameter overrides [LocalGrantDialogStrings] for this
+ * single call site, useful when one screen needs a different tone or wording.
  *
  * Uses [derivedStateOf] over the underlying [GrantHandler.state] so that
  * unrelated field changes (e.g. message text edits) do not trigger a
@@ -55,12 +52,7 @@ private enum class ServiceDialogKind { None, Rationale, PermissionSettings, Serv
 @Composable
 fun GrantDialog(
     handler: GrantHandler,
-    rationaleTitle: String = stringResource(Res.string.grant_rationale_title),
-    rationaleConfirm: String = stringResource(Res.string.grant_rationale_confirm),
-    rationaleDismiss: String = stringResource(Res.string.grant_rationale_dismiss),
-    settingsTitle: String = stringResource(Res.string.grant_settings_title),
-    settingsConfirm: String = stringResource(Res.string.grant_settings_confirm),
-    settingsDismiss: String = stringResource(Res.string.grant_settings_dismiss)
+    strings: GrantDialogStrings = LocalGrantDialogStrings.current,
 ) {
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         handler.refreshStatus()
@@ -83,18 +75,18 @@ fun GrantDialog(
         DialogKind.Rationale -> GrantRationaleDialog(
             message = state.rationaleMessage
                 ?: "This permission is needed for this feature to work properly.",
-            title = rationaleTitle,
-            confirmText = rationaleConfirm,
-            dismissText = rationaleDismiss,
+            title = strings.rationaleTitle,
+            confirmText = strings.rationaleConfirm,
+            dismissText = strings.rationaleDismiss,
             onConfirm = { handler.onRationaleConfirmed() },
             onDismiss = { handler.onDismiss() }
         )
         DialogKind.Settings -> GrantSettingsDialog(
             message = state.settingsMessage
                 ?: "This permission was denied. Please enable it in Settings.",
-            title = settingsTitle,
-            confirmText = settingsConfirm,
-            dismissText = settingsDismiss,
+            title = strings.settingsTitle,
+            confirmText = strings.settingsConfirm,
+            dismissText = strings.settingsDismiss,
             onConfirm = { handler.onSettingsConfirmed() },
             onDismiss = { handler.onDismiss() }
         )
@@ -104,6 +96,9 @@ fun GrantDialog(
 /**
  * A Dialog Handler for group permission requests.
  *
+ * Button labels and titles are resolved from [LocalGrantDialogStrings].
+ * See [GrantDialog] for usage details.
+ *
  * Uses [derivedStateOf] so that mid-flight `grantedGrants` set updates (which
  * tick frequently while the user grants each permission) do not invalidate the
  * dialog branch unless the visible dialog kind actually changes.
@@ -111,12 +106,7 @@ fun GrantDialog(
 @Composable
 fun GrantGroupDialog(
     handler: GrantGroupHandler,
-    rationaleTitle: String = stringResource(Res.string.grant_rationale_title),
-    rationaleConfirm: String = stringResource(Res.string.grant_rationale_confirm),
-    rationaleDismiss: String = stringResource(Res.string.grant_rationale_dismiss),
-    settingsTitle: String = stringResource(Res.string.grant_settings_title),
-    settingsConfirm: String = stringResource(Res.string.grant_settings_confirm),
-    settingsDismiss: String = stringResource(Res.string.grant_settings_dismiss)
+    strings: GrantDialogStrings = LocalGrantDialogStrings.current,
 ) {
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         handler.refreshAllStatuses()
@@ -139,18 +129,18 @@ fun GrantGroupDialog(
         DialogKind.Rationale -> GrantRationaleDialog(
             message = state.rationaleMessage
                 ?: "This permission is needed for this feature to work properly.",
-            title = rationaleTitle,
-            confirmText = rationaleConfirm,
-            dismissText = rationaleDismiss,
+            title = strings.rationaleTitle,
+            confirmText = strings.rationaleConfirm,
+            dismissText = strings.rationaleDismiss,
             onConfirm = { handler.onRationaleConfirmed() },
             onDismiss = { handler.onDismiss() }
         )
         DialogKind.Settings -> GrantSettingsDialog(
             message = state.settingsMessage
                 ?: "This permission was denied. Please enable it in Settings.",
-            title = settingsTitle,
-            confirmText = settingsConfirm,
-            dismissText = settingsDismiss,
+            title = strings.settingsTitle,
+            confirmText = strings.settingsConfirm,
+            dismissText = strings.settingsDismiss,
             onConfirm = { handler.onSettingsConfirmed() },
             onDismiss = { handler.onDismiss() }
         )
@@ -160,20 +150,16 @@ fun GrantGroupDialog(
 /**
  * A Dialog Handler for unified permission and hardware service requests.
  *
+ * Button labels and titles are resolved from [LocalGrantDialogStrings].
+ * See [GrantDialog] for usage details.
+ *
  * Uses [derivedStateOf] to isolate dialog-kind changes from unrelated state
  * updates such as service availability ticks.
  */
 @Composable
 fun GrantAndServiceDialog(
     handler: GrantAndServiceHandler,
-    rationaleTitle: String = stringResource(Res.string.grant_rationale_title),
-    rationaleConfirm: String = stringResource(Res.string.grant_rationale_confirm),
-    rationaleDismiss: String = stringResource(Res.string.grant_rationale_dismiss),
-    permissionSettingsTitle: String = stringResource(Res.string.grant_settings_title),
-    permissionSettingsConfirm: String = stringResource(Res.string.grant_settings_confirm),
-    serviceSettingsTitle: String = stringResource(Res.string.grant_service_settings_title),
-    serviceSettingsConfirm: String = stringResource(Res.string.grant_service_settings_confirm),
-    dismissText: String = stringResource(Res.string.grant_rationale_dismiss)
+    strings: GrantDialogStrings = LocalGrantDialogStrings.current,
 ) {
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         handler.refreshStatus()
@@ -197,27 +183,27 @@ fun GrantAndServiceDialog(
         ServiceDialogKind.Rationale -> GrantRationaleDialog(
             message = state.rationaleMessage
                 ?: "This permission is needed for this feature to work properly.",
-            title = rationaleTitle,
-            confirmText = rationaleConfirm,
-            dismissText = rationaleDismiss,
+            title = strings.rationaleTitle,
+            confirmText = strings.rationaleConfirm,
+            dismissText = strings.rationaleDismiss,
             onConfirm = { handler.onRationaleConfirmed() },
             onDismiss = { handler.onDismiss() }
         )
         ServiceDialogKind.PermissionSettings -> GrantSettingsDialog(
             message = state.permissionSettingsMessage
                 ?: "This permission was denied. Please enable it in Settings.",
-            title = permissionSettingsTitle,
-            confirmText = permissionSettingsConfirm,
-            dismissText = dismissText,
+            title = strings.settingsTitle,
+            confirmText = strings.settingsConfirm,
+            dismissText = strings.settingsDismiss,
             onConfirm = { handler.onPermissionSettingsConfirmed() },
             onDismiss = { handler.onDismiss() }
         )
         ServiceDialogKind.ServiceSettings -> GrantSettingsDialog(
             message = state.serviceSettingsMessage
                 ?: "This service needs to be enabled for this feature to work.",
-            title = serviceSettingsTitle,
-            confirmText = serviceSettingsConfirm,
-            dismissText = dismissText,
+            title = strings.serviceSettingsTitle,
+            confirmText = strings.serviceSettingsConfirm,
+            dismissText = strings.settingsDismiss,
             onConfirm = { handler.onServiceSettingsConfirmed() },
             onDismiss = { handler.onDismiss() }
         )
