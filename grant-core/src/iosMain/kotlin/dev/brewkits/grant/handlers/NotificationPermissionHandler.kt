@@ -36,7 +36,7 @@ private const val TAG = "NotificationPermissionHandler"
  * The fix re-reads `authorizationStatus` after the callback resolves, mirroring the
  * pattern used by [CalendarPermissionHandler] for the same reason.
  */
-internal class NotificationPermissionHandler : IosPermissionHandler {
+internal class NotificationPermissionHandler : PermissionHandler {
 
     @Deprecated(
         message = "checkStatus() for Notifications is always async on iOS. Use checkStatusAsync() instead.",

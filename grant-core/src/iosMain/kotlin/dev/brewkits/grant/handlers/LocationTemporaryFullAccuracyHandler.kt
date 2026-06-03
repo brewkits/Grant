@@ -21,7 +21,7 @@ import platform.CoreLocation.CLAccuracyAuthorization
  */
 class LocationTemporaryFullAccuracyHandler(
     private val purposeKey: String
-) : IosPermissionHandler {
+) : PermissionHandler {
 
     private val delegate: LocationManagerDelegate = LocationManagerDelegate()
 

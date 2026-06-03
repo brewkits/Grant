@@ -32,7 +32,7 @@ private const val TAG = "PhotoPermissionHandler"
  * as "not suitable for parsing." Now uses `operatingSystemVersion.majorVersion`
  * (a structured `NSOperatingSystemVersion` value) which is reliable and locale-independent.
  */
-internal class PhotoPermissionHandler : IosPermissionHandler {
+internal class PhotoPermissionHandler : PermissionHandler {
 
     override fun checkStatus(): GrantStatus {
         if (!hasInfoPlistKey(TAG, "NSPhotoLibraryUsageDescription")) return GrantStatus.DENIED_ALWAYS

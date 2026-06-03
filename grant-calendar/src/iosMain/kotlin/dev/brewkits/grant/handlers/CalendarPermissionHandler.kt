@@ -38,7 +38,7 @@ private const val TAG = "CalendarPermissionHandler"
  * re-read the raw authorization status after the dialog dismisses to distinguish
  * the two cases correctly.
  */
-internal class CalendarPermissionHandler : IosPermissionHandler {
+internal class CalendarPermissionHandler : PermissionHandler {
 
     private companion object {
         // Named constants for iOS 17+ EKAuthorizationStatus values that are not

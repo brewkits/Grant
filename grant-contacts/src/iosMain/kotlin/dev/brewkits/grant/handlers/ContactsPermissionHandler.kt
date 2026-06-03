@@ -23,7 +23,7 @@ private const val TAG = "ContactsPermissionHandler"
  * Linking the Contacts framework causes Apple to require NSContactsUsageDescription
  * in Info.plist. Isolating this import prevents that for apps that don't use contacts.
  */
-internal class ContactsPermissionHandler : IosPermissionHandler {
+internal class ContactsPermissionHandler : PermissionHandler {
 
     override fun checkStatus(): GrantStatus {
         if (!hasInfoPlistKey(TAG, "NSContactsUsageDescription")) return GrantStatus.DENIED_ALWAYS

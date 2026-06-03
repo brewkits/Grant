@@ -8,10 +8,10 @@ package dev.brewkits.grant.handlers
  * Info.plist keys. 
  * 
  * If you need to request a permission not covered by [dev.brewkits.grant.AppGrant], 
- * you can implement [IosPermissionHandler] and register it here.
+ * you can implement [PermissionHandler] and register it here.
  */
 object IosPermissionHandlerRegistry {
-    private val handlers = mutableMapOf<String, IosPermissionHandler>()
+    private val handlers = mutableMapOf<String, PermissionHandler>()
 
     /**
      * Registers a custom handler for a specific RawPermission identifier.
@@ -19,14 +19,14 @@ object IosPermissionHandlerRegistry {
      * @param identifier The identifier of the RawPermission.
      * @param handler The custom handler implementation.
      */
-    fun register(identifier: String, handler: IosPermissionHandler) {
+    fun register(identifier: String, handler: PermissionHandler) {
         handlers[identifier] = handler
     }
 
     /**
      * Retrieves a registered handler, if any.
      */
-    internal fun get(identifier: String): IosPermissionHandler? {
+    internal fun get(identifier: String): PermissionHandler? {
         return handlers[identifier]
     }
 }
