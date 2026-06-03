@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [2.0.0] - 2026-05-14
+## [2.1.0] - 2026-06-03
 
 ### Breaking Changes
 
@@ -16,11 +16,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 | Artifact | iOS Framework | Initialize |
 |---|---|---|
-| `dev.brewkits:grant-contacts:2.0.0` | `Contacts.framework` | `GrantContacts.initialize()` |
-| `dev.brewkits:grant-calendar:2.0.0` | `EventKit.framework` | `GrantCalendar.initialize()` |
-| `dev.brewkits:grant-motion:2.0.0` | `CoreMotion.framework` | `GrantMotion.initialize()` |
+| `dev.brewkits:grant-contacts:2.1.0` | `Contacts.framework` | `GrantContacts.initialize()` |
+| `dev.brewkits:grant-calendar:2.1.0` | `EventKit.framework` | `GrantCalendar.initialize()` |
+| `dev.brewkits:grant-motion:2.1.0` | `CoreMotion.framework` | `GrantMotion.initialize()` |
 
-### Why This Change
+### ✨ New APIs & Features
+
+- **`GrantEventListener` (Funnel Analytics)**: Added an observability layer with 6 specific callbacks (`onRequested`, `onGranted`, `onDenied`, `onRationaleShown`, `onSettingsGuideShown`, `onSettingsOpened`). Default no-op behavior ensures zero overhead when unused. Perfect for analytics tracking.
+- **Unified State Machine (`UiStrategy`)**: Refactored `handleStatus` and `handleStatusWithCustomUi` into a single, robust state machine. Eliminates logic duplication and ensures consistent behavior between Compose UI and custom imperative UI flows.
+- **i18n & `GrantDialogStrings` Polish**: The Compose UI layer is now completely independent of static `strings.xml`. Added `@Immutable` for optimized recomposition and added `serviceSettingsDismiss` to complete the symmetric API.
+
+### 🧹 Code Quality & Testing
+
+- Removed all temporary, obsolete, and non-English (Vietnamese) comments.
+- Updated `GrantDialogStrings` documentation to reflect proper KMP usages (`Res.string` instead of Android's `R.string`).
+- **100% Test Pass Rate**: Added unit tests for the new `GrantEventListener` (`GrantHandlerEventTest.kt`) achieving full coverage across unit, integration, and security edge cases.
+
+### Why This Change (Framework Isolation)
 
 Apple's App Store static scanner rejects apps that link frameworks without declaring the corresponding `NSUsageDescription` keys in `Info.plist`. When `grant-core` directly imported `CNContactStore`, `EKEventStore`, and `CMMotionActivityManager`, those symbols appeared in every app's binary — even apps that never requested those permissions.
 
@@ -32,9 +44,9 @@ Apps that use `AppGrant.CONTACTS`, `AppGrant.CALENDAR`, or `AppGrant.MOTION`:
 
 ```kotlin
 // build.gradle.kts — add the modules you need
-implementation("dev.brewkits:grant-contacts:2.0.0")
-implementation("dev.brewkits:grant-calendar:2.0.0")
-implementation("dev.brewkits:grant-motion:2.0.0")
+implementation("dev.brewkits:grant-contacts:2.1.0")
+implementation("dev.brewkits:grant-calendar:2.1.0")
+implementation("dev.brewkits:grant-motion:2.1.0")
 ```
 
 ```swift
@@ -44,7 +56,7 @@ GrantCalendar.shared.initialize()
 GrantMotion.shared.initialize()
 ```
 
-Apps that do not use these permissions: bump version to 2.0.0, no other changes needed.
+Apps that do not use these permissions: bump version to 2.1.0, no other changes needed.
 
 ---
 

@@ -1,6 +1,6 @@
 # Migration Guide to Grant
 
-**Version:** 2.0.0
+**Version:** 2.1.0
 **Last Updated:** May 15, 2026
 
 This guide helps you migrate from previous versions of Grant or other permission libraries.
@@ -9,7 +9,7 @@ This guide helps you migrate from previous versions of Grant or other permission
 
 ## 📚 Table of Contents
 
-1. [Upgrading from Grant 1.x to 2.0.0](#upgrading-from-grant-1x-to-200)
+1. [Upgrading from Grant 1.x to 2.1.0](#upgrading-from-grant-1x-to-200)
 2. [Upgrading from Grant 1.3.x to 1.4.2](#upgrading-from-grant-13x-to-142)
 3. [From moko-permissions](#from-moko-permissions)
 4. [From Google Accompanist](#from-google-accompanist)
@@ -20,11 +20,11 @@ This guide helps you migrate from previous versions of Grant or other permission
 
 ---
 
-## 🛡️ Upgrading from Grant 1.x to 2.0.0
+## 🛡️ Upgrading from Grant 1.x to 2.1.0
 
 ### Overview
 
-v2.0.0 is the **iOS Framework Isolation** release. `Contacts.framework`, `EventKit.framework`, and `CoreMotion.framework` are now opt-in Gradle/Maven modules. **Android is completely unaffected** — no code changes required on Android.
+v2.1.0 is the **iOS Framework Isolation** release. `Contacts.framework`, `EventKit.framework`, and `CoreMotion.framework` are now opt-in Gradle/Maven modules. **Android is completely unaffected** — no code changes required on Android.
 
 ### What Changed?
 
@@ -39,7 +39,7 @@ v2.0.0 is the **iOS Framework Isolation** release. `Contacts.framework`, `EventK
 ```kotlin
 // shared/build.gradle.kts
 commonMain.dependencies {
-    implementation("dev.brewkits:grant-core:2.0.0")
+    implementation("dev.brewkits:grant-core:2.1.0")
 }
 ```
 
@@ -48,11 +48,11 @@ commonMain.dependencies {
 ```kotlin
 // shared/build.gradle.kts
 commonMain.dependencies {
-    implementation("dev.brewkits:grant-core:2.0.0")
+    implementation("dev.brewkits:grant-core:2.1.0")
     // Add only the ones your app actually uses:
-    implementation("dev.brewkits:grant-contacts:2.0.0")  // Contacts
-    implementation("dev.brewkits:grant-calendar:2.0.0")  // Calendar / EventKit
-    implementation("dev.brewkits:grant-motion:2.0.0")    // CoreMotion / Step Counter
+    implementation("dev.brewkits:grant-contacts:2.1.0")  // Contacts
+    implementation("dev.brewkits:grant-calendar:2.1.0")  // Calendar / EventKit
+    implementation("dev.brewkits:grant-motion:2.1.0")    // CoreMotion / Step Counter
 }
 ```
 

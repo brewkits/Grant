@@ -17,7 +17,7 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 /**
- * Regression tests for the v2.0.0 module split of Contacts, Calendar, and Motion.
+ * Regression tests for the v2.1.0 module split of Contacts, Calendar, and Motion.
  *
  * These tests operate at the GrantManager / GrantHandler level (not platform delegate level)
  * and verify the behavioral contracts that must hold regardless of which optional modules

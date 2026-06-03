@@ -4,7 +4,7 @@ Get started with Grant in 5 minutes!
 
 ## Prerequisites
 
-- **Kotlin**: 2.0.0 or higher
+- **Kotlin**: 2.1.0 or higher
 - **Compose Multiplatform**: 1.6.0 or higher (optional)
 - **Android**: MinSDK 24 (Android 7.0)
 - **iOS**: iOS 13.0 or higher

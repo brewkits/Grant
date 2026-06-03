@@ -53,15 +53,15 @@ This document explains the architectural decisions behind KMP Grant library and 
 └──────────────────┘           └──────────────────┘
 ```
 
-## 🍎 iOS Framework Isolation (v2.0.0)
+## 🍎 iOS Framework Isolation (v2.1.0)
 
 To avoid App Store rejections due to "unused sensitive permissions", Grant isolates `Contacts.framework`, `EventKit.framework`, and `CoreMotion.framework` into separate Gradle/Maven artifacts. Apps that don't add these optional modules never link these frameworks — Apple's static scanner never requires the corresponding `NSUsageDescription` keys.
 
 ### The Problem
 Kotlin/Native's dead code elimination (DCE) sometimes fails to remove framework linkages if they are referenced in a large, monolithic platform delegate. This causes the App Store static scanner to detect frameworks like `CoreLocation` or `CoreBluetooth` even if your app never requests them.
 
-### The Solution: Opt-In Modules (v2.0.0)
-As of v2.0.0, the three sensitive frameworks are isolated into their own Gradle modules:
+### The Solution: Opt-In Modules (v2.1.0)
+As of v2.1.0, the three sensitive frameworks are isolated into their own Gradle modules:
 - `grant-contacts` — links `Contacts.framework` only when added
 - `grant-calendar` — links `EventKit.framework` only when added
 - `grant-motion` — links `CoreMotion.framework` only when added
