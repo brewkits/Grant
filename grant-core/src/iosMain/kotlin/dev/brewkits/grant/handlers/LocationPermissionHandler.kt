@@ -28,34 +28,26 @@ private const val TAG = "LocationPermissionHandler"
  * on a `CLLocationManager` instance. The fix delegates to `LocationManagerDelegate`
  * which already owns a `CLLocationManager` instance.
  *
- * @param forAlways  `true` → requests background ("always") authorization;
- *                   `false` → requests foreground ("when in use") authorization.
  * @param delegate   Shared [LocationManagerDelegate] that wraps the async CLLocationManager callbacks.
  */
 internal class LocationPermissionHandler(
-    private val forAlways: Boolean,
     private val delegate: LocationManagerDelegate
 ) : PermissionHandler {
 
     private val requiredPlistKey: String
-        get() = if (forAlways) "NSLocationAlwaysAndWhenInUseUsageDescription"
-                else "NSLocationWhenInUseUsageDescription"
+        get() = "NSLocationWhenInUseUsageDescription"
 
     override fun checkStatus(): GrantStatus {
         if (!hasInfoPlistKey(TAG, requiredPlistKey)) return GrantStatus.DENIED_ALWAYS
         // Use instance authorizationStatus via the shared delegate rather than
         // the deprecated `CLLocationManager.authorizationStatus()` class method. (iOS 14+ deprecated).
-        return mapCLStatus(delegate.currentAuthorizationStatus(), forAlways)
+        return mapCLStatus(delegate.currentAuthorizationStatus())
     }
 
     override suspend fun request(): GrantStatus {
         if (!hasInfoPlistKey(TAG, requiredPlistKey)) return GrantStatus.DENIED_ALWAYS
-        val clStatus: CLAuthorizationStatus = if (forAlways) {
-            delegate.requestAlwaysAuthorization()
-        } else {
-            delegate.requestWhenInUseAuthorization()
-        }
-        return mapCLStatus(clStatus, forAlways)
+        val clStatus: CLAuthorizationStatus = delegate.requestWhenInUseAuthorization()
+        return mapCLStatus(clStatus)
     }
 }
 
@@ -63,12 +55,10 @@ internal class LocationPermissionHandler(
 // Internal helpers
 // ────────────────────────────────────────────────────────────────────────────
 
-private fun mapCLStatus(status: CLAuthorizationStatus, forAlways: Boolean): GrantStatus =
+private fun mapCLStatus(status: CLAuthorizationStatus): GrantStatus =
     when (status) {
         kCLAuthorizationStatusAuthorizedAlways    -> GrantStatus.GRANTED
-        kCLAuthorizationStatusAuthorizedWhenInUse -> {
-            if (forAlways) GrantStatus.PARTIAL_GRANTED else GrantStatus.GRANTED
-        }
+        kCLAuthorizationStatusAuthorizedWhenInUse -> GrantStatus.GRANTED
         kCLAuthorizationStatusDenied,
         kCLAuthorizationStatusRestricted          -> GrantStatus.DENIED_ALWAYS
         kCLAuthorizationStatusNotDetermined       -> GrantStatus.NOT_DETERMINED

@@ -12,7 +12,6 @@ import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.cinterop.ExperimentalForeignApi
-import platform.Foundation.NSSelectorFromString
 
 /**
  * Bluetooth request timeout in milliseconds.

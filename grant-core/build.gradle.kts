@@ -37,7 +37,6 @@ kotlin {
             // This provides an additional layer of safety to prevent Apple from
             // flagging unused frameworks during App Store static analysis scans.
             linkerOpts("-weak_framework", "CoreLocation")
-            linkerOpts("-weak_framework", "CoreBluetooth")
             linkerOpts("-weak_framework", "Photos")
             linkerOpts("-weak_framework", "AVFoundation")
         }

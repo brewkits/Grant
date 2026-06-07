@@ -32,14 +32,20 @@ jobs:
       - name: Build grant-core
         run: ./gradlew :grant-core:build
 
-      - name: Run tests
-        run: ./gradlew :grant-core:allTests
+      - name: Run tests (all modules)
+        run: ./gradlew allTests
 
       - name: Build grant-compose
         run: ./gradlew :grant-compose:build
 
       - name: Build grant-core-koin
         run: ./gradlew :grant-core-koin:build
+
+      - name: Build grant-bluetooth
+        run: ./gradlew :grant-bluetooth:build
+
+      - name: Build grant-location-always
+        run: ./gradlew :grant-location-always:build
 
       - name: Build demo app
         run: ./gradlew :demo:assembleDebug

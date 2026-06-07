@@ -38,7 +38,7 @@ jobs:
         run: ./gradlew :grant-core:linkDebugFrameworkIosArm64 :grant-core:linkDebugFrameworkIosSimulatorArm64
 
       - name: Run iOS Tests
-        run: ./gradlew :grant-core:iosSimulatorArm64Test
+        run: ./gradlew :grant-core:iosSimulatorArm64Test :grant-bluetooth:iosSimulatorArm64Test :grant-location-always:iosSimulatorArm64Test
 
       - name: Build Compose iOS Framework
         run: ./gradlew :grant-compose:linkDebugFrameworkIosArm64 :grant-compose:linkDebugFrameworkIosSimulatorArm64 || true

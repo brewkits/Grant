@@ -190,6 +190,8 @@ kotlin {
             implementation("dev.brewkits:grant-contacts:2.1.0")        // Optional: Contacts (iOS CNContactStore)
             implementation("dev.brewkits:grant-calendar:2.1.0")        // Optional: Calendar (iOS EventKit)
             implementation("dev.brewkits:grant-motion:2.1.0")          // Optional: Motion (iOS CoreMotion)
+            implementation("dev.brewkits:grant-bluetooth:2.1.0")       // Optional: Bluetooth (iOS CoreBluetooth)
+            implementation("dev.brewkits:grant-location-always:2.1.0") // Optional: background "always" location (iOS requestAlwaysAuthorization)
         }
     }
 }

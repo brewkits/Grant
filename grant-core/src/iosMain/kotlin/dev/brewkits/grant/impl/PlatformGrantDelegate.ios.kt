@@ -6,10 +6,8 @@ import dev.brewkits.grant.GrantStatus
 import dev.brewkits.grant.GrantStore
 import dev.brewkits.grant.GrantLauncher
 import dev.brewkits.grant.RawPermission
-import dev.brewkits.grant.delegates.BluetoothManagerDelegate
 import dev.brewkits.grant.delegates.LocationManagerDelegate
 import dev.brewkits.grant.handlers.AVPermissionHandler
-import dev.brewkits.grant.handlers.BluetoothPermissionHandler
 import dev.brewkits.grant.handlers.PermissionHandler
 import dev.brewkits.grant.handlers.LocationPermissionHandler
 import dev.brewkits.grant.handlers.NotificationPermissionHandler
@@ -93,7 +91,6 @@ actual class PlatformGrantDelegate(
     // ====================================================================
 
     private val locationDelegate by lazy { LocationManagerDelegate() }
-    private val bluetoothDelegate by lazy { BluetoothManagerDelegate() }
 
     // ====================================================================
     // Handlers (lazy — framework code loaded only when first accessed)
@@ -102,10 +99,8 @@ actual class PlatformGrantDelegate(
     private val cameraHandler by lazy { AVPermissionHandler.camera() }
     private val microphoneHandler by lazy { AVPermissionHandler.microphone() }
     private val photoHandler by lazy { PhotoPermissionHandler() }
-    private val locationWhenInUseHandler by lazy { LocationPermissionHandler(forAlways = false, delegate = locationDelegate) }
-    private val locationAlwaysHandler by lazy { LocationPermissionHandler(forAlways = true, delegate = locationDelegate) }
+    private val locationWhenInUseHandler by lazy { LocationPermissionHandler(delegate = locationDelegate) }
     private val notificationHandler by lazy { NotificationPermissionHandler() }
-    private val bluetoothHandler by lazy { BluetoothPermissionHandler(delegate = bluetoothDelegate) }
 
     // ====================================================================
     // PUBLIC API
@@ -279,7 +274,7 @@ actual class PlatformGrantDelegate(
         AppGrant.GALLERY_VIDEO_ONLY   -> photoHandler
 
         AppGrant.LOCATION             -> locationWhenInUseHandler
-        AppGrant.LOCATION_ALWAYS      -> locationAlwaysHandler
+        AppGrant.LOCATION_ALWAYS      -> getOptionalHandler(grant, "dev.brewkits:grant-location-always", "GrantLocationAlways.initialize()")
 
         AppGrant.NOTIFICATION         -> notificationHandler   // unreachable here; handled above
 
@@ -292,7 +287,7 @@ actual class PlatformGrantDelegate(
         AppGrant.MOTION               -> getOptionalHandler(grant, "dev.brewkits:grant-motion", "GrantMotion.initialize()")
 
         AppGrant.BLUETOOTH,
-        AppGrant.BLUETOOTH_ADVERTISE  -> bluetoothHandler
+        AppGrant.BLUETOOTH_ADVERTISE  -> getOptionalHandler(grant, "dev.brewkits:grant-bluetooth", "GrantBluetooth.initialize()")
 
         AppGrant.SCHEDULE_EXACT_ALARM,
         AppGrant.NEARBY_WIFI_DEVICES  -> AlwaysGrantedHandler

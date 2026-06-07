@@ -76,41 +76,6 @@ internal class LocationManagerDelegate : NSObject(), CLLocationManagerDelegatePr
         }
     }
 
-    /**
-     * Requests "always" (background + foreground) location authorization.
-     * Maps to iOS NSLocationAlwaysAndWhenInUseUsageDescription.
-     *
-     * On iOS 13+, calling `requestAlwaysAuthorization()` directly on a
-     * NotDetermined manager shows the system dialog with "Allow Once /
-     * Allow While Using / Always Allow / Don't Allow" — no prior
-     * `requestWhenInUseAuthorization()` call is needed.
-     *
-     * The previous pattern of calling both request methods synchronously
-     * caused a flicker / instant-dismiss on iOS 11–12 because the WhenInUse
-     * dialog is async and the Always call would fire before it resolved.
-     * Grant targets iOS 13+ (minDeploymentTarget), so that workaround is
-     * removed.
-     */
-    suspend fun requestAlwaysAuthorization(): CLAuthorizationStatus {
-        return suspendCancellableCoroutine { cont ->
-            continuation = cont
-
-            val manager = getManager()
-            val currentStatus = manager.authorizationStatus()
-            if (currentStatus == kCLAuthorizationStatusAuthorizedAlways) {
-                cleanupAfterRequest()
-                cont.resume(currentStatus)
-                return@suspendCancellableCoroutine
-            }
-
-            manager.requestAlwaysAuthorization()
-
-            cont.invokeOnCancellation {
-                cleanupAfterRequest()
-            }
-        }
-    }
-
     private fun cleanupAfterRequest() {
         continuation = null
         locationManager?.delegate = null
