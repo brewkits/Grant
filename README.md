@@ -180,18 +180,18 @@ Most KMP permission libraries are simple wrappers around native APIs. Grant is a
 kotlin {
     sourceSets {
         commonMain.dependencies {
-            implementation("dev.brewkits:grant-core:2.1.0")
-            implementation("dev.brewkits:grant-compose:2.1.0")         // Optional: Compose dialogs
-            implementation("dev.brewkits:grant-core-koin:2.1.0")       // Optional: Koin DI support
+            implementation("dev.brewkits:grant-core:2.2.0")
+            implementation("dev.brewkits:grant-compose:2.2.0")         // Optional: Compose dialogs
+            implementation("dev.brewkits:grant-core-koin:2.2.0")       // Optional: Koin DI support
 
             // Optional: add only the permission modules you actually use on iOS.
             // Omitting a module means its iOS framework is never linked — no phantom
             // NSUsageDescription keys, no App Store rejections.
-            implementation("dev.brewkits:grant-contacts:2.1.0")        // Optional: Contacts (iOS CNContactStore)
-            implementation("dev.brewkits:grant-calendar:2.1.0")        // Optional: Calendar (iOS EventKit)
-            implementation("dev.brewkits:grant-motion:2.1.0")          // Optional: Motion (iOS CoreMotion)
-            implementation("dev.brewkits:grant-bluetooth:2.1.0")       // Optional: Bluetooth (iOS CoreBluetooth)
-            implementation("dev.brewkits:grant-location-always:2.1.0") // Optional: background "always" location (iOS requestAlwaysAuthorization)
+            implementation("dev.brewkits:grant-contacts:2.2.0")        // Optional: Contacts (iOS CNContactStore)
+            implementation("dev.brewkits:grant-calendar:2.2.0")        // Optional: Calendar (iOS EventKit)
+            implementation("dev.brewkits:grant-motion:2.2.0")          // Optional: Motion (iOS CoreMotion)
+            implementation("dev.brewkits:grant-bluetooth:2.2.0")       // Optional: Bluetooth (iOS CoreBluetooth)
+            implementation("dev.brewkits:grant-location-always:2.2.0") // Optional: background "always" location (iOS requestAlwaysAuthorization)
         }
     }
 }
@@ -220,7 +220,7 @@ GrantMotion.shared.initialize()     // if you added grant-motion
 | :--- | :--- |
 | [Architecture](docs/grant-core/ARCHITECTURE.md) | How concurrency, state machines, and the mutex flow work |
 | [iOS Setup](docs/platform-specific/ios/info-plist.md) | Critical `Info.plist` configuration — read before shipping |
-| [Migration Guide](docs/MIGRATION_GUIDE.md) | Upgrading from v1.x to v2.1.0 |
+| [Migration Guide](docs/MIGRATION_GUIDE.md) | Upgrading from v1.x to v2.2.0 |
 | [Service Checking](docs/grant-core/SERVICES.md) | Combining permission + hardware service checks |
 | [Manual Injection](docs/MANUAL_INJECTION.md) | Using Grant without any DI framework |
 | [Android Reliability](docs/FIX_DEAD_CLICK_ANDROID.md) | How we fix "Dead Clicks" on Android |
