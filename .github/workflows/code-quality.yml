@@ -30,7 +30,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run Android Lint
-        run: ./gradlew :demo:lintDebug :grant-core:lintDebug :grant-compose:lintDebug
+        run: ./gradlew :demo:lintDebug :grant-core:lintDebug :grant-compose:lintDebug :grant-bluetooth:lintDebug :grant-location-always:lintDebug
 
       - name: Upload lint reports
         if: always()

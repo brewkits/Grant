@@ -1,19 +1,37 @@
 #!/bin/bash
 
 # Maven Central Bundle Creator for Grant Library
-# Version: 1.1.0
+# Version: 1.2.0
 # Auto-generates checksums and GPG signatures
+#
+# Modules are driven by the MODULES array below — add a new module name there
+# (and bump its version in its build.gradle.kts) and it is automatically built,
+# signed, and bundled. No other change to this script is needed.
 
 set -e
 
-VERSION="2.1.0"
+VERSION="2.2.0"
 GROUP_PATH="dev/brewkits"
 BUNDLE_NAME="grant-v${VERSION}-bundle.jar"
 OUTPUT_DIR="maven-central-artifacts/v${VERSION}"
 
+# Every published library module. Keep in sync with settings.gradle.kts
+# (the `demo` module is intentionally excluded — it is not published).
+MODULES=(
+    grant-core
+    grant-compose
+    grant-core-koin
+    grant-contacts
+    grant-calendar
+    grant-motion
+    grant-bluetooth
+    grant-location-always
+)
+
 echo "=========================================="
 echo "Maven Central Bundle Creator"
 echo "Grant Library v${VERSION}"
+echo "Modules: ${#MODULES[@]}"
 echo "=========================================="
 echo ""
 
@@ -36,8 +54,12 @@ echo ""
 # Step 1: Build and publish
 echo "🔨 Building artifacts..."
 ./gradlew clean
-./gradlew :grant-core:build :grant-compose:build :grant-core-koin:build \
-          :grant-contacts:build :grant-calendar:build :grant-motion:build
+
+BUILD_TASKS=()
+for m in "${MODULES[@]}"; do
+    BUILD_TASKS+=(":$m:build")
+done
+./gradlew "${BUILD_TASKS[@]}"
 ./gradlew publishAllPublicationsToMavenCentralLocalRepository
 
 echo "✅ Build complete"
@@ -50,133 +72,37 @@ echo ""
 # Save current directory
 ROOT_DIR=$(pwd)
 
-# Process grant-core
-cd "$ROOT_DIR/grant-core/build/maven-central-staging/$GROUP_PATH"
+for m in "${MODULES[@]}"; do
+    STAGING="$ROOT_DIR/$m/build/maven-central-staging/$GROUP_PATH"
+    if [ ! -d "$STAGING" ]; then
+        echo "  ⚠️  Skipping $m (no staging dir at $STAGING)"
+        continue
+    fi
+    echo "  Module: $m"
+    cd "$STAGING"
 
-find . -type f \( -name "*.jar" -o -name "*.pom" -o -name "*.module" \
-    -o -name "*.klib" -o -name "*.aar" -o -name "*.json" -o -name "*.zip" \) \
-    ! -name "*.asc" ! -name "*.md5" ! -name "*.sha1" | while read file; do
+    find . -type f \( -name "*.jar" -o -name "*.pom" -o -name "*.module" \
+        -o -name "*.klib" -o -name "*.aar" -o -name "*.json" -o -name "*.zip" \) \
+        ! -name "*.asc" ! -name "*.md5" ! -name "*.sha1" | while read file; do
 
-    filename=$(basename "$file")
-    echo "  Processing: $filename"
+        filename=$(basename "$file")
+        echo "    Processing: $filename"
 
-    # MD5
-    [ ! -f "$file.md5" ] && (md5 -q "$file" 2>/dev/null || md5sum "$file" | awk '{print $1}') > "$file.md5"
+        # MD5
+        [ ! -f "$file.md5" ] && (md5 -q "$file" 2>/dev/null || md5sum "$file" | awk '{print $1}') > "$file.md5"
 
-    # SHA1
-    [ ! -f "$file.sha1" ] && shasum -a 1 "$file" | awk '{print $1}' > "$file.sha1"
+        # SHA1
+        [ ! -f "$file.sha1" ] && shasum -a 1 "$file" | awk '{print $1}' > "$file.sha1"
 
-    # SHA256
-    [ ! -f "$file.sha256" ] && shasum -a 256 "$file" | awk '{print $1}' > "$file.sha256"
+        # SHA256
+        [ ! -f "$file.sha256" ] && shasum -a 256 "$file" | awk '{print $1}' > "$file.sha256"
 
-    # SHA512
-    [ ! -f "$file.sha512" ] && shasum -a 512 "$file" | awk '{print $1}' > "$file.sha512"
+        # SHA512
+        [ ! -f "$file.sha512" ] && shasum -a 512 "$file" | awk '{print $1}' > "$file.sha512"
 
-    # GPG signature
-    [ ! -f "$file.asc" ] && gpg --batch --yes --pinentry-mode loopback --armor --detach-sign "$file" 2>/dev/null
-done
-
-# Process grant-compose
-cd "$ROOT_DIR/grant-compose/build/maven-central-staging/$GROUP_PATH"
-
-find . -type f \( -name "*.jar" -o -name "*.pom" -o -name "*.module" \
-    -o -name "*.klib" -o -name "*.aar" -o -name "*.json" -o -name "*.zip" \) \
-    ! -name "*.asc" ! -name "*.md5" ! -name "*.sha1" | while read file; do
-
-    filename=$(basename "$file")
-    echo "  Processing: $filename"
-
-    # MD5
-    [ ! -f "$file.md5" ] && (md5 -q "$file" 2>/dev/null || md5sum "$file" | awk '{print $1}') > "$file.md5"
-
-    # SHA1
-    [ ! -f "$file.sha1" ] && shasum -a 1 "$file" | awk '{print $1}' > "$file.sha1"
-
-    # SHA256
-    [ ! -f "$file.sha256" ] && shasum -a 256 "$file" | awk '{print $1}' > "$file.sha256"
-
-    # SHA512
-    [ ! -f "$file.sha512" ] && shasum -a 512 "$file" | awk '{print $1}' > "$file.sha512"
-
-    # GPG signature
-    [ ! -f "$file.asc" ] && gpg --batch --yes --pinentry-mode loopback --armor --detach-sign "$file" 2>/dev/null
-done
-
-# Process grant-core-koin
-cd "$ROOT_DIR/grant-core-koin/build/maven-central-staging/$GROUP_PATH"
-
-find . -type f \( -name "*.jar" -o -name "*.pom" -o -name "*.module" \
-    -o -name "*.klib" -o -name "*.aar" -o -name "*.json" -o -name "*.zip" \) \
-    ! -name "*.asc" ! -name "*.md5" ! -name "*.sha1" | while read file; do
-
-    filename=$(basename "$file")
-    echo "  Processing: $filename"
-
-    # MD5
-    [ ! -f "$file.md5" ] && (md5 -q "$file" 2>/dev/null || md5sum "$file" | awk '{print $1}') > "$file.md5"
-
-    # SHA1
-    [ ! -f "$file.sha1" ] && shasum -a 1 "$file" | awk '{print $1}' > "$file.sha1"
-
-    # SHA256
-    [ ! -f "$file.sha256" ] && shasum -a 256 "$file" | awk '{print $1}' > "$file.sha256"
-
-    # SHA512
-    [ ! -f "$file.sha512" ] && shasum -a 512 "$file" | awk '{print $1}' > "$file.sha512"
-
-    # GPG signature
-    [ ! -f "$file.asc" ] && gpg --batch --yes --pinentry-mode loopback --armor --detach-sign "$file" 2>/dev/null
-done
-
-# Process grant-contacts
-cd "$ROOT_DIR/grant-contacts/build/maven-central-staging/$GROUP_PATH"
-
-find . -type f \( -name "*.jar" -o -name "*.pom" -o -name "*.module" \
-    -o -name "*.klib" -o -name "*.aar" -o -name "*.json" -o -name "*.zip" \) \
-    ! -name "*.asc" ! -name "*.md5" ! -name "*.sha1" | while read file; do
-
-    filename=$(basename "$file")
-    echo "  Processing: $filename"
-
-    [ ! -f "$file.md5" ] && (md5 -q "$file" 2>/dev/null || md5sum "$file" | awk '{print $1}') > "$file.md5"
-    [ ! -f "$file.sha1" ] && shasum -a 1 "$file" | awk '{print $1}' > "$file.sha1"
-    [ ! -f "$file.sha256" ] && shasum -a 256 "$file" | awk '{print $1}' > "$file.sha256"
-    [ ! -f "$file.sha512" ] && shasum -a 512 "$file" | awk '{print $1}' > "$file.sha512"
-    [ ! -f "$file.asc" ] && gpg --batch --yes --pinentry-mode loopback --armor --detach-sign "$file" 2>/dev/null
-done
-
-# Process grant-calendar
-cd "$ROOT_DIR/grant-calendar/build/maven-central-staging/$GROUP_PATH"
-
-find . -type f \( -name "*.jar" -o -name "*.pom" -o -name "*.module" \
-    -o -name "*.klib" -o -name "*.aar" -o -name "*.json" -o -name "*.zip" \) \
-    ! -name "*.asc" ! -name "*.md5" ! -name "*.sha1" | while read file; do
-
-    filename=$(basename "$file")
-    echo "  Processing: $filename"
-
-    [ ! -f "$file.md5" ] && (md5 -q "$file" 2>/dev/null || md5sum "$file" | awk '{print $1}') > "$file.md5"
-    [ ! -f "$file.sha1" ] && shasum -a 1 "$file" | awk '{print $1}' > "$file.sha1"
-    [ ! -f "$file.sha256" ] && shasum -a 256 "$file" | awk '{print $1}' > "$file.sha256"
-    [ ! -f "$file.sha512" ] && shasum -a 512 "$file" | awk '{print $1}' > "$file.sha512"
-    [ ! -f "$file.asc" ] && gpg --batch --yes --pinentry-mode loopback --armor --detach-sign "$file" 2>/dev/null
-done
-
-# Process grant-motion
-cd "$ROOT_DIR/grant-motion/build/maven-central-staging/$GROUP_PATH"
-
-find . -type f \( -name "*.jar" -o -name "*.pom" -o -name "*.module" \
-    -o -name "*.klib" -o -name "*.aar" -o -name "*.json" -o -name "*.zip" \) \
-    ! -name "*.asc" ! -name "*.md5" ! -name "*.sha1" | while read file; do
-
-    filename=$(basename "$file")
-    echo "  Processing: $filename"
-
-    [ ! -f "$file.md5" ] && (md5 -q "$file" 2>/dev/null || md5sum "$file" | awk '{print $1}') > "$file.md5"
-    [ ! -f "$file.sha1" ] && shasum -a 1 "$file" | awk '{print $1}' > "$file.sha1"
-    [ ! -f "$file.sha256" ] && shasum -a 256 "$file" | awk '{print $1}' > "$file.sha256"
-    [ ! -f "$file.sha512" ] && shasum -a 512 "$file" | awk '{print $1}' > "$file.sha512"
-    [ ! -f "$file.asc" ] && gpg --batch --yes --pinentry-mode loopback --armor --detach-sign "$file" 2>/dev/null
+        # GPG signature
+        [ ! -f "$file.asc" ] && gpg --batch --yes --pinentry-mode loopback --armor --detach-sign "$file" 2>/dev/null
+    done
 done
 
 cd "$ROOT_DIR"
@@ -196,52 +122,18 @@ TEMP_BUNDLE="$OUTPUT_DIR/temp-bundle"
 rm -rf "$TEMP_BUNDLE"
 mkdir -p "$TEMP_BUNDLE"
 
-# Copy grant-core artifacts
-echo "  Copying: grant-core"
-find grant-core/build/maven-central-staging/$GROUP_PATH -mindepth 1 -maxdepth 1 -type d | while read variant; do
-    variant_name=$(basename "$variant")
-    mkdir -p "$TEMP_BUNDLE/$GROUP_PATH/$variant_name/$VERSION"
-    cp -r "$variant/$VERSION/"* "$TEMP_BUNDLE/$GROUP_PATH/$variant_name/$VERSION/" 2>/dev/null || true
-done
-
-# Copy grant-compose artifacts
-echo "  Copying: grant-compose"
-find grant-compose/build/maven-central-staging/$GROUP_PATH -mindepth 1 -maxdepth 1 -type d | while read variant; do
-    variant_name=$(basename "$variant")
-    mkdir -p "$TEMP_BUNDLE/$GROUP_PATH/$variant_name/$VERSION"
-    cp -r "$variant/$VERSION/"* "$TEMP_BUNDLE/$GROUP_PATH/$variant_name/$VERSION/" 2>/dev/null || true
-done
-
-# Copy grant-core-koin artifacts
-echo "  Copying: grant-core-koin"
-find grant-core-koin/build/maven-central-staging/$GROUP_PATH -mindepth 1 -maxdepth 1 -type d | while read variant; do
-    variant_name=$(basename "$variant")
-    mkdir -p "$TEMP_BUNDLE/$GROUP_PATH/$variant_name/$VERSION"
-    cp -r "$variant/$VERSION/"* "$TEMP_BUNDLE/$GROUP_PATH/$variant_name/$VERSION/" 2>/dev/null || true
-done
-
-# Copy grant-contacts artifacts
-echo "  Copying: grant-contacts"
-find grant-contacts/build/maven-central-staging/$GROUP_PATH -mindepth 1 -maxdepth 1 -type d | while read variant; do
-    variant_name=$(basename "$variant")
-    mkdir -p "$TEMP_BUNDLE/$GROUP_PATH/$variant_name/$VERSION"
-    cp -r "$variant/$VERSION/"* "$TEMP_BUNDLE/$GROUP_PATH/$variant_name/$VERSION/" 2>/dev/null || true
-done
-
-# Copy grant-calendar artifacts
-echo "  Copying: grant-calendar"
-find grant-calendar/build/maven-central-staging/$GROUP_PATH -mindepth 1 -maxdepth 1 -type d | while read variant; do
-    variant_name=$(basename "$variant")
-    mkdir -p "$TEMP_BUNDLE/$GROUP_PATH/$variant_name/$VERSION"
-    cp -r "$variant/$VERSION/"* "$TEMP_BUNDLE/$GROUP_PATH/$variant_name/$VERSION/" 2>/dev/null || true
-done
-
-# Copy grant-motion artifacts
-echo "  Copying: grant-motion"
-find grant-motion/build/maven-central-staging/$GROUP_PATH -mindepth 1 -maxdepth 1 -type d | while read variant; do
-    variant_name=$(basename "$variant")
-    mkdir -p "$TEMP_BUNDLE/$GROUP_PATH/$variant_name/$VERSION"
-    cp -r "$variant/$VERSION/"* "$TEMP_BUNDLE/$GROUP_PATH/$variant_name/$VERSION/" 2>/dev/null || true
+for m in "${MODULES[@]}"; do
+    STAGING="$m/build/maven-central-staging/$GROUP_PATH"
+    if [ ! -d "$STAGING" ]; then
+        echo "  ⚠️  Skipping $m (no staging dir)"
+        continue
+    fi
+    echo "  Copying: $m"
+    find "$STAGING" -mindepth 1 -maxdepth 1 -type d | while read variant; do
+        variant_name=$(basename "$variant")
+        mkdir -p "$TEMP_BUNDLE/$GROUP_PATH/$variant_name/$VERSION"
+        cp -r "$variant/$VERSION/"* "$TEMP_BUNDLE/$GROUP_PATH/$variant_name/$VERSION/" 2>/dev/null || true
+    done
 done
 
 echo ""
@@ -266,6 +158,17 @@ else
     echo "  ✅ No META-INF directory"
 fi
 
+# Sanity check: every module must appear in the bundle.
+echo "  Checking module coverage..."
+for m in "${MODULES[@]}"; do
+    if unzip -l "$OUTPUT_DIR/$BUNDLE_NAME" 2>/dev/null | grep -q "/$m/"; then
+        echo "    ✅ $m"
+    else
+        echo "    ❌ ERROR: $m missing from bundle"
+        exit 1
+    fi
+done
+
 FILE_COUNT=$(unzip -l "$OUTPUT_DIR/$BUNDLE_NAME" 2>/dev/null | tail -1 | awk '{print $2}')
 SIG_COUNT=$(unzip -l "$OUTPUT_DIR/$BUNDLE_NAME" 2>/dev/null | grep "\.asc$" | wc -l | xargs)
 
@@ -286,6 +189,7 @@ echo "  Location: $OUTPUT_DIR/$BUNDLE_NAME"
 echo "  Size: $BUNDLE_SIZE"
 echo "  Files: $FILE_COUNT"
 echo "  Signatures: $SIG_COUNT"
+echo "  Modules: ${#MODULES[@]}"
 echo ""
 echo "Next Steps:"
 echo "  1. Go to: https://central.sonatype.com/"

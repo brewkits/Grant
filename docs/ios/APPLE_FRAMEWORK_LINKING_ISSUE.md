@@ -1,8 +1,8 @@
 # Apple App Store Rejection: Unused Permission Frameworks
 
-> **Related:** Issue #25, Issue #38  
+> **Related:** Issue #25, Issue #38, Issue #45  
 > **Severity:** 🔴 Critical (causes App Store rejection at upload time)  
-> **Status:** ✅ FULLY RESOLVED in v2.1.0 — see [Section 5](#5-resolution-v200)
+> **Status:** ✅ FULLY RESOLVED — Contacts/Calendar/Motion in v2.1.0; Bluetooth + always-Location in v2.2.0 — see [Section 5](#5-resolution--v210--v220)
 
 ---
 
@@ -109,19 +109,25 @@ The corollary: no amount of DCE, linker flags, conditional initialization, or di
 
 ---
 
-## 5. Resolution — v2.1.0
+## 5. Resolution — v2.1.0 / v2.2.0
 
 ### What changed
 
-`CalendarPermissionHandler.kt`, `ContactsPermissionHandler.kt`, and `MotionPermissionHandler.kt` were moved from `grant-core` into three new independent Gradle/Maven modules:
+Permission handlers whose mere presence in the binary triggers an Apple `NSUsageDescription` requirement were moved out of `grant-core` into independent Gradle/Maven modules. v2.1.0 isolated Contacts, Calendar, and Motion; v2.2.0 (Issue #45) isolated Bluetooth and "always" (background) Location:
 
-| Module | Source file moved | Framework isolated |
-|---|---|---|
-| `grant-contacts` | `ContactsPermissionHandler.kt` | `Contacts.framework` |
-| `grant-calendar` | `CalendarPermissionHandler.kt` | `EventKit.framework` |
-| `grant-motion` | `MotionPermissionHandler.kt` | `CoreMotion.framework` |
+| Module | Source moved | What is isolated | Since |
+|---|---|---|---|
+| `grant-contacts` | `ContactsPermissionHandler.kt` | `Contacts.framework` | v2.1.0 |
+| `grant-calendar` | `CalendarPermissionHandler.kt` | `EventKit.framework` | v2.1.0 |
+| `grant-motion` | `MotionPermissionHandler.kt` | `CoreMotion.framework` | v2.1.0 |
+| `grant-bluetooth` | `BluetoothPermissionHandler.kt` | `CoreBluetooth.framework` | v2.2.0 |
+| `grant-location-always` | `LocationAlwaysPermissionHandler.kt` | the `requestAlwaysAuthorization` selector (background location) | v2.2.0 |
 
-`grant-core` retains Camera (`AVFoundation`), Gallery (`Photos`), Location (`CoreLocation`), Bluetooth (`CoreBluetooth`), and Notification (`UserNotifications`) — frameworks that are expected in the vast majority of iOS apps and that Apple does not reject for when unused.
+`grant-core` retains Camera (`AVFoundation`), Gallery (`Photos`), foreground Location (`CoreLocation`), and Notification (`UserNotifications`) — frameworks/APIs expected in the vast majority of iOS apps.
+
+For Location specifically: `grant-core` now calls **only** `requestWhenInUseAuthorization` (an explicit, statically-linked call). The `requestAlwaysAuthorization` selector lives solely in `grant-location-always`, so an app that only needs foreground location never has that selector in its binary and is never asked for `NSLocationAlwaysAndWhenInUseUsageDescription`. Status-checking in core still reads the `kCLAuthorizationStatusAuthorizedAlways` enum constant (a harmless value comparison — Apple's scanner inspects `__objc_methname` method selectors, not enum reads).
+
+> **Rejected alternative:** keeping `requestAlwaysAuthorization` in `grant-core` but hiding it via `performSelector(NSSelectorFromString("request" + "AlwaysAuthorization"))`. This is a review-circumvention technique that risks rejection under App Store Review Guideline 2.3.1 (hidden/undocumented functionality) and breaks the project's own module-isolation convention. Module isolation is the only sanctioned fix.
 
 ### Why this works
 

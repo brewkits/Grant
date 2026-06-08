@@ -61,6 +61,8 @@ kotlin {
             implementation(project(":grant-contacts"))
             implementation(project(":grant-calendar"))
             implementation(project(":grant-motion"))
+            implementation(project(":grant-bluetooth"))
+            implementation(project(":grant-location-always"))
         }
 
         androidMain.dependencies {

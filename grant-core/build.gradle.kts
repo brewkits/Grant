@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "dev.brewkits"
-version = "2.1.0"
+version = "2.2.0"
 
 kotlin {
     androidTarget {
@@ -37,7 +37,6 @@ kotlin {
             // This provides an additional layer of safety to prevent Apple from
             // flagging unused frameworks during App Store static analysis scans.
             linkerOpts("-weak_framework", "CoreLocation")
-            linkerOpts("-weak_framework", "CoreBluetooth")
             linkerOpts("-weak_framework", "Photos")
             linkerOpts("-weak_framework", "AVFoundation")
         }
@@ -130,7 +129,7 @@ publishing {
     publications.configureEach {
         (this as? MavenPublication)?.let {
             groupId = "dev.brewkits"
-            version = "2.1.0"
+            version = "2.2.0"
 
             pom {
                 name.set("KMP Grant")

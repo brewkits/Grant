@@ -46,6 +46,12 @@ jobs:
           files: |
             grant-core/build/libs/*.jar
             grant-compose/build/libs/*.jar
+            grant-core-koin/build/libs/*.jar
+            grant-contacts/build/libs/*.jar
+            grant-calendar/build/libs/*.jar
+            grant-motion/build/libs/*.jar
+            grant-bluetooth/build/libs/*.jar
+            grant-location-always/build/libs/*.jar
           generate_release_notes: true
           draft: false
           prerelease: false

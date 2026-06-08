@@ -22,7 +22,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
 
       - name: Run KMP Coverage (Kover)
-        run: ./gradlew :grant-core:koverHtmlReport :grant-core:koverVerify :grant-compose:koverHtmlReport
+        run: ./gradlew :grant-core:koverHtmlReport :grant-core:koverVerify :grant-compose:koverHtmlReport :grant-bluetooth:koverHtmlReport :grant-location-always:koverHtmlReport
 
       - name: Upload KMP Coverage Report
         uses: actions/upload-artifact@v4
@@ -31,3 +31,5 @@ jobs:
           path: |
             grant-core/build/reports/kover/html
             grant-compose/build/reports/kover/html
+            grant-bluetooth/build/reports/kover/html
+            grant-location-always/build/reports/kover/html
