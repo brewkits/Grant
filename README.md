@@ -17,7 +17,7 @@
 
 Grant is not just another permission library. It is a **production-hardened engine** designed to handle complex edge cases that lead to crashes and hangs in other solutions. Built for professionals who demand absolute reliability.
 
-[**Explore Documentation**](docs/README.md) • [**Quick Start**](#-quick-start) • [**Why Grant?**](#-why-grant) • [**Demo App**](#-demo)
+[**Explore Documentation**](docs/README.md) • [**Quick Start**](docs/getting-started/quick-start.md) • [**Why Grant?**](#-why-grant) • [**Demo App**](docs/demo/DEMO_GUIDE.md)
 
 </div>
 
