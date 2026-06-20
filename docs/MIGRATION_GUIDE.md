@@ -1,7 +1,7 @@
 # Migration Guide to Grant
 
-**Version:** 2.1.0
-**Last Updated:** May 15, 2026
+**Version:** 2.2.0
+**Last Updated:** June 20, 2026
 
 This guide helps you migrate from previous versions of Grant or other permission libraries.
 
@@ -9,14 +9,66 @@ This guide helps you migrate from previous versions of Grant or other permission
 
 ## 📚 Table of Contents
 
-1. [Upgrading from Grant 1.x to 2.1.0](#upgrading-from-grant-1x-to-200)
-2. [Upgrading from Grant 1.3.x to 1.4.2](#upgrading-from-grant-13x-to-142)
-3. [From moko-permissions](#from-moko-permissions)
-4. [From Google Accompanist](#from-google-accompanist)
-5. [From Custom Implementation](#from-custom-implementation)
-6. [From Native Android APIs](#from-native-android-apis)
-7. [Common Migration Patterns](#common-migration-patterns)
-8. [Troubleshooting](#troubleshooting)
+1. [Upgrading from Grant 2.1.0 to 2.2.0](#upgrading-from-grant-210-to-220)
+2. [Upgrading from Grant 1.x to 2.1.0](#upgrading-from-grant-1x-to-200)
+3. [Upgrading from Grant 1.3.x to 1.4.2](#upgrading-from-grant-13x-to-142)
+4. [From moko-permissions](#from-moko-permissions)
+5. [From Google Accompanist](#from-google-accompanist)
+6. [From Custom Implementation](#from-custom-implementation)
+7. [From Native Android APIs](#from-native-android-apis)
+8. [Common Migration Patterns](#common-migration-patterns)
+9. [Troubleshooting](#troubleshooting)
+
+---
+
+## 🛡️ Upgrading from Grant 2.1.0 to 2.2.0
+
+### Overview
+
+v2.2.0 (Issue #45) continues the **iOS Framework Isolation** work started in v2.1.0. Two more sensitive paths were moved out of `grant-core` into opt-in modules so apps that don't use them are never flagged by Apple's static scanner:
+
+- **`grant-bluetooth`** — `CoreBluetooth.framework` is no longer linked by `grant-core`, so the `NSBluetoothAlwaysUsageDescription` requirement disappears for apps that don't use Bluetooth.
+- **`grant-location-always`** — the `requestAlwaysAuthorization` (background location) selector moved out of core. `grant-core` now calls **only** `requestWhenInUseAuthorization`. Apps using only foreground location are no longer asked for `NSLocationAlwaysAndWhenInUseUsageDescription`.
+
+**Android is completely unaffected** — no code changes required on Android.
+
+### What Changed?
+
+- **New optional modules**: `grant-bluetooth`, `grant-location-always`. Each links its native iOS framework / selector only when added.
+- **`AppGrant` is unchanged**: `BLUETOOTH`, `BLUETOOTH_ADVERTISE`, and `LOCATION_ALWAYS` are still valid enum values. On iOS they now resolve through the opt-in module's registered handler instead of a built-in one.
+
+### Step-by-Step Upgrade (iOS only)
+
+#### 1. Bump every Grant artifact to `2.2.0`
+
+#### 2. Add the new modules only if you use those permissions
+
+```kotlin
+// shared/build.gradle.kts
+commonMain.dependencies {
+    implementation("dev.brewkits:grant-core:2.2.0")
+    implementation("dev.brewkits:grant-bluetooth:2.2.0")        // only if you use AppGrant.BLUETOOTH / BLUETOOTH_ADVERTISE
+    implementation("dev.brewkits:grant-location-always:2.2.0")  // only if you use AppGrant.LOCATION_ALWAYS (background) on iOS
+}
+```
+
+#### 3. Call `initialize()` once on iOS for each new module you added
+
+```swift
+// Swift
+GrantBluetooth.shared.initialize()
+GrantLocationAlways.shared.initialize()
+```
+
+```kotlin
+// iosMain — call once at app start
+GrantBluetooth.initialize()
+GrantLocationAlways.initialize()
+```
+
+> ⚠️ If you request `BLUETOOTH` / `BLUETOOTH_ADVERTISE` / `LOCATION_ALWAYS` on iOS **without** adding the corresponding module and calling `initialize()`, the handler is not registered: `checkStatus()` and `request()` log a warning and return `NOT_DETERMINED` (no system dialog is shown — it does not hang or crash). On Android these permissions continue to work without any extra module.
+
+#### 4. No changes required for Android
 
 ---
 

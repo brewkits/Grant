@@ -53,20 +53,27 @@ This document explains the architectural decisions behind KMP Grant library and 
 └──────────────────┘           └──────────────────┘
 ```
 
-## 🍎 iOS Framework Isolation (v2.1.0)
+## 🍎 iOS Framework Isolation (v2.1.0 → v2.2.0)
 
-To avoid App Store rejections due to "unused sensitive permissions", Grant isolates `Contacts.framework`, `EventKit.framework`, and `CoreMotion.framework` into separate Gradle/Maven artifacts. Apps that don't add these optional modules never link these frameworks — Apple's static scanner never requires the corresponding `NSUsageDescription` keys.
+To avoid App Store rejections due to "unused sensitive permissions", Grant isolates the sensitive iOS frameworks into separate Gradle/Maven artifacts. Apps that don't add these optional modules never link these frameworks — Apple's static scanner never requires the corresponding `NSUsageDescription` keys.
 
 ### The Problem
-Kotlin/Native's dead code elimination (DCE) sometimes fails to remove framework linkages if they are referenced in a large, monolithic platform delegate. This causes the App Store static scanner to detect frameworks like `CoreLocation` or `CoreBluetooth` even if your app never requests them.
+Kotlin/Native's dead code elimination (DCE) sometimes fails to remove framework linkages if they are referenced in a large, monolithic platform delegate. This causes the App Store static scanner to detect frameworks like `CoreBluetooth` — or selectors like `requestAlwaysAuthorization` — even if your app never requests them.
 
-### The Solution: Opt-In Modules (v2.1.0)
-As of v2.1.0, the three sensitive frameworks are isolated into their own Gradle modules:
-- `grant-contacts` — links `Contacts.framework` only when added
-- `grant-calendar` — links `EventKit.framework` only when added
-- `grant-motion` — links `CoreMotion.framework` only when added
+### The Solution: Opt-In Modules
+The sensitive frameworks and selectors are isolated into their own Gradle modules:
 
-`CoreLocation`, `CoreBluetooth`, `Photos`, and `AVFoundation` remain in `grant-core` and are weak-linked there. Each optional module also uses `-weak_framework` for defense in depth.
+| Module | What it isolates | Since |
+|---|---|---|
+| `grant-contacts` | `Contacts.framework` | v2.1.0 |
+| `grant-calendar` | `EventKit.framework` | v2.1.0 |
+| `grant-motion` | `CoreMotion.framework` | v2.1.0 |
+| `grant-bluetooth` | `CoreBluetooth.framework` | v2.2.0 |
+| `grant-location-always` | the `requestAlwaysAuthorization` selector (background location) | v2.2.0 |
+
+`CoreLocation` (when-in-use only — `grant-core` calls only `requestWhenInUseAuthorization`), `Photos`, and `AVFoundation` remain in `grant-core` and are weak-linked there. Each optional module also uses `-weak_framework` for defense in depth.
+
+> **Note:** Status-checking in core still maps `kCLAuthorizationStatusAuthorizedAlways → GRANTED`, which is a harmless enum read — Apple's scanner inspects method selectors, not enum value comparisons.
 
 ### Custom Registry
 For permissions not natively supported by the core library, or for developers wanting to override default behavior, `IosPermissionHandlerRegistry` allows runtime registration of custom `IosPermissionHandler` implementations for any `RawPermission` identifier.
