@@ -201,16 +201,18 @@ kotlin {
 
 ```swift
 // iOS — AppDelegate / @main entry point
-GrantContacts.shared.initialize()   // if you added grant-contacts
-GrantCalendar.shared.initialize()   // if you added grant-calendar
-GrantMotion.shared.initialize()     // if you added grant-motion
+GrantContacts.shared.initialize()        // if you added grant-contacts
+GrantCalendar.shared.initialize()        // if you added grant-calendar
+GrantMotion.shared.initialize()          // if you added grant-motion
+GrantBluetooth.shared.initialize()       // if you added grant-bluetooth
+GrantLocationAlways.shared.initialize()  // if you added grant-location-always
 ```
 
 > [!IMPORTANT]
 > For projects targeting **Web (JS)** or **Desktop (JVM)**, use an intermediate `mobileMain` source set to avoid linking iOS/Android dependencies on unsupported platforms. [Read the Guide](docs/DEPENDENCY_MANAGEMENT.md).
 
 > [!NOTE]
-> **Migrating from v1.x?** Contacts, Calendar, and Motion permissions are now opt-in modules. Add the corresponding artifact and call `initialize()` on iOS. Android behavior is unchanged — no code changes required on Android. See the [Migration Guide](docs/MIGRATION_GUIDE.md).
+> **Migrating from v1.x?** Contacts, Calendar, Motion, Bluetooth, and background ("always") Location permissions are now opt-in modules. Add the corresponding artifact and call `initialize()` on iOS. Android behavior is unchanged — no code changes required on Android. See the [Migration Guide](docs/MIGRATION_GUIDE.md).
 
 ---
 
