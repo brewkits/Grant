@@ -10,6 +10,7 @@ Complete guide for handling grants in KMP Grant library.
 4. [Best Practices](#best-practices)
 5. [Troubleshooting](#troubleshooting)
 6. [All Supported Grants](#all-supported-grants)
+7. [Permissions Intentionally Not Covered](#permissions-intentionally-not-covered)
 
 ## 🎯 Overview
 
@@ -743,6 +744,47 @@ val storageGrant = GrantHandler(
     scope
 )
 ```
+
+## 🚫 Permissions Intentionally Not Covered
+
+Grant manages **runtime permissions** — the ones that trigger a system dialog and
+move through the `NOT_DETERMINED → DENIED → rationale → DENIED_ALWAYS → settings`
+flow. Some Android permissions are **normal / install-time** permissions instead:
+they're granted automatically the moment you declare them in `AndroidManifest.xml`,
+with no dialog, no "deny", and no `DENIED_ALWAYS` state. There's nothing for a
+runtime-permission library to do for these, so they're intentionally out of scope.
+
+The most common example is **foreground services**:
+
+```xml
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+<!-- Android 14+ (API 34) also requires the typed permission for your service type: -->
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
+<!-- ...FOREGROUND_SERVICE_MICROPHONE, _DATA_SYNC, etc. -->
+```
+
+Declaring these in the manifest is the entire job — they need no runtime request.
+
+What **does** need a runtime grant is the underlying capability your foreground
+service uses. Request that capability through Grant, then start the service:
+
+```kotlin
+// A location foreground service still needs ACCESS_FINE_LOCATION at runtime.
+// (Likewise CAMERA for a camera FGS, MICROPHONE for a mic FGS, etc.)
+val status = grantManager.request(AppGrant.LOCATION)
+if (status == GrantStatus.GRANTED) {
+    startMyForegroundService()
+}
+```
+
+So a typical location foreground-service app declares `FOREGROUND_SERVICE` +
+`FOREGROUND_SERVICE_LOCATION` in the manifest (install-time, automatic) **and**
+requests [`AppGrant.LOCATION`](#location) through Grant at runtime.
+
+Other normal/install-time permissions (e.g. `INTERNET`, `ACCESS_NETWORK_STATE`,
+`VIBRATE`, `WAKE_LOCK`) follow the same rule: declare them in the manifest; Grant
+does not request them.
 
 ## 📚 References
 
