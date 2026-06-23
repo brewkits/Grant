@@ -208,27 +208,21 @@ actual class PlatformGrantDelegate(
         if (grant is AppGrant) store.setRequested(grant)
         else if (grant is RawPermission) store.markRawPermissionRequested(grant.identifier)
 
-        val deferred = kotlinx.coroutines.CompletableDeferred<GrantRequestActivity.GrantResult>()
-        val launcher = this.launcher ?: run {
-            GrantLogger.e(TAG, "No GrantLauncher registered! Call setLauncher() from your Activity/Fragment.")
-            return GrantStatus.DENIED
-        }
-
-        launcher.launch(androidPermissions) { resultMap ->
-            val allGranted = resultMap.values.all { it }
-            val result = if (allGranted) {
-                GrantRequestActivity.GrantResult.GRANTED
-            } else {
-                GrantRequestActivity.GrantResult.DENIED
+        val launcher = this.launcher
+        if (launcher != null) {
+            val deferred = kotlinx.coroutines.CompletableDeferred<Unit>()
+            launcher.launch(androidPermissions) { _ -> deferred.complete(Unit) }
+            try {
+                withTimeout(SYSTEM_DIALOG_TIMEOUT_MS) { deferred.await() }
+            } catch (e: Exception) {
+                GrantLogger.e(TAG, "System dialog timeout or error", e)
             }
-            deferred.complete(result)
-        }
-
-        val result = try {
-            withTimeout(SYSTEM_DIALOG_TIMEOUT_MS) { deferred.await() }
-        } catch (e: Exception) {
-            GrantLogger.e(TAG, "System dialog timeout or error", e)
-            GrantRequestActivity.GrantResult.ERROR
+        } else {
+            // No GrantLauncher registered — fall back to the self-contained transparent
+            // GrantRequestActivity so the system dialog still opens without requiring the
+            // app to bind a launcher to its Activity/Fragment lifecycle (Issue #53).
+            GrantLogger.d(TAG, "No GrantLauncher registered; using GrantRequestActivity fallback.")
+            requestViaActivity(androidPermissions)
         }
 
         // Invalidate cache immediately after system dialog returns
@@ -302,20 +296,20 @@ actual class PlatformGrantDelegate(
 
         if (allAndroidPermissions.isEmpty()) return grants.associateWith { checkStatus(it) }
 
-        val deferred = kotlinx.coroutines.CompletableDeferred<Boolean>()
-        val launcher = this.launcher ?: run {
-            GrantLogger.e(TAG, "No GrantLauncher registered!")
-            return grants.associateWith { GrantStatus.DENIED }
-        }
-
-        launcher.launch(allAndroidPermissions.toList()) { resultMap ->
-            deferred.complete(true)
-        }
-
-        try {
-            withTimeout(60_000) { deferred.await() }
-        } catch (e: Exception) {
-            GrantLogger.e("AndroidGrant", "Multi-request failed", e)
+        val launcher = this.launcher
+        if (launcher != null) {
+            val deferred = kotlinx.coroutines.CompletableDeferred<Boolean>()
+            launcher.launch(allAndroidPermissions.toList()) { _ -> deferred.complete(true) }
+            try {
+                withTimeout(SYSTEM_DIALOG_TIMEOUT_MS) { deferred.await() }
+            } catch (e: Exception) {
+                GrantLogger.e("AndroidGrant", "Multi-request failed", e)
+            }
+        } else {
+            // No GrantLauncher registered — fall back to the self-contained transparent
+            // GrantRequestActivity so the system dialog still opens without lifecycle binding (Issue #53).
+            GrantLogger.d(TAG, "No GrantLauncher registered; using GrantRequestActivity fallback for multi-request.")
+            requestViaActivity(allAndroidPermissions.toList())
         }
 
         mapsMutex.withLock {
@@ -333,6 +327,27 @@ actual class PlatformGrantDelegate(
                     grant to finalStatus 
                 }
             }.awaitAll().toMap()
+        }
+    }
+
+    /**
+     * Fallback request path used when no [GrantLauncher] has been registered via [setLauncher].
+     *
+     * Launches the self-contained transparent [GrantRequestActivity], which owns its own
+     * [androidx.activity.result.ActivityResultLauncher], so the system permission dialog opens
+     * from any context (ViewModel, Repository, etc.) without the app having to bind a launcher
+     * to an Activity/Fragment lifecycle. Suspends until the dialog resolves; the caller re-reads
+     * the real status via [checkStatus] afterwards. (Issue #53)
+     */
+    private suspend fun requestViaActivity(androidPermissions: List<String>) {
+        val requestId = GrantRequestActivity.requestGrants(context, androidPermissions)
+        val deferred = GrantRequestActivity.getResultDeferred(requestId) ?: return
+        try {
+            withTimeout(SYSTEM_DIALOG_TIMEOUT_MS) { deferred.await() }
+        } catch (e: Exception) {
+            GrantLogger.e(TAG, "GrantRequestActivity fallback timeout or error", e)
+        } finally {
+            GrantRequestActivity.cleanup(requestId)
         }
     }
 
