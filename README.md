@@ -208,6 +208,11 @@ GrantBluetooth.shared.initialize()       // if you added grant-bluetooth
 GrantLocationAlways.shared.initialize()  // if you added grant-location-always
 ```
 
+**Android — no setup required**: Grant ships a self-contained transparent `Activity`, so `request()` opens the system dialog from anywhere (ViewModel, Repository, etc.) with **zero lifecycle binding**. You do not need to register anything.
+
+> [!TIP]
+> **Optional optimization.** If you prefer to drive the system dialog through your own Compose/Activity `ActivityResultLauncher` (no extra transparent Activity launch), register one once via `grantManager.setLauncher(...)`. When a launcher is registered Grant uses it; otherwise it automatically falls back to the built-in transparent Activity. Both paths show the same system dialog.
+
 > [!IMPORTANT]
 > For projects targeting **Web (JS)** or **Desktop (JVM)**, use an intermediate `mobileMain` source set to avoid linking iOS/Android dependencies on unsupported platforms. [Read the Guide](docs/DEPENDENCY_MANAGEMENT.md).
 
