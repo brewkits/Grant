@@ -93,16 +93,20 @@ actual class PlatformGrantDelegate(
                 if (allGranted) GrantStatus.GRANTED
                 else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && ContextCompat.checkSelfPermission(context, READ_MEDIA_VISUAL_USER_SELECTED) == PackageManager.PERMISSION_GRANTED) {
                     GrantStatus.PARTIAL_GRANTED
-                } else if (!store.isRawPermissionRequested(grant.identifier)) {
-                    GrantStatus.NOT_DETERMINED
                 } else {
+                    // shouldShowRequestPermissionRationale() is OS-persisted and survives process
+                    // death, unlike store.isRawPermissionRequested(). Check it first so a soft
+                    // denial is still detected after an app restart (Issue #55).
                     val activeActivity = PlatformConfig.activity ?: (context as? android.app.Activity)
-                    if (activeActivity != null) {
-                        val anyCanShowRationale = androidPermissions.any { activeActivity.shouldShowRequestPermissionRationale(it) }
-                        if (anyCanShowRationale) GrantStatus.DENIED else GrantStatus.DENIED_ALWAYS
-                    } else {
-                        // Fallback to DENIED to allow rationale display if activity context is missing.
-                        GrantStatus.DENIED
+                    val anyCanShowRationale = activeActivity != null &&
+                        androidPermissions.any { activeActivity.shouldShowRequestPermissionRationale(it) }
+                    when {
+                        anyCanShowRationale -> GrantStatus.DENIED
+                        store.isRawPermissionRequested(grant.identifier) -> {
+                            // Fallback to DENIED to allow rationale display if activity context is missing.
+                            if (activeActivity == null) GrantStatus.DENIED else GrantStatus.DENIED_ALWAYS
+                        }
+                        else -> GrantStatus.NOT_DETERMINED
                     }
                 }
             } else {
@@ -116,16 +120,17 @@ actual class PlatformGrantDelegate(
                     }
                     val hasBackground = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
 
+                    // shouldShowRequestPermissionRationale() is OS-persisted and survives process
+                    // death, unlike store.isRequestedBefore(). Check it first so a soft denial is
+                    // still detected after an app restart (Issue #55).
+                    val activeActivity = PlatformConfig.activity ?: (context as? android.app.Activity)
+                    val canShowRationale = activeActivity?.shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_BACKGROUND_LOCATION) == true
+
                     when {
                         hasBackground -> GrantStatus.GRANTED
                         hasForeground -> GrantStatus.PARTIAL_GRANTED
-                        store.isRequestedBefore(appGrant) -> {
-                            val activeActivity = PlatformConfig.activity ?: (context as? android.app.Activity)
-                            if (activeActivity != null) {
-                                val canShowRationale = activeActivity.shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                                if (canShowRationale) GrantStatus.DENIED else GrantStatus.DENIED_ALWAYS
-                            } else GrantStatus.DENIED
-                        }
+                        canShowRationale -> GrantStatus.DENIED
+                        store.isRequestedBefore(appGrant) -> if (activeActivity == null) GrantStatus.DENIED else GrantStatus.DENIED_ALWAYS
                         else -> GrantStatus.NOT_DETERMINED
                     }
                 } else {
@@ -142,13 +147,19 @@ actual class PlatformGrantDelegate(
                             val storedStatus = store.getStatus(appGrant)
                             if (storedStatus == GrantStatus.DENIED || storedStatus == GrantStatus.DENIED_ALWAYS) {
                                 storedStatus
-                            } else if (store.isRequestedBefore(appGrant)) {
+                            } else {
+                                // shouldShowRequestPermissionRationale() is OS-persisted and survives
+                                // process death, unlike store.isRequestedBefore(). Check it first so a
+                                // soft denial is still detected after an app restart (Issue #55).
                                 val activeActivity = PlatformConfig.activity ?: (context as? android.app.Activity)
-                                if (activeActivity != null) {
-                                    val anyCanShowRationale = androidGrants.any { activeActivity.shouldShowRequestPermissionRationale(it) }
-                                    if (anyCanShowRationale) GrantStatus.DENIED else GrantStatus.DENIED_ALWAYS
-                                } else GrantStatus.DENIED
-                            } else GrantStatus.NOT_DETERMINED
+                                val anyCanShowRationale = activeActivity != null &&
+                                    androidGrants.any { activeActivity.shouldShowRequestPermissionRationale(it) }
+                                when {
+                                    anyCanShowRationale -> GrantStatus.DENIED
+                                    store.isRequestedBefore(appGrant) -> if (activeActivity == null) GrantStatus.DENIED else GrantStatus.DENIED_ALWAYS
+                                    else -> GrantStatus.NOT_DETERMINED
+                                }
+                            }
                         }
                     }
                 }
