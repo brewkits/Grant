@@ -24,6 +24,7 @@ Welcome to Grant's comprehensive documentation!
 **Copy-paste solutions for common patterns**
 
 - [Location Permission + GPS Check](recipes/location-permission-with-gps-check.md) - Complete location flow with service checking
+- [Skip the Prompt When Already Granted](recipes/skip-prompt-when-already-granted.md) - Observe `GrantHandler.status` to go straight to the feature without re-prompting
 
 ### 🏗️ Architecture
 **Understanding Grant's design**
