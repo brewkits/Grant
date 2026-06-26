@@ -1,7 +1,7 @@
 package dev.brewkits.grant.di
 
 import android.content.Context
-import dev.brewkits.grant.InMemoryGrantStore
+import dev.brewkits.grant.SharedPreferencesGrantStore
 import dev.brewkits.grant.impl.PlatformGrantDelegate
 import org.koin.dsl.module
 
@@ -16,9 +16,11 @@ import org.koin.dsl.module
  */
 actual val grantPlatformModule = module {
     single {
+        val context = get<Context>()
         PlatformGrantDelegate(
-            context = get<Context>(),
-            store = InMemoryGrantStore()
+            context = context,
+            // Persistent store so request history survives process death (Issue #55).
+            store = SharedPreferencesGrantStore(context)
         )
     }
 }

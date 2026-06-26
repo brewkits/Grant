@@ -49,6 +49,17 @@
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
             android:stateNotNeeded="true"
             android:windowSoftInputMode="stateHidden|adjustNothing" />
+
+        <!--
+            Registers foreground-Activity tracking before Application.onCreate() or any
+            Activity is created (see GrantInitializer KDoc). authorities must be unique
+            per-app, so it's namespaced with ${applicationId} like AndroidX Startup does.
+        -->
+        <provider
+            android:name="dev.brewkits.grant.impl.GrantInitializer"
+            android:authorities="${applicationId}.grantinitializer"
+            android:exported="false"
+            android:initOrder="100" />
     </application>
 
 </manifest>

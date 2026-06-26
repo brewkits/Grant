@@ -53,49 +53,49 @@ prefs.putBoolean("requested_camera", true)
 // Fact: "Have requested this permission" → Never wrong!
 ```
 
-### Implementation Logic
+### Implementation
 
-**File:** `grant-core/src/androidMain/kotlin/dev/brewkits/grant/impl/PlatformGrantDelegate.android.kt`
+The persistence lives in a dedicated, pluggable `GrantStore` rather than being hardcoded into the delegate. On Android this is `SharedPreferencesGrantStore`, the **default** store (see [GrantStore Architecture](architecture/grant-store.md)).
 
-#### 1. Add SharedPreferences
+#### 1. `SharedPreferencesGrantStore` (the Android default)
+
+**File:** `grant-core/src/androidMain/kotlin/dev/brewkits/grant/SharedPreferencesGrantStore.kt`
+
 ```kotlin
-// Lines 28-42
-private val prefs by lazy {
-    context.getSharedPreferences("grant_request_history", Context.MODE_PRIVATE)
-}
+class SharedPreferencesGrantStore(context: Context) : GrantStore {
+    private val prefs = context.applicationContext
+        .getSharedPreferences("grant_request_history", Context.MODE_PRIVATE)
 
-private fun isRequestedBefore(grant: AppGrant): Boolean {
-    return prefs.getBoolean("requested_${grant.name}", false)
-}
+    // Request history is persisted...
+    override fun isRequestedBefore(grant: AppGrant): Boolean =
+        prefs.getStringSet("requested_grants", emptySet())?.contains(grant.name) == true
 
-private fun setRequested(grant: AppGrant) {
-    prefs.edit().putBoolean("requested_${grant.name}", true).apply()
+    override fun setRequested(grant: AppGrant) { /* add grant.name to the persisted set */ }
+
+    // ...but the status cache stays in memory — the OS is the source of truth for live status.
+    private val statusCache = mutableMapOf<AppGrant, GrantStatus>()
+    override fun getStatus(grant: AppGrant): GrantStatus? = statusCache[grant]
 }
 ```
 
-#### 2. Update checkStatus()
+It is selected automatically by `GrantFactory.create(context)` and by the Koin `grantPlatformModule`; pass an explicit `store` to override.
+
+#### 2. `checkStatus()` consults the persisted history
+
+In `PlatformGrantDelegate.android.kt`, the OS-persisted `shouldShowRequestPermissionRationale()` flag is checked first (it recovers *soft* denials after restart); the store's `isRequestedBefore()` is the fallback that recovers *permanent* denials after restart:
+
 ```kotlin
-// Lines 112-121
-// 5. Check SharedPreferences to see if we've requested before (survives app restart)
-// ✅ FIX: This solves "Dead Click" issue after app restart
-// If not granted AND requested before → User must have denied it → Return DENIED
-// This allows UI to show rationale/settings dialog instead of system dialog again
-if (isRequestedBefore(grant)) {
-    return GrantStatus.DENIED
+when {
+    anyCanShowRationale -> GrantStatus.DENIED            // soft denial (OS flag survives)
+    store.isRequestedBefore(appGrant) ->                 // persisted history survives process death
+        if (activeActivity == null) GrantStatus.DENIED else GrantStatus.DENIED_ALWAYS
+    else -> GrantStatus.NOT_DETERMINED                   // genuinely fresh install
 }
-
-// 6. Not granted, no cache, never requested - must be NOT_DETERMINED (first time)
-return GrantStatus.NOT_DETERMINED
 ```
 
-#### 3. Update request()
-```kotlin
-// Lines 145-148
-// ✅ FIX: Mark as "requested" before showing system dialog
-// This ensures checkStatus() will return DENIED after app restart (not NOT_DETERMINED)
-// Prevents "Dead Click" issue where clicking does nothing after restart
-setRequested(grant)
-```
+#### 3. `request()` records the request
+
+`requestInternal()` calls `store.setRequested(grant)` around the system dialog, so `checkStatus()` returns `DENIED`/`DENIED_ALWAYS` (not `NOT_DETERMINED`) after a restart.
 
 ---
 
@@ -263,16 +263,16 @@ checkStatus() {
 
 **Check SharedPreferences:**
 ```bash
-adb shell
-run-as dev.brewkits.grantdemo
-cat shared_prefs/grant_request_history.xml
+adb shell run-as <your.application.id> cat shared_prefs/grant_request_history.xml
 ```
 
 **Expected content after requesting Camera:**
 ```xml
 <?xml version='1.0' encoding='utf-8' standalone='yes' ?>
 <map>
-    <boolean name="requested_CAMERA" value="true" />
+    <set name="requested_grants">
+        <string>CAMERA</string>
+    </set>
 </map>
 ```
 
@@ -310,8 +310,7 @@ cat shared_prefs/grant_request_history.xml
 
 ---
 
-*Last Updated: 2026-01-23*
-*Fix By: Grant Library Team*
-*Issue: "Dead Click" after app restart on Android*
-*Solution: SharedPreferences to track "has requested" boolean*
-*Status: ✅ FIXED*
+*Last Updated: 2026-06-27*
+*Issue: "Dead Click" after app restart on Android ([#55](https://github.com/brewkits/Grant/issues/55))*
+*Solution: `SharedPreferencesGrantStore` (Android default) persists request history; only the immutable "has requested" fact is stored, never status*
+*Status: ✅ FIXED — verified on a physical Pixel 6 Pro (Android 16) for both soft- and permanent-denial-after-restart*

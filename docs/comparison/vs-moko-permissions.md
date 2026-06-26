@@ -72,14 +72,14 @@ return suspendCancellableCoroutine { continuation ->
 
 **moko-permissions**: No solution, users experience dead clicks
 
-**Grant**: Uses `InMemoryGrantStore` to track "requested before" state, distinguishing:
+**Grant**: Persists "requested before" state on Android via `SharedPreferencesGrantStore` (the default store; survives process death), distinguishing:
 - `NOT_DETERMINED` = Never asked (show dialog)
 - `DENIED` = Previously denied (can ask again)
 - `DENIED_ALWAYS` = Permanently denied (go to Settings)
 
 **Impact**: Zero dead clicks in Grant.
 
-See [Dead Click Fix Documentation](../platform-specific/android/dead-click-fix.md)
+See [Dead Click Fix Documentation](../FIX_DEAD_CLICK_ANDROID.md)
 
 ---
 

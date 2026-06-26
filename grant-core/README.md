@@ -65,7 +65,7 @@ class MyViewModel(private val grantManager: GrantManager) {
 
 - **Clean Architecture** - Interface-based, platform-agnostic, testable
 - **Platform Delegates** - iOS/Android implementations cleanly separated
-- **GrantStore System** - Pluggable state management (in-memory default)
+- **GrantStore System** - Pluggable request-history tracking (persistent on Android, in-memory on iOS)
 - **Factory Pattern** - Easy instantiation, DI-ready (Koin support)
 - **Dependency Injection** - Constructor-based, mockable for testing
 
@@ -256,9 +256,10 @@ grant-core/
 │   ├── GrantType.kt             // AppGrant enum
 │   ├── GrantStatus.kt           // Status enum
 │   ├── GrantStore.kt            // State storage interface
-│   ├── InMemoryGrantStore.kt    // Default implementation
+│   ├── InMemoryGrantStore.kt    // In-memory store (iOS default)
 │   └── GrantGroupHandler.kt     // Multiple permissions
 ├── androidMain/
+│   ├── SharedPreferencesGrantStore // Persistent store (Android default)
 │   ├── PlatformGrantDelegate    // Android implementation
 │   └── GrantRequestActivity     // Transparent activity
 └── iosMain/

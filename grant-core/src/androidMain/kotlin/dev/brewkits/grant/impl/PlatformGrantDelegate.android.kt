@@ -1,9 +1,12 @@
 package dev.brewkits.grant.impl
 
 import android.Manifest
+import android.app.Activity
+import android.app.Application
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Bundle
 import android.os.SystemClock
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -20,6 +23,8 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
+import java.util.Collections
+import java.util.WeakHashMap
 import java.util.concurrent.ConcurrentHashMap
 
 import dev.brewkits.grant.utils.ReentrantMutex
@@ -30,6 +35,10 @@ actual class PlatformGrantDelegate(
     private val context: Context,
     private val store: GrantStore
 ) {
+    init {
+        trackForegroundActivity(context)
+    }
+
     private var launcher: GrantLauncher? = null
     actual fun setLauncher(launcher: GrantLauncher) { this.launcher = launcher }
     /**
@@ -50,20 +59,56 @@ actual class PlatformGrantDelegate(
     // Short-lived status cache for all grants to prevent redundant OS calls
     private val statusCacheMap = ConcurrentHashMap<String, Pair<GrantStatus, Long>>()
 
-    private companion object {
-        const val TAG = "AndroidGrantDelegate"
-        const val READ_MEDIA_VISUAL_USER_SELECTED = "android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
-        
-        // TTL for status cache. Increased for better performance, 
+    companion object {
+        private const val TAG = "AndroidGrantDelegate"
+        private const val READ_MEDIA_VISUAL_USER_SELECTED = "android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
+
+        // TTL for status cache. Increased for better performance,
         // but invalidated manually on every request.
-        const val STATUS_CACHE_TTL_MS = 1000L 
-        
+        private const val STATUS_CACHE_TTL_MS = 1000L
+
         // Maximum time to wait for the Activity Launch Guard to clear
-        const val GUARD_CLEAR_TIMEOUT_MS = 1000L
-        const val GUARD_RETRY_INTERVAL_MS = 50L
-        
-        const val NOTIFICATION_CACHE_TTL_MS = 200L
-        const val SYSTEM_DIALOG_TIMEOUT_MS = 300_000L // 5 minutes (matches activity cleanup)
+        private const val GUARD_CLEAR_TIMEOUT_MS = 1000L
+        private const val GUARD_RETRY_INTERVAL_MS = 50L
+
+        private const val NOTIFICATION_CACHE_TTL_MS = 200L
+        private const val SYSTEM_DIALOG_TIMEOUT_MS = 300_000L // 5 minutes (matches activity cleanup)
+
+        // Tracks which Application instances already have the lifecycle callback below
+        // registered, so creating multiple PlatformGrantDelegate instances (e.g. in tests,
+        // or if an app constructs its own GrantManager more than once) never double-registers.
+        private val activityTrackedApps = Collections.newSetFromMap(WeakHashMap<Application, Boolean>())
+
+        /**
+         * Keeps [PlatformConfig.activity] pointed at the current foreground Activity without
+         * requiring any wiring from the consuming app. Called both eagerly from [GrantInitializer]
+         * (a ContentProvider that runs before any Activity is created — so it never misses the
+         * first `onResume()`) and lazily from [PlatformGrantDelegate]'s constructor as a fallback;
+         * the [activityTrackedApps] guard makes the second call a no-op once the first succeeds.
+         *
+         * Without this, apps that follow the documented pattern of providing an *Application*
+         * [Context] (e.g. via Koin's `androidContext(this)`) would never have a live Activity
+         * reference, so `shouldShowRequestPermissionRationale()` could never be consulted and
+         * DENIED vs DENIED_ALWAYS could never be told apart — including the restart scenario
+         * fixed in Issue #55, where that check is the only signal that survives process death.
+         */
+        @Synchronized
+        internal fun trackForegroundActivity(context: Context) {
+            val application = context.applicationContext as? Application ?: return
+            if (!activityTrackedApps.add(application)) return
+
+            application.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
+                override fun onActivityResumed(activity: Activity) {
+                    PlatformConfig.activity = activity
+                }
+                override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {}
+                override fun onActivityStarted(activity: Activity) {}
+                override fun onActivityPaused(activity: Activity) {}
+                override fun onActivityStopped(activity: Activity) {}
+                override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
+                override fun onActivityDestroyed(activity: Activity) {}
+            })
+        }
     }
 
     private fun isPartialGalleryAccessGranted(): Boolean {

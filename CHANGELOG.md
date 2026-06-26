@@ -6,6 +6,43 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.2.2] - 2026-06-27
+
+### 🐛 Fixed
+
+- **Android permission request swallowed after app restart ([#55](https://github.com/brewkits/Grant/issues/55))**
+  After denying a permission and restarting the app, the first request tap could silently do nothing instead of showing the rationale (soft denial) or the settings guide (permanent denial). Two root causes were fixed:
+  - `checkStatus()` now consults the OS-persisted `shouldShowRequestPermissionRationale()` flag **before** the in-memory request history, so a *soft* denial is recovered after a restart.
+  - The request history itself is now persisted on Android via the new **`SharedPreferencesGrantStore`** (file `grant_request_history`), so a *permanent* denial is recovered after a restart and correctly reported as `DENIED_ALWAYS` (routing to Settings) instead of `NOT_DETERMINED`.
+
+### ⚠️ Behavior Change (Android)
+
+- **`SharedPreferencesGrantStore` is now the default `GrantStore` on Android** (iOS remains `InMemoryGrantStore`). It persists **only** the immutable "has been requested" fact — never the permission status, which is always re-read from the OS — so there is no state desync. The backing file is excluded from backup and device-to-device transfer, so fresh installs start clean. Apps can opt back into the old behavior with `GrantFactory.create(context, store = InMemoryGrantStore())`. Verified on a physical Pixel 6 Pro (Android 16). See [GrantStore Architecture](docs/architecture/grant-store.md).
+
+---
+
+## [2.2.1] - 2026-06-25
+
+### 🐛 Fixed
+
+- **Android: system permission dialog never opened without a registered `GrantLauncher` ([#53](https://github.com/brewkits/Grant/issues/53))**
+  When no launcher was registered (e.g. requesting from a ViewModel without wiring `rememberLauncherForActivityResult`), the request fell through to the transparent `GrantRequestActivity` fallback, which now opens the system dialog correctly.
+
+---
+
+## [2.2.0] - 2026-06-21
+
+### ✨ iOS Framework Isolation (continued — [#45](https://github.com/brewkits/Grant/issues/45))
+
+Two more frameworks moved out of `grant-core` into opt-in modules, so apps that don't use them are not flagged by Apple's static scanner for the corresponding `NSUsageDescription` keys:
+
+- **`grant-bluetooth`** — `CoreBluetooth.framework` and the Bluetooth handler/delegate moved out of core; removes the `NSBluetoothAlwaysUsageDescription` requirement for apps that don't use Bluetooth.
+- **`grant-location-always`** — the `requestAlwaysAuthorization` (background location) call path moved out of core; `grant-core` now invokes only `requestWhenInUseAuthorization`. Apps using only foreground location are no longer asked for `NSLocationAlwaysAndWhenInUseUsageDescription`.
+
+Both follow the same transparent module-isolation approach as the v2.0.0 `grant-contacts` / `grant-calendar` / `grant-motion` split (an obfuscation-based alternative was rejected as App Store review circumvention).
+
+---
+
 ## [2.1.0] - 2026-06-03
 
 ### ⚠️ Breaking Changes (Compose UI layer only)
