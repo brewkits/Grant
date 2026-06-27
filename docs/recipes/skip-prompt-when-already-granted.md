@@ -59,6 +59,33 @@ This yields exactly the desired behaviour:
 | Already granted last session | `GRANTED` | Goes straight to the scanner; no button, no prompt |
 | Previously denied, app restarted | `DENIED` / `DENIED_ALWAYS` | Explainer + button; tapping it shows rationale or routes to Settings |
 
+## `status` vs the `onGranted` callback — when to use which
+
+`GrantHandler` gives you two ways to react to a grant, and they are **not** interchangeable. Picking the wrong one leads to either a UI that doesn't update or a side effect that fires too many times.
+
+| | `status: StateFlow<GrantStatus>` | `onGranted` callback (in `request {}`) |
+|---|---|---|
+| Trigger model | **Level-triggered** — always holds the current status and re-emits it on every collection | **Edge-triggered** — fires *exactly once* at the moment the permission becomes granted, then is cleared (to avoid leaking the lambda) |
+| Survives recomposition / restart | Yes — it is durable state you observe | No — it is a one-shot event |
+| Use it for | **Declarative UI**: "should I render the scanner or the button?" | **One-shot imperative side effects** that should run *once* when the user grants |
+
+**Rule of thumb:**
+
+- Use **`status`** to decide *what to show*. This is the right tool for the recipe above — rendering the scanner is declarative UI state, so it stays correct across recomposition and process restart. For this case the `onGranted` lambda is redundant; an empty `{ }` is fine.
+- Use **`onGranted`** for an action you want to fire *once* the moment the user grants — for example navigate to the next screen, start a single download, capture one frame, or send the location once. It also fires on the **return-from-Settings** path (via `refreshStatus()`), not only on the in-dialog grant.
+
+> ⚠️ Don't drive one-shot actions off the `status` flow. Because `status` re-emits on every recomposition, an action like "navigate" or "start download" placed in your `when (status) { GRANTED -> ... }` branch would run repeatedly. Put those in `onGranted` instead.
+
+```kotlin
+// status → declarative UI (render scanner). onGranted → one-shot side effect (navigate once).
+vm.cameraHandler.request(
+    rationaleMessage = "QR scanning needs the camera.",
+) {
+    // Runs once, at the moment access is granted (incl. coming back from Settings).
+    navController.navigate("scanner")
+}
+```
+
 ## Returning from Settings
 
 When the user leaves to the system Settings and comes back, call `handler.refreshStatus()` (e.g. on `Lifecycle.Event.ON_RESUME`) so the flow re-reads the OS state and your `when` switches to the feature if they enabled it there.
