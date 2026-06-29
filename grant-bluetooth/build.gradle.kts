@@ -75,7 +75,7 @@ publishing {
     publications.configureEach {
         (this as? MavenPublication)?.let {
             groupId = "dev.brewkits"
-            version = "2.2.2"
+            version = "2.2.3"
 
             pom {
                 name.set("KMP Grant Bluetooth")
