@@ -190,25 +190,23 @@ actual class PlatformGrantDelegate(
                             GrantStatus.PARTIAL_GRANTED
                         } else {
                             // shouldShowRequestPermissionRationale() is the OS source of truth for the
-                            // *live* DENIED vs DENIED_ALWAYS distinction, and it survives process death
-                            // unlike the in-memory status cache. Consult it FIRST so an in-session
-                            // transition (user denies a second time → permanent) is detected immediately
-                            // instead of being masked by a stale stored DENIED (Issue #55 follow-up).
-                            // Falling back to store.getStatus() before this check left checkStatus()
-                            // stuck on the first denial's DENIED for the rest of the process, so the
-                            // settings guide only appeared after a restart.
+                            // live DENIED vs DENIED_ALWAYS distinction. Consult it FIRST so an in-session
+                            // second denial is seen as permanent immediately, not masked by a stale
+                            // stored DENIED (Issue #55 follow-up). Mirrors the RawPermission/LOCATION_ALWAYS branches.
                             val activeActivity = PlatformConfig.activity ?: (context as? android.app.Activity)
                             val anyCanShowRationale = activeActivity != null &&
                                 androidGrants.any { activeActivity.shouldShowRequestPermissionRationale(it) }
                             when {
                                 anyCanShowRationale -> GrantStatus.DENIED
                                 store.isRequestedBefore(appGrant) ->
-                                    // Requested before and the OS won't show a rationale → permanently
-                                    // denied. With no Activity to consult, fall back to the last known
-                                    // stored status (or DENIED, which keeps the rationale path open).
+                                    // Requested before and no rationale → permanently denied. With no
+                                    // Activity to confirm, fall back to the last stored status (or DENIED,
+                                    // which keeps the rationale path open).
                                     if (activeActivity == null) store.getStatus(appGrant) ?: GrantStatus.DENIED
                                     else GrantStatus.DENIED_ALWAYS
-                                else -> store.getStatus(appGrant) ?: GrantStatus.NOT_DETERMINED
+                                // Never requested → getStatus() is always null here (setStatus only ever
+                                // follows setRequested), so this is simply NOT_DETERMINED.
+                                else -> GrantStatus.NOT_DETERMINED
                             }
                         }
                     }

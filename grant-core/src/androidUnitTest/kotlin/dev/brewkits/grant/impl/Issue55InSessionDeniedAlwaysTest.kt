@@ -117,4 +117,18 @@ class Issue55InSessionDeniedAlwaysTest {
 
         assertEquals(GrantStatus.DENIED_ALWAYS, delegate.checkStatus(AppGrant.CAMERA))
     }
+
+    @Test
+    @Config(sdk = [Build.VERSION_CODES.TIRAMISU])
+    fun `no Activity and no stored status falls back to DENIED to keep the rationale path open`() = runBlocking {
+        shadowOf(context as Application).denyPermissions(Manifest.permission.CAMERA)
+        // Requested before, but no status was ever cached (e.g. process death lost the
+        // in-memory status while the persisted request-history flag survived).
+        store.setRequested(AppGrant.CAMERA)
+        PlatformConfig.activity = null
+
+        // No Activity to consult the rationale flag and no cached status → DENIED (not
+        // DENIED_ALWAYS), so the rationale can still be shown once an Activity is available.
+        assertEquals(GrantStatus.DENIED, delegate.checkStatus(AppGrant.CAMERA))
+    }
 }

@@ -133,7 +133,7 @@ fun `in-memory store resets on recreation`() {
 }
 ```
 
-See `SharedPreferencesGrantStoreTest` and `Issue55PermanentDenialAfterRestartTest` in `grant-core/src/androidUnitTest` for the full coverage, including the regression that pins down `DENIED_ALWAYS` (not `NOT_DETERMINED`) after a permanent denial and restart.
+See `SharedPreferencesGrantStoreTest`, `Issue55PermanentDenialAfterRestartTest`, and `Issue55InSessionDeniedAlwaysTest` in `grant-core/src/androidUnitTest` for the full coverage — including the regression that pins down `DENIED_ALWAYS` (not `NOT_DETERMINED`) after a permanent denial and restart, and the one that pins down the *in-session* `DENIED → DENIED_ALWAYS` transition (the OS rationale flag must be consulted before the in-memory status cache, or a second denial is masked by the first denial's cached `DENIED`).
 
 ---
 
