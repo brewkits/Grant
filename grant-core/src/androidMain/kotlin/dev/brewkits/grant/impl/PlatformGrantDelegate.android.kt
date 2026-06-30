@@ -189,21 +189,24 @@ actual class PlatformGrantDelegate(
                         else if ((appGrant == AppGrant.GALLERY || appGrant == AppGrant.GALLERY_IMAGES_ONLY || appGrant == AppGrant.GALLERY_VIDEO_ONLY) && isPartialGalleryAccessGranted()) {
                             GrantStatus.PARTIAL_GRANTED
                         } else {
-                            val storedStatus = store.getStatus(appGrant)
-                            if (storedStatus == GrantStatus.DENIED || storedStatus == GrantStatus.DENIED_ALWAYS) {
-                                storedStatus
-                            } else {
-                                // shouldShowRequestPermissionRationale() is OS-persisted and survives
-                                // process death, unlike store.isRequestedBefore(). Check it first so a
-                                // soft denial is still detected after an app restart (Issue #55).
-                                val activeActivity = PlatformConfig.activity ?: (context as? android.app.Activity)
-                                val anyCanShowRationale = activeActivity != null &&
-                                    androidGrants.any { activeActivity.shouldShowRequestPermissionRationale(it) }
-                                when {
-                                    anyCanShowRationale -> GrantStatus.DENIED
-                                    store.isRequestedBefore(appGrant) -> if (activeActivity == null) GrantStatus.DENIED else GrantStatus.DENIED_ALWAYS
-                                    else -> GrantStatus.NOT_DETERMINED
-                                }
+                            // shouldShowRequestPermissionRationale() is the OS source of truth for the
+                            // live DENIED vs DENIED_ALWAYS distinction. Consult it FIRST so an in-session
+                            // second denial is seen as permanent immediately, not masked by a stale
+                            // stored DENIED (Issue #55 follow-up). Mirrors the RawPermission/LOCATION_ALWAYS branches.
+                            val activeActivity = PlatformConfig.activity ?: (context as? android.app.Activity)
+                            val anyCanShowRationale = activeActivity != null &&
+                                androidGrants.any { activeActivity.shouldShowRequestPermissionRationale(it) }
+                            when {
+                                anyCanShowRationale -> GrantStatus.DENIED
+                                store.isRequestedBefore(appGrant) ->
+                                    // Requested before and no rationale → permanently denied. With no
+                                    // Activity to confirm, fall back to the last stored status (or DENIED,
+                                    // which keeps the rationale path open).
+                                    if (activeActivity == null) store.getStatus(appGrant) ?: GrantStatus.DENIED
+                                    else GrantStatus.DENIED_ALWAYS
+                                // Never requested → getStatus() is always null here (setStatus only ever
+                                // follows setRequested), so this is simply NOT_DETERMINED.
+                                else -> GrantStatus.NOT_DETERMINED
                             }
                         }
                     }

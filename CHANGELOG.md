@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.2.3] - 2026-06-30
+
+### 🐛 Fixed
+
+- **Android: settings guide shown as rationale again after a permanent denial, within the same session ([#55](https://github.com/brewkits/Grant/issues/55) follow-up)**
+  After a permission was permanently denied, dismissing the settings guide and requesting again re-showed the **rationale** dialog instead of the **settings** guide — but only in-session; an app restart behaved correctly. `checkStatus()` short-circuited on the in-memory status cache before consulting the OS-persisted `shouldShowRequestPermissionRationale()` flag, so the second (permanent) denial was masked by the first denial's cached `DENIED` and never became `DENIED_ALWAYS` until the cache was cleared on process death. The OS rationale flag is now consulted first — matching the `RawPermission` and `LOCATION_ALWAYS` branches — so the `DENIED → DENIED_ALWAYS` transition is detected immediately. Verified on a physical Pixel 6 Pro (Android 16); iOS (iPhone XS Max, iOS 18.7.9) is unaffected by design, since it reads the live OS status and has no rationale step.
+
+---
+
 ## [2.2.2] - 2026-06-27
 
 ### 🐛 Fixed

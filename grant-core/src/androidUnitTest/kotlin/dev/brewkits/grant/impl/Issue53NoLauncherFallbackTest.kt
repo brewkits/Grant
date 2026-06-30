@@ -24,8 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.assertEquals
 
 /**
- * Regression test for Issue #53 — "El diálogo de permisos del sistema de Android no se abre"
- * (the Android system permission dialog does not open).
+ * Regression test for Issue #53 — "the Android system permission dialog does not open".
  *
  * Background
  * ----------
