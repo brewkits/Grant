@@ -10,7 +10,7 @@
 
 set -e
 
-VERSION="2.2.3"
+VERSION="2.2.4"
 GROUP_PATH="dev/brewkits"
 BUNDLE_NAME="grant-v${VERSION}-bundle.jar"
 OUTPUT_DIR="maven-central-artifacts/v${VERSION}"
