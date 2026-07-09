@@ -6,6 +6,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.2.4] - 2026-07-09
+
+### 🐛 Fixed
+
+- **`requestSuspend()` suspended forever when no dialog host was attached**
+  On a DENIED / DENIED_ALWAYS grant, the `StateBased` flow raises rationale / settings-guide
+  dialog state and parks until the dialog host (`GrantDialog` or a custom renderer of
+  `GrantHandler.state`) resumes it. When the app rendered no dialog for that handler — e.g. a
+  headless `requestSuspend()` pre-check before a screen loads — nothing could ever resume the
+  flow and the caller suspended **forever** (real-world case: it silently wedged a consuming
+  app's gallery on its loading skeleton). `requestSuspend` now detects "parked on a dialog
+  with no collector attached to `state`", clears the unrenderable dialog state (mirroring
+  `onDismiss`, including the rationale memory), and completes with the current status. The
+  callback-based `request()` flow is unchanged — raising dialog state without a live collector
+  remains a supported pattern there. Regression: `RequestSuspendNoHostTest`.
+
+- **Android 14+: fully-granted gallery misreported as `DENIED_ALWAYS`**
+  `GALLERY.toAndroidGrants()` includes `READ_MEDIA_VISUAL_USER_SELECTED` on API 34+ so the
+  system dialog offers "Select photos" — but `checkStatus()` also counted it when judging
+  full access (`all { granted }`). The OS can grant `READ_MEDIA_IMAGES` + `READ_MEDIA_VIDEO`
+  while leaving `USER_SELECTED` denied (ADB `pm grant`, MDM policy, permission auto-reset
+  edge states); that fully-usable state failed the all-granted check, and with the grant
+  already in the request history it escalated to `DENIED_ALWAYS`. Full access is now judged
+  on the required permissions only (`toRequiredAndroidGrants()`); `USER_SELECTED` alone still
+  reports `PARTIAL_GRANTED`. Regression: `PlatformGrantDelegateGalleryFullAccessTest`.
+
+---
+
 ## [2.2.3] - 2026-06-30
 
 ### 🐛 Fixed

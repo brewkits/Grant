@@ -182,8 +182,13 @@ actual class PlatformGrantDelegate(
                     val androidGrants = appGrant.toAndroidGrants()
                     if (androidGrants.isEmpty()) GrantStatus.GRANTED
                     else {
-                        val allGranted = androidGrants.all { 
-                            ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED 
+                        // Full access is judged on the REQUIRED permissions only — see
+                        // toRequiredAndroidGrants(). Counting READ_MEDIA_VISUAL_USER_SELECTED here
+                        // misclassified a fully-granted gallery (IMAGES + VIDEO granted, USER_SELECTED
+                        // not) as denied → DENIED_ALWAYS (Issue: Lam gallery P0, 2026-07-09).
+                        val requiredGrants = appGrant.toRequiredAndroidGrants()
+                        val allGranted = requiredGrants.isNotEmpty() && requiredGrants.all {
+                            ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
                         }
                         if (allGranted) GrantStatus.GRANTED
                         else if ((appGrant == AppGrant.GALLERY || appGrant == AppGrant.GALLERY_IMAGES_ONLY || appGrant == AppGrant.GALLERY_VIDEO_ONLY) && isPartialGalleryAccessGranted()) {
@@ -443,6 +448,22 @@ actual class PlatformGrantDelegate(
             else -> null
         }
     }
+
+    /**
+     * The permissions that must be granted for a [GrantStatus.GRANTED] (full-access) verdict.
+     *
+     * Differs from [toAndroidGrants] only for the gallery grants on API 34+:
+     * `READ_MEDIA_VISUAL_USER_SELECTED` belongs in the REQUEST array (it is what makes the
+     * Android 14 "Select photos" option appear in the system dialog) but must NOT gate full
+     * access. The OS can grant `READ_MEDIA_IMAGES` + `READ_MEDIA_VIDEO` while leaving
+     * `USER_SELECTED` denied (ADB `pm grant`, MDM policy, permission auto-reset edge states) —
+     * that IS full access. Counting it made [checkStatus] report a fully-granted gallery as
+     * denied, and the store-requested fallback escalated that to DENIED_ALWAYS
+     * (found via the Lam gallery P0, 2026-07-09). `USER_SELECTED` granted alone is
+     * partial access, handled by [isPartialGalleryAccessGranted].
+     */
+    internal fun AppGrant.toRequiredAndroidGrants(): List<String> =
+        toAndroidGrants().filterNot { it == READ_MEDIA_VISUAL_USER_SELECTED }
 
     internal fun AppGrant.toAndroidGrants(): List<String> {
         return when (this) {

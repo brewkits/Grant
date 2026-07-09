@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "dev.brewkits"
-version = "2.2.3"
+version = "2.2.4"
 
 kotlin {
     androidTarget {
@@ -75,7 +75,7 @@ publishing {
     publications.configureEach {
         (this as? MavenPublication)?.let {
             groupId = "dev.brewkits"
-            version = "2.2.3"
+            version = "2.2.4"
 
             pom {
                 name.set("KMP Grant Contacts")

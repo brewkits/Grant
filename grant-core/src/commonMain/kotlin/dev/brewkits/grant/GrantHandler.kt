@@ -311,6 +311,12 @@ class GrantHandler(
      * A suspending alternative to [request].
      * Suspends the current coroutine until the grant flow completes (granted, denied, or dismissed).
      *
+     * When the flow needs a rationale or settings-guide dialog, it parks until the dialog host
+     * resumes it — so a host SHOULD be collecting [state] (e.g. `GrantDialog`) before
+     * requesting. With no host attached the flow does not park: the dialog state is cleared and
+     * the call completes immediately with the denied status (2.2.4 — previously it suspended
+     * forever, silently wedging the caller). The callback-based [request] is unaffected.
+     *
      * @param rationaleMessage Custom message for rationale dialog (optional)
      * @param settingsMessage  Custom message for settings dialog (optional)
      * @return The final [GrantStatus] after the flow completes. Returns [GrantStatus.BUSY]
@@ -334,6 +340,19 @@ class GrantHandler(
                 _status.value = currentStatus
                 eventListener?.onRequested(grant, currentStatus)
                 handleStatus(currentStatus, UiStrategy.StateBased(rationaleMessage, settingsMessage))
+                // 2.2.4 no-host safeguard: handleStatus may have parked the flow on a rationale /
+                // settings-guide dialog, to be resumed by the dialog host. If NO host is
+                // collecting [state], nothing can ever resume it and this suspend would hang
+                // FOREVER (real-world case: a headless requestSuspend on a grant whose dialogs
+                // the app never renders — the Lam gallery skeleton-hang, 2026-07-09). Detect
+                // "parked with no host", clear the unrenderable dialog state (mirroring
+                // onDismiss, including the rationale memory — the user never saw a dialog),
+                // and complete with the current status.
+                if (cont.isActive && _state.value.isVisible && !hasStateHost) {
+                    resetState()
+                    hasShownRationaleDialog = false
+                    clearCallbacks()
+                }
             } catch (e: CancellationException) {
                 clearCallbacks()
                 throw e
@@ -738,6 +757,24 @@ class GrantHandler(
     private fun resetState() {
         updateState { GrantUiState() }
     }
+
+    /**
+     * True when at least one collector is attached to [state] — i.e. a live dialog host
+     * (`GrantDialog` or a custom renderer) is observing this handler and can actually show the
+     * rationale / settings-guide UI and resume a parked flow via [onRationaleConfirmed] /
+     * [onSettingsConfirmed] / [onDismiss].
+     *
+     * Used only by [requestSuspend]'s no-host safeguard. The callback-based [request] flow
+     * deliberately raises dialog state without requiring a live collector (callers may read
+     * [state] however they like — the library's own tests read `state.value`), so this is NOT
+     * consulted inside the state machine itself.
+     *
+     * Contract for suspending callers: the dialog host must be attached BEFORE the request
+     * starts. `GrantDialog`'s `collectAsState` satisfies this naturally — it is in composition
+     * before any button that triggers a request can be tapped.
+     */
+    private val hasStateHost: Boolean
+        get() = _state.subscriptionCount.value > 0
 
     /**
      * Updates the state and persists it to savedStateDelegate.
