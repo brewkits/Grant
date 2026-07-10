@@ -7,7 +7,7 @@ targeting **Android** and **iOS**.
 
 - **Kotlin**: 2.1.0 or higher (the library itself is built with Kotlin 2.4.0; consumers on any Kotlin 2.x line can use it)
 - **Compose Multiplatform**: 1.6.0 or higher (only if you use `grant-compose`)
-- **Android**: MinSDK 24 (Android 7.0)
+- **Android**: minSdk 26 (Android 8.0)
 - **iOS**: iOS 13.0 or higher
 - **JVM target**: 17
 
