@@ -314,7 +314,7 @@ class GrantHandler(
      * When the flow needs a rationale or settings-guide dialog, it parks until the dialog host
      * resumes it — so a host SHOULD be collecting [state] (e.g. `GrantDialog`) before
      * requesting. With no host attached the flow does not park: the dialog state is cleared and
-     * the call completes immediately with the denied status (2.2.4 — previously it suspended
+     * the call completes immediately with the denied status (2.3.0 — previously it suspended
      * forever, silently wedging the caller). The callback-based [request] is unaffected.
      *
      * @param rationaleMessage Custom message for rationale dialog (optional)
@@ -340,7 +340,7 @@ class GrantHandler(
                 _status.value = currentStatus
                 eventListener?.onRequested(grant, currentStatus)
                 handleStatus(currentStatus, UiStrategy.StateBased(rationaleMessage, settingsMessage))
-                // 2.2.4 no-host safeguard: handleStatus may have parked the flow on a rationale /
+                // 2.3.0 no-host safeguard: handleStatus may have parked the flow on a rationale /
                 // settings-guide dialog, to be resumed by the dialog host. If NO host is
                 // collecting [state], nothing can ever resume it and this suspend would hang
                 // FOREVER (real-world case: a headless requestSuspend on a grant whose dialogs

@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "dev.brewkits"
-version = "2.2.4"
+version = "2.3.0"
 
 kotlin {
     androidTarget {
@@ -85,15 +85,27 @@ kotlin {
     }
 }
 
-koverReport {
-    defaults {
-        verify {
-            rule {
-                minBound(85)
+// Kover 0.9 DSL (migrated from the 0.7 koverReport{} block, 2.3.0 toolchain bump).
+// One rule guards the merged report — same 85% line-coverage floor the 0.7 config
+// enforced for both the default and the debug Android report.
+kover {
+    reports {
+        // NOTE: this must be `total.filtersAppend` — the top-level `reports.filters { }`
+        // block did NOT affect koverVerify/koverXmlReport in 0.9.8 (verified empirically:
+        // the excluded class stayed in the report). koverVerify runs against the TOTAL
+        // report set, which carries its own filter config.
+        total {
+            filtersAppend {
+                excludes {
+                    // OS-driven transparent Activity: only exercisable by an on-device
+                    // instrumented test, which kover does not measure. Kover 0.7's default
+                    // report did not count it either — excluding keeps the 85% floor
+                    // comparable across the 0.7 → 0.9 migration instead of silently
+                    // re-basing the bar. Wildcard also drops its lambdas/companion.
+                    classes("dev.brewkits.grant.impl.GrantRequestActivity*")
+                }
             }
         }
-    }
-    androidReports("debug") {
         verify {
             rule {
                 minBound(85)
@@ -129,7 +141,7 @@ publishing {
     publications.configureEach {
         (this as? MavenPublication)?.let {
             groupId = "dev.brewkits"
-            version = "2.2.4"
+            version = "2.3.0"
 
             pom {
                 name.set("KMP Grant")

@@ -137,7 +137,8 @@ fun SimpleGrantDemoScreen(
             description = "Request Contacts grant. Deny it twice to see rationale → settings guide flow.",
             buttonText = "Request Contacts (Test Denial)",
             result = grantTypeResult,
-            onClick = { viewModel.requestGalleryGrant() },
+            // 2.3.0: was mis-wired to requestGalleryGrant() — the denial walkthrough never ran.
+            onClick = { viewModel.requestContactsDenialDemo() },
         )
 
         HorizontalDivider()

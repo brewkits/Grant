@@ -21,7 +21,9 @@ kotlin {
 
     jvmToolchain(17)
 
-    listOf(iosX64(), iosArm64(), iosSimulatorArm64()).forEach {
+    // iosX64 dropped with the Compose 1.11 bump (no iosX64 compose artifacts) — the demo
+    // consumes grant-compose, which also dropped the target in 2.3.0.
+    listOf(iosArm64(), iosSimulatorArm64()).forEach {
         it.binaries.framework {
             baseName = "GrantDemoShared"
             isStatic = true
@@ -38,11 +40,21 @@ kotlin {
         }
 
         commonMain.dependencies {
+            // The compose.* String accessors are deprecated in the Compose MP Gradle
+            // plugin in favour of direct Maven coordinates; the plugin still resolves
+            // them to the correct per-target artifacts. Same suppression convention as
+            // the consuming KMP-VisionX repo — migration tracked separately.
+            @Suppress("DEPRECATION")
             implementation(compose.runtime)
+            @Suppress("DEPRECATION")
             implementation(compose.foundation)
+            @Suppress("DEPRECATION")
             implementation(compose.material3)
+            @Suppress("DEPRECATION")
             implementation(compose.ui)
+            @Suppress("DEPRECATION")
             implementation(compose.components.resources)
+            @Suppress("DEPRECATION")
             implementation(compose.components.uiToolingPreview)
 
             // Koin

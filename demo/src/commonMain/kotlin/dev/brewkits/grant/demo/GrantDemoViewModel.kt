@@ -296,6 +296,22 @@ class GrantDemoViewModel(
     }
 
     /**
+     * Scenario 3: denial-flow walkthrough — request Contacts and report into the scenario
+     * card. Deny the OS dialog, request again to see the rationale, deny once more to land
+     * on the settings guide. (The card was previously mis-wired to [requestGalleryGrant],
+     * so this walkthrough never actually ran — fixed in 2.3.0.)
+     */
+    fun requestContactsDenialDemo() {
+        _grantTypeResult.value = "Requesting READ_CONTACTS — deny it to walk the rationale → settings flow..."
+        readContactsGrant.request(
+            rationaleMessage = "We need contacts access to demonstrate the denial → rationale → settings flow.",
+            settingsMessage = "Contacts access is disabled. Enable it in Settings.",
+        ) {
+            _grantTypeResult.value = "✓ CONTACTS granted!\n\nDenial-flow demo complete."
+        }
+    }
+
+    /**
      * Scenario 3b: Dangerous Grant Example
      *
      * Dangerous grants access sensitive user data:

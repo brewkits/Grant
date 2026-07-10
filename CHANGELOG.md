@@ -6,7 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [2.2.4] - 2026-07-09
+## [2.3.0] - 2026-07-10
+
+### ⚠️ Breaking (grant-compose only)
+
+- **`grant-compose` no longer publishes the `iosX64` target.** Compose Multiplatform 1.11
+  stopped publishing `iosX64` artifacts, so the target can no longer resolve its compose
+  dependencies. This affects only Intel-Mac-simulator consumers of `grant-compose`; **every
+  other module (`grant-core`, `grant-core-koin`, `grant-contacts`, `grant-calendar`,
+  `grant-motion`, `grant-bluetooth`, `grant-location-always`) keeps `iosX64`.** Apps needing
+  `grant-compose` on an Intel-Mac simulator must stay on 2.2.3.
 
 ### 🐛 Fixed
 
@@ -31,6 +40,42 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   already in the request history it escalated to `DENIED_ALWAYS`. Full access is now judged
   on the required permissions only (`toRequiredAndroidGrants()`); `USER_SELECTED` alone still
   reports `PARTIAL_GRANTED`. Regression: `PlatformGrantDelegateGalleryFullAccessTest`.
+
+### 🔧 Toolchain
+
+| Component | From | To |
+|---|---|---|
+| Kotlin | 2.1.0 | 2.4.0 |
+| Compose Multiplatform | 1.9.3 | 1.11.1 |
+| kotlinx-coroutines | 1.10.2 | 1.11.0 |
+| Kover | 0.7.5 | 0.9.8 |
+| atomicfu | 0.27.0 | 0.33.0 |
+| kotlinx-datetime (transitive force-pin) | 0.6.0 | 0.8.0 |
+
+- Kover config migrated to the 0.9 DSL. Note for future edits: report filters must live in
+  `reports.total.filtersAppend { }` — the top-level `reports.filters { }` block does not
+  affect `koverVerify`/`koverXmlReport` in 0.9.8 (verified empirically). The 85% line floor
+  is unchanged; `GrantRequestActivity` (an OS-driven transparent Activity only exercisable
+  by on-device instrumented tests, which Kover does not measure) is now explicitly excluded
+  to keep the floor comparable with what 0.7 measured.
+- The `compose.*` dependency accessors are deprecated by the Compose 1.11 Gradle plugin;
+  they still resolve to the correct per-target artifacts and are `@Suppress`ed at each use
+  site — full migration to direct coordinates is tracked separately.
+- `grant-compose`'s old 85% kover rule was **removed, not migrated**: under 0.7 it never
+  actually enforced anything (the module's single logic test measures 0.0% under 0.9's
+  merged report — a real gate would have failed every release). A real floor returns once
+  the dialogs get Robolectric compose tests. `grant-core`'s enforced 85% floor is unchanged.
+
+### 🐛 Demo fixes
+
+- Scenario 3 "Test Grant Denial Flow" was mis-wired to `requestGalleryGrant()` — the
+  denial → rationale → settings walkthrough never actually ran. Now requests
+  `READ_CONTACTS` as the card describes (verified on a Pixel 6 Pro: deny → rationale
+  dialog → deny again → settings guide).
+- The iOS demo project links against whichever framework directory the search path finds
+  first; building for a physical device from the CLI needs
+  `FRAMEWORK_SEARCH_PATHS=.../iosArm64/debugFramework` (the project lists the simulator
+  path first).
 
 ---
 

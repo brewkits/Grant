@@ -17,7 +17,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * Regression tests for the 2.2.4 gallery full-access misclassification (found via the Lam
+ * Regression tests for the 2.3.0 gallery full-access misclassification (found via the Lam
  * gallery P0, 2026-07-09).
  *
  * On API 34+, `GALLERY.toAndroidGrants()` includes `READ_MEDIA_VISUAL_USER_SELECTED` so the

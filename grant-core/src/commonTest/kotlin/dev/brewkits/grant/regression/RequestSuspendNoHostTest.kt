@@ -19,7 +19,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * Regression for the 2.2.4 `requestSuspend` no-host hang (found via the Lam gallery P0,
+ * Regression for the 2.3.0 `requestSuspend` no-host hang (found via the Lam gallery P0,
  * 2026-07-09).
  *
  * Buggy behaviour
