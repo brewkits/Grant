@@ -140,5 +140,5 @@ Using Koin instead of the factory? Register both `grantModule` and
 - [Quick Start](quick-start.md) — request your first permission in 5 minutes
 - [Permission Guide (GRANTS.md)](../grant-core/GRANTS.md) — every supported permission and its mapping
 - [iOS Info.plist Setup](../platform-specific/ios/info-plist.md) — read before shipping to the App Store
-- [Migration Guide](../MIGRATION_GUIDE.md) — upgrading from v1.x to v2.2.0
+- [Migration Guide](../MIGRATION_GUIDE.md) — upgrading to 2.3.0 (and from v1.x → 2.x)
 - [Best Practices](../BEST_PRACTICES.md) — production-ready patterns

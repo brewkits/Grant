@@ -267,8 +267,8 @@ No changes needed! `grant-core` remains unchanged. `grant-compose` is an optiona
 
 ## 📖 Documentation
 
-- Main README: [README.md](README.md)
-- Compose Module README: [grant-compose/README.md](grant-compose/README.md)
+- Main README: [README.md](../../README.md)
+- Compose Module README: [grant-compose/README.md](../../grant-compose/README.md)
 - Demo App: See `demo/` for working examples
 - Minimal Example: `MinimalGrantDemoScreen.kt`
 

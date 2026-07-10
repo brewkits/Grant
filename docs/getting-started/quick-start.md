@@ -300,10 +300,10 @@ suspend fun startLocationTracking(): Boolean {
 
 ## Next Steps
 
-- [Android Setup](android-setup.md) - Configure Android permissions
-- [iOS Setup](ios-setup.md) - Configure Info.plist
-- [Permission Guide](../guides/permissions-guide.md) - Deep dive into permissions
-- [Best Practices](../guides/best-practices.md) - Production-ready patterns
+- [Installation & Platform Setup](installation.md) - Configure Android permissions and iOS Info.plist
+- [iOS Info.plist Setup](../platform-specific/ios/info-plist.md) - Usage description keys per permission
+- [Permission Guide](../grant-core/GRANTS.md) - Deep dive into permissions
+- [Best Practices](../BEST_PRACTICES.md) - Production-ready patterns
 
 ## Troubleshooting
 
@@ -321,4 +321,4 @@ suspend fun startLocationTracking(): Boolean {
 
 This should not happen with Grant! If it does, please [file an issue](https://github.com/brewkits/Grant/issues).
 
-See [Dead Click Fix](../platform-specific/android/dead-click-fix.md) for technical details.
+See [Dead Click Fix](../FIX_DEAD_CLICK_ANDROID.md) for technical details.
