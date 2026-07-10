@@ -400,7 +400,7 @@ when (grantManager.request(...)) {
 }
 ```
 
-See [Migration Guide](migration-from-moko.md) for complete details.
+See the [Migration Guide](../MIGRATION_GUIDE.md) for complete details.
 
 ---
 
@@ -427,5 +427,5 @@ Both libraries are production-ready. Choose based on your project's specific nee
 
 - [moko-permissions GitHub Issues](https://github.com/icerockdev/moko-permissions/issues)
 - [Grant Documentation](../README.md)
-- [Dead Click Fix](../platform-specific/android/dead-click-fix.md)
-- [Architecture Overview](../architecture/overview.md)
+- [Dead Click Fix](../FIX_DEAD_CLICK_ANDROID.md)
+- [Architecture Overview](../grant-core/ARCHITECTURE.md)

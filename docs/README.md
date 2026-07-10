@@ -54,8 +54,6 @@ Welcome to Grant's comprehensive documentation!
 ### 📊 Comparison & Analysis
 
 - [Grant vs moko-permissions](comparison/vs-moko-permissions.md) - Feature comparison
-- [Detailed Issue Analysis](comparison/moko-issues-detailed.md) - Bug fixes and improvements
-- [Comparison and Learnings](COMPARISON_AND_LEARNINGS.md) - Technical insights
 
 ---
 

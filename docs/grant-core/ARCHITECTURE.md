@@ -945,4 +945,4 @@ class ViewModel(private val manager: GrantManager) {  // Platform-agnostic!
 **Next Steps**:
 - Read [GRANTS.md](GRANTS.md) for usage guide
 - See [QUICK_START.md](QUICK_START.md) for tutorial
-- Check [DEMO_GUIDE.md](DEMO_GUIDE.md) for sample app
+- Check [DEMO_GUIDE.md](../demo/DEMO_GUIDE.md) for sample app

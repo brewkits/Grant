@@ -236,7 +236,7 @@ if (state.showSettingsGuide) { ... }
 **After:**
 ```kotlin
 // Add dependency
-implementation("dev.brewkits:grant-compose:2.1.0")
+implementation("dev.brewkits:grant-compose:2.3.0")
 
 // Replace with one line
 GrantDialog(handler = viewModel.cameraGrant)
@@ -250,7 +250,7 @@ No changes needed! `grant-core` remains unchanged. `grant-compose` is an optiona
 
 1. **Add Dependency**
    ```kotlin
-   implementation("dev.brewkits:grant-compose:2.1.0")
+   implementation("dev.brewkits:grant-compose:2.3.0")
    ```
 
 2. **Import GrantDialog**
@@ -267,8 +267,8 @@ No changes needed! `grant-core` remains unchanged. `grant-compose` is an optiona
 
 ## 📖 Documentation
 
-- Main README: [README.md](README.md)
-- Compose Module README: [grant-compose/README.md](grant-compose/README.md)
+- Main README: [README.md](../../README.md)
+- Compose Module README: [grant-compose/README.md](../../grant-compose/README.md)
 - Demo App: See `demo/` for working examples
 - Minimal Example: `MinimalGrantDemoScreen.kt`
 

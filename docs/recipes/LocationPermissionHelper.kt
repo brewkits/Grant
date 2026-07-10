@@ -13,7 +13,7 @@ import dev.brewkits.grant.ServiceManager
  *
  * **Dependencies:**
  * ```gradle
- * implementation("dev.brewkits:grant-core:2.1.0")
+ * implementation("dev.brewkits:grant-core:2.3.0")
  * ```
  *
  * **Example:**
@@ -156,7 +156,7 @@ sealed interface LocationFlowResult {
  *
  * **Additional Dependencies:**
  * ```gradle
- * implementation("dev.brewkits:grant-core:2.1.0")
+ * implementation("dev.brewkits:grant-core:2.3.0")
  * implementation("com.google.android.gms:play-services-location:21.1.0")
  * ```
  *

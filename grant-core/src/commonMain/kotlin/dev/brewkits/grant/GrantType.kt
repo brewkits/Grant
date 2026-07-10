@@ -117,6 +117,12 @@ enum class AppGrant : GrantPermission {
      *
      * - **Android**: `READ_CONTACTS` + `WRITE_CONTACTS`.
      * - **iOS**: `NSContactsUsageDescription`.
+     *
+     * Android 17 note: for read-only "pick a few contacts" use cases, prefer the new
+     * permission-free Contact Picker (`ContactsPickerSessionContract.ACTION_PICK_CONTACTS`,
+     * ephemeral session URI — no grant involved, so Grant is not needed for it). Google Play
+     * policy is moving to reserve `READ_CONTACTS` for apps that genuinely cannot function
+     * without ongoing full access.
      */
     CONTACTS,
 
@@ -125,6 +131,10 @@ enum class AppGrant : GrantPermission {
      *
      * - **Android**: `READ_CONTACTS`.
      * - **iOS**: `NSContactsUsageDescription`.
+     *
+     * Android 17 note: see [CONTACTS] — the permission-free Contact Picker is the preferred
+     * path for occasional "pick a few contacts" flows; this grant remains for apps needing
+     * ongoing access to the full contacts store.
      */
     READ_CONTACTS,
 
@@ -158,7 +168,21 @@ enum class AppGrant : GrantPermission {
      * - **Android**: Maps to `NEARBY_WIFI_DEVICES` (API 33+) or `ACCESS_FINE_LOCATION` (API < 33).
      * - **iOS**: No-op (always GRANTED).
      */
-    NEARBY_WIFI_DEVICES;
+    NEARBY_WIFI_DEVICES,
+
+    /**
+     * Permission to communicate with devices on the local network (LAN) — smart-home
+     * devices, casting receivers, printers.
+     *
+     * - **Android**: Maps to `ACCESS_LOCAL_NETWORK` (API 37+ / Android 17 — a runtime
+     *   permission in the `NEARBY_DEVICES` group whose enforcement is mandatory for apps
+     *   targeting 37; users who already granted another NEARBY_DEVICES permission are not
+     *   prompted again). No-op (always GRANTED) below API 37.
+     * - **iOS**: No-op (always GRANTED) — iOS has no API to query or explicitly request
+     *   local-network authorization; the OS prompts automatically on the first LAN access
+     *   when `NSLocalNetworkUsageDescription` is present in Info.plist.
+     */
+    LOCAL_NETWORK;
 
     /**
      * Unique identifier for this permission.

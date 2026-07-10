@@ -17,7 +17,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * Regression tests for the 2.2.4 gallery full-access misclassification (found via the Lam
+ * Regression tests for the 2.3.0 gallery full-access misclassification (found via the Lam
  * gallery P0, 2026-07-09).
  *
  * On API 34+, `GALLERY.toAndroidGrants()` includes `READ_MEDIA_VISUAL_USER_SELECTED` so the
@@ -81,6 +81,62 @@ class PlatformGrantDelegateGalleryFullAccessTest {
     @Test
     fun `nothing granted stays NOT_DETERMINED before any request`() = runTest {
         assertEquals(GrantStatus.NOT_DETERMINED, delegate.checkStatus(AppGrant.GALLERY))
+    }
+
+    @Test
+    fun `LOCAL_NETWORK reports GRANTED below API 37 without any OS grant`() = runTest {
+        // 2.3.0: Android 17's ACCESS_LOCAL_NETWORK maps to an empty permission list below
+        // API 37 — checkStatus must treat that as a no-op GRANTED, never NOT_DETERMINED.
+        assertEquals(GrantStatus.GRANTED, delegate.checkStatus(AppGrant.LOCAL_NETWORK))
+    }
+
+    // ── LOCATION partial access (2.3.0 — same defect class as the gallery USER_SELECTED bug) ──
+    //
+    // AppGrant.LOCATION maps to [FINE, COARSE] and checkStatus demanded all{granted}.
+    // A user who picks "Approximate" in the OS dialog grants ONLY COARSE — the app HAS
+    // usable (coarse) location, but the all-granted check failed and the request-history
+    // fallback escalated to DENIED_ALWAYS. Android 17 makes Precise/Approximate visually
+    // distinct in the dialog, so approximate-only grants become more common.
+
+    @Test
+    fun `LOCATION with COARSE only is PARTIAL access`() = runTest {
+        grant(Manifest.permission.ACCESS_COARSE_LOCATION)
+        store.setRequested(AppGrant.LOCATION)
+
+        assertEquals(GrantStatus.PARTIAL_GRANTED, delegate.checkStatus(AppGrant.LOCATION))
+    }
+
+    @Test
+    fun `LOCATION with FINE and COARSE is FULL access`() = runTest {
+        grant(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+
+        assertEquals(GrantStatus.GRANTED, delegate.checkStatus(AppGrant.LOCATION))
+    }
+
+    @Test
+    fun `LOCATION with nothing granted stays NOT_DETERMINED before any request`() = runTest {
+        assertEquals(GrantStatus.NOT_DETERMINED, delegate.checkStatus(AppGrant.LOCATION))
+    }
+
+    @Test
+    @org.robolectric.annotation.Config(sdk = [Build.VERSION_CODES.Q])
+    fun `LOCATION with COARSE only is PARTIAL access on legacy API 29 too`() = runTest {
+        // Below API 31 LOCATION maps to [FINE] only, but COARSE-held-without-FINE is still
+        // semantically partial (the app has usable coarse location). Pins that the 2.3.0
+        // partial branch does not change legacy classification in a surprising way:
+        // GRANTED still requires the mapped set; COARSE alone is PARTIAL, never DENIED.
+        grant(Manifest.permission.ACCESS_COARSE_LOCATION)
+        store.setRequested(AppGrant.LOCATION)
+
+        assertEquals(GrantStatus.PARTIAL_GRANTED, delegate.checkStatus(AppGrant.LOCATION))
+    }
+
+    @Test
+    @org.robolectric.annotation.Config(sdk = [Build.VERSION_CODES.Q])
+    fun `LOCATION with FINE granted is FULL access on legacy API 29`() = runTest {
+        grant(Manifest.permission.ACCESS_FINE_LOCATION)
+
+        assertEquals(GrantStatus.GRANTED, delegate.checkStatus(AppGrant.LOCATION))
     }
 
     @Test

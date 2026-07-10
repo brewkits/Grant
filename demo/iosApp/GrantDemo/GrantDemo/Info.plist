@@ -71,5 +71,8 @@
 
         <key>NSMotionUsageDescription</key>
         <string>We need access to motion data to track your activities.</string>
+
+        <key>NSLocalNetworkUsageDescription</key>
+        <string>We need local network access to demonstrate the LAN-device grant flow.</string>
     </dict>
 </plist>

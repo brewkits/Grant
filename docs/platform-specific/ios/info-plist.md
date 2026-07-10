@@ -336,7 +336,7 @@ Grant supports **iOS 13.0+**, so all keys are compatible.
 
 - [Apple's Info.plist Documentation](https://developer.apple.com/documentation/bundleresources/information_property_list)
 - [App Privacy Details](https://developer.apple.com/app-store/app-privacy-details/)
-- [Grant iOS Setup Guide](ios-setup.md)
+- [Grant iOS Setup Guide](../../grant-core/QUICK_START_iOS.md)
 
 ---
 

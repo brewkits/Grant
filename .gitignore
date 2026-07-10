@@ -93,3 +93,8 @@ create-grant-maven-bundle*.sh
 CLAUDE.md
 GEMINI.md
 
+
+# Local debug artifacts
+jstack.txt
+grant_parsed.log
+hs_err_pid*.log

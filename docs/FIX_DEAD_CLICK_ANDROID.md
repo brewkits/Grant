@@ -290,8 +290,6 @@ adb shell run-as <your.application.id> cat shared_prefs/grant_request_history.xm
 
 ## 📖 Related Documentation
 
-- [IMPACT_ANALYSIS.md](IMPACT_ANALYSIS.md) - How fixes affect iOS/Android
-- [CHANGELOG_IOS_DENIED_ALWAYS_UX.md](CHANGELOG_IOS_DENIED_ALWAYS_UX.md) - iOS double dialog fix
 - [BEST_PRACTICES.md](BEST_PRACTICES.md) - Permission best practices
 
 ---

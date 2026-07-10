@@ -62,6 +62,8 @@ actual class PlatformGrantDelegate(
     companion object {
         private const val TAG = "AndroidGrantDelegate"
         private const val READ_MEDIA_VISUAL_USER_SELECTED = "android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
+        // Android 17 (API 37) — string literal because compileSdk 36 predates the constant.
+        private const val ACCESS_LOCAL_NETWORK = "android.permission.ACCESS_LOCAL_NETWORK"
 
         // TTL for status cache. Increased for better performance,
         // but invalidated manually on every request.
@@ -115,6 +117,10 @@ actual class PlatformGrantDelegate(
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return false
         return ContextCompat.checkSelfPermission(context, READ_MEDIA_VISUAL_USER_SELECTED) == PackageManager.PERMISSION_GRANTED
     }
+
+    /** "Approximate" location granted: COARSE held while the full [AppGrant.LOCATION] set is not. */
+    private fun isApproximateLocationGranted(): Boolean =
+        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
     actual suspend fun checkStatus(grant: GrantPermission): GrantStatus {
         val identifier = grant.identifier
@@ -192,6 +198,14 @@ actual class PlatformGrantDelegate(
                         }
                         if (allGranted) GrantStatus.GRANTED
                         else if ((appGrant == AppGrant.GALLERY || appGrant == AppGrant.GALLERY_IMAGES_ONLY || appGrant == AppGrant.GALLERY_VIDEO_ONLY) && isPartialGalleryAccessGranted()) {
+                            GrantStatus.PARTIAL_GRANTED
+                        } else if (appGrant == AppGrant.LOCATION && isApproximateLocationGranted()) {
+                            // 2.3.0: the user picked "Approximate" in the OS dialog — COARSE is
+                            // granted, FINE is not. The app HAS usable (coarse) location, but the
+                            // all-granted check above fails and the request-history fallback used
+                            // to escalate this to DENIED_ALWAYS. Same defect class as the gallery
+                            // USER_SELECTED misclassification. Android 17's dialog makes the
+                            // Precise/Approximate choice more prominent, so this state is common.
                             GrantStatus.PARTIAL_GRANTED
                         } else {
                             // shouldShowRequestPermissionRationale() is the OS source of truth for the
@@ -512,6 +526,11 @@ actual class PlatformGrantDelegate(
             AppGrant.READ_CALENDAR -> listOf(Manifest.permission.READ_CALENDAR)
             AppGrant.MOTION -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) listOf(Manifest.permission.ACTIVITY_RECOGNITION) else listOf("com.google.android.gms.permission.ACTIVITY_RECOGNITION")
             AppGrant.NEARBY_WIFI_DEVICES -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) listOf(Manifest.permission.NEARBY_WIFI_DEVICES) else listOf(Manifest.permission.ACCESS_FINE_LOCATION)
+            // Android 17 (API 37) local-network runtime permission. String literal + numeric
+            // API check because compileSdk 36 has neither the Manifest constant nor the
+            // VERSION_CODES entry — same convention as READ_MEDIA_VISUAL_USER_SELECTED above.
+            // Below API 37 the list is empty → checkStatus reports GRANTED (no-op).
+            AppGrant.LOCAL_NETWORK -> if (Build.VERSION.SDK_INT >= 37) listOf(ACCESS_LOCAL_NETWORK) else emptyList()
         }
     }
 }

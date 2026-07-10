@@ -48,7 +48,7 @@ Add to your `build.gradle.kts`:
 kotlin {
     sourceSets {
         commonMain.dependencies {
-            implementation("dev.brewkits:grant-core:2.1.0")
+            implementation("dev.brewkits:grant-core:2.3.0")
         }
     }
 }
@@ -454,7 +454,7 @@ cameraGrant.request(
 
 1. **Read Architecture Guide**: [ARCHITECTURE.md](ARCHITECTURE.md)
 2. **See All Grants**: [GRANTS.md](GRANTS.md)
-3. **Check Demo App**: [DEMO_GUIDE.md](DEMO_GUIDE.md)
+3. **Check Demo App**: [DEMO_GUIDE.md](../demo/DEMO_GUIDE.md)
 4. **iOS Setup**: [QUICK_START_iOS.md](QUICK_START_iOS.md)
 
 ---
