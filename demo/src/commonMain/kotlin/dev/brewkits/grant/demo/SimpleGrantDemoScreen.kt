@@ -52,6 +52,7 @@ fun SimpleGrantDemoScreen(
     GrantDialog(handler = viewModel.galleryVideoOnlyGrant)
     GrantDialog(handler = viewModel.motionGrant)
     GrantDialog(handler = viewModel.calendarGrant)
+    GrantDialog(handler = viewModel.localNetworkGrant)
 
     Scaffold(
         snackbarHost = {
@@ -300,6 +301,16 @@ fun SimpleGrantDemoScreen(
             icon = "📅",
             grant = AppGrant.CALENDAR,
             handler = viewModel.calendarGrant,
+            onSuccess = ::showSuccess
+        )
+
+        // Local Network (Android 17 / API 37 runtime permission; no-op GRANTED below 37 and on iOS)
+        GrantCard(
+            title = "Local Network",
+            description = "LAN devices: smart home, casting, printers (Android 17+)",
+            icon = "🏠",
+            grant = AppGrant.LOCAL_NETWORK,
+            handler = viewModel.localNetworkGrant,
             onSuccess = ::showSuccess
         )
 

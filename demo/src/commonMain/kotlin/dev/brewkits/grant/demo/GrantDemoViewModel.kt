@@ -84,6 +84,14 @@ class GrantDemoViewModel(
         savedStateDelegate = savedStateDelegate
     )
 
+    // Android 17 (API 37): ACCESS_LOCAL_NETWORK runtime permission; no-op GRANTED below 37 and on iOS.
+    val localNetworkGrant = GrantHandler(
+        grantManager = grantManager,
+        grant = AppGrant.LOCAL_NETWORK,
+        scope = scope,
+        savedStateDelegate = savedStateDelegate
+    )
+
     val bluetoothAdvertiseGrant = GrantHandler(
         grantManager = grantManager,
         grant = AppGrant.BLUETOOTH_ADVERTISE,

@@ -117,6 +117,12 @@ enum class AppGrant : GrantPermission {
      *
      * - **Android**: `READ_CONTACTS` + `WRITE_CONTACTS`.
      * - **iOS**: `NSContactsUsageDescription`.
+     *
+     * Android 17 note: for read-only "pick a few contacts" use cases, prefer the new
+     * permission-free Contact Picker (`ContactsPickerSessionContract.ACTION_PICK_CONTACTS`,
+     * ephemeral session URI — no grant involved, so Grant is not needed for it). Google Play
+     * policy is moving to reserve `READ_CONTACTS` for apps that genuinely cannot function
+     * without ongoing full access.
      */
     CONTACTS,
 
@@ -125,6 +131,10 @@ enum class AppGrant : GrantPermission {
      *
      * - **Android**: `READ_CONTACTS`.
      * - **iOS**: `NSContactsUsageDescription`.
+     *
+     * Android 17 note: see [CONTACTS] — the permission-free Contact Picker is the preferred
+     * path for occasional "pick a few contacts" flows; this grant remains for apps needing
+     * ongoing access to the full contacts store.
      */
     READ_CONTACTS,
 

@@ -30,7 +30,7 @@ Grant is not just another permission library. It is a **production-hardened engi
 - **🛡️ iOS Crash-Guard** — Automatically validates `Info.plist` keys before requesting, preventing the dreaded `SIGABRT` production crashes.
 - **🔄 Android Process-Death Resilience** — The only library that handles system-initiated process death gracefully with zero timeouts (via `SavedStateHandle`).
 - **⚡ Reentrant Locking** — Custom `ReentrantMutex` prevents deadlocks in complex nested permission flows.
-- **📦 18 Native Permissions** — Deep, native integration for Camera, Gallery, Location, Bluetooth, NEARBY_WIFI_DEVICES, and more.
+- **📦 19 Native Permissions** — Deep, native integration for Camera, Gallery, Location, Bluetooth, LOCAL_NETWORK (Android 17), and more.
 - **🎨 Modern M3 UI** — Out-of-the-box support for Material 3 `BasicAlertDialog` in the Compose module.
 - **🧩 Custom Extensibility** — Register your own iOS handlers via `IosPermissionHandlerRegistry` or use `RawPermission`.
 - **🧪 Ultra-Robust Testing** — **800+ automated tests** covering every platform edge case, state invariant, and UI interaction. 100% pass rate.

@@ -17,7 +17,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `grant-motion`, `grant-bluetooth`, `grant-location-always`) keeps `iosX64`.** Apps needing
   `grant-compose` on an Intel-Mac simulator must stay on 2.2.3.
 
+### ✨ Added
+
+- **`AppGrant.LOCAL_NETWORK`** — Android 17 (API 37) introduced the `ACCESS_LOCAL_NETWORK`
+  runtime permission (NEARBY_DEVICES group; enforcement is mandatory for apps targeting 37)
+  for talking to LAN devices — smart home, casting receivers, printers. Below API 37 and on
+  iOS the grant is a no-op (`GRANTED`); on iOS the OS prompts automatically on first LAN
+  access when `NSLocalNetworkUsageDescription` is present. The Android mapping uses a string
+  literal + numeric API check because compileSdk 36 predates the constant. Note: Robolectric
+  does not support SDK 37 yet, so the API-37 mapping branch is documented as awaiting a
+  Robolectric upgrade for unit-test coverage — but it IS device-verified end-to-end on a
+  physical Pixel 6 Pro running Android 17: the demo's Local Network card launches the real
+  NEARBY_DEVICES-group system dialog, and Allow lands as `ACCESS_LOCAL_NETWORK: granted=true`
+  (dumpsys-confirmed) with the grant reporting GRANTED.
+- **Android 17 Contact Picker guidance** — KDoc on `CONTACTS`/`READ_CONTACTS` now points
+  read-only "pick a few contacts" flows to the new permission-free Contact Picker
+  (`ContactsPickerSessionContract.ACTION_PICK_CONTACTS`, ephemeral session URI — no grant
+  involved); Play policy is moving to reserve `READ_CONTACTS` for apps that cannot function
+  without ongoing access.
+
 ### 🐛 Fixed
+
+- **Approximate-only location misreported as denied.** `AppGrant.LOCATION` maps to
+  `[ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION]` and full access requires both — but a
+  user who picks "Approximate" in the OS dialog grants ONLY coarse. The app held usable
+  (coarse) location while `checkStatus()` failed the all-granted check and the
+  request-history fallback escalated to `DENIED_ALWAYS`. Same defect class as the gallery
+  `USER_SELECTED` fix below; Android 17 makes the Precise/Approximate choice more prominent,
+  so this state gets more common. Coarse-only now reports `PARTIAL_GRANTED`.
+  Regression: 3-state classification tests, mutation-verified.
 
 - **`requestSuspend()` suspended forever when no dialog host was attached**
   On a DENIED / DENIED_ALWAYS grant, the `StateBased` flow raises rationale / settings-guide
