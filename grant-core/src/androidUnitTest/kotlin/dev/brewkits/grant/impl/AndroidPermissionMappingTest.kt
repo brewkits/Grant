@@ -107,4 +107,18 @@ class AndroidPermissionMappingTest {
             permissions
         )
     }
+
+    // ── LOCAL_NETWORK (2.3.0 — Android 17's ACCESS_LOCAL_NETWORK runtime permission) ──
+    //
+    // Robolectric 4.12.1 tops out below SDK 37, so the API-37 mapping branch
+    // (listOf("android.permission.ACCESS_LOCAL_NETWORK")) cannot be exercised here yet;
+    // upgrade Robolectric and add the @Config(sdk = [37]) case when supported. This pins
+    // the no-op contract on the OS levels the suite CAN run.
+
+    @Test
+    @Config(sdk = [Build.VERSION_CODES.UPSIDE_DOWN_CAKE])
+    fun `LOCAL_NETWORK maps to nothing below API 37`() {
+        val permissions = with(delegate) { AppGrant.LOCAL_NETWORK.toAndroidGrants() }
+        assertEquals(emptyList<String>(), permissions)
+    }
 }

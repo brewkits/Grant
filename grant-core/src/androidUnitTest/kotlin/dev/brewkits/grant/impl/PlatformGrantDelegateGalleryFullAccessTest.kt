@@ -84,6 +84,41 @@ class PlatformGrantDelegateGalleryFullAccessTest {
     }
 
     @Test
+    fun `LOCAL_NETWORK reports GRANTED below API 37 without any OS grant`() = runTest {
+        // 2.3.0: Android 17's ACCESS_LOCAL_NETWORK maps to an empty permission list below
+        // API 37 — checkStatus must treat that as a no-op GRANTED, never NOT_DETERMINED.
+        assertEquals(GrantStatus.GRANTED, delegate.checkStatus(AppGrant.LOCAL_NETWORK))
+    }
+
+    // ── LOCATION partial access (2.3.0 — same defect class as the gallery USER_SELECTED bug) ──
+    //
+    // AppGrant.LOCATION maps to [FINE, COARSE] and checkStatus demanded all{granted}.
+    // A user who picks "Approximate" in the OS dialog grants ONLY COARSE — the app HAS
+    // usable (coarse) location, but the all-granted check failed and the request-history
+    // fallback escalated to DENIED_ALWAYS. Android 17 makes Precise/Approximate visually
+    // distinct in the dialog, so approximate-only grants become more common.
+
+    @Test
+    fun `LOCATION with COARSE only is PARTIAL access`() = runTest {
+        grant(Manifest.permission.ACCESS_COARSE_LOCATION)
+        store.setRequested(AppGrant.LOCATION)
+
+        assertEquals(GrantStatus.PARTIAL_GRANTED, delegate.checkStatus(AppGrant.LOCATION))
+    }
+
+    @Test
+    fun `LOCATION with FINE and COARSE is FULL access`() = runTest {
+        grant(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+
+        assertEquals(GrantStatus.GRANTED, delegate.checkStatus(AppGrant.LOCATION))
+    }
+
+    @Test
+    fun `LOCATION with nothing granted stays NOT_DETERMINED before any request`() = runTest {
+        assertEquals(GrantStatus.NOT_DETERMINED, delegate.checkStatus(AppGrant.LOCATION))
+    }
+
+    @Test
     fun `GALLERY_IMAGES_ONLY with IMAGES granted is FULL access`() = runTest {
         grant(Manifest.permission.READ_MEDIA_IMAGES)
         store.setRequested(AppGrant.GALLERY_IMAGES_ONLY)

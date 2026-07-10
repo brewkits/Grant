@@ -380,6 +380,21 @@ class IosGrantDelegateTest {
     }
 
     @Test
+    fun `request LOCAL_NETWORK does not deadlock on simulator`() = kotlinx.coroutines.test.runTest {
+        // LOCAL_NETWORK is always GRANTED on iOS — there is no API to query or explicitly
+        // request local-network authorization; the OS prompts on first LAN access when
+        // NSLocalNetworkUsageDescription is present (2.3.0, Android 17 counterpart grant).
+        val result = withTimeout(3_000L) { delegate.request(AppGrant.LOCAL_NETWORK) }
+        assertTrue(result in validStatuses, "request(LOCAL_NETWORK) must complete and return a valid status")
+    }
+
+    @Test
+    fun `checkStatus LOCAL_NETWORK reports GRANTED on iOS`() = kotlinx.coroutines.test.runTest {
+        val status = withTimeout(3_000L) { delegate.checkStatus(AppGrant.LOCAL_NETWORK) }
+        assertTrue(status == GrantStatus.GRANTED, "LOCAL_NETWORK is a no-op on iOS and must report GRANTED, got $status")
+    }
+
+    @Test
     fun `request batch of permissions does not deadlock`() = kotlinx.coroutines.test.runTest {
         val grants = listOf(
             AppGrant.SCHEDULE_EXACT_ALARM,

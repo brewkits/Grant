@@ -290,7 +290,10 @@ actual class PlatformGrantDelegate(
         AppGrant.BLUETOOTH_ADVERTISE  -> getOptionalHandler(grant, "dev.brewkits:grant-bluetooth", "GrantBluetooth.initialize()")
 
         AppGrant.SCHEDULE_EXACT_ALARM,
-        AppGrant.NEARBY_WIFI_DEVICES  -> AlwaysGrantedHandler
+        AppGrant.NEARBY_WIFI_DEVICES,
+        // iOS has no API to query or explicitly request local-network authorization — the
+        // OS prompts on the first LAN access when NSLocalNetworkUsageDescription is present.
+        AppGrant.LOCAL_NETWORK        -> AlwaysGrantedHandler
     }
 
     private fun getOptionalHandler(grant: AppGrant, moduleName: String, initCode: String): PermissionHandler {
