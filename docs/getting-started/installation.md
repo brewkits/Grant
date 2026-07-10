@@ -5,7 +5,7 @@ targeting **Android** and **iOS**.
 
 ## Prerequisites
 
-- **Kotlin**: 2.1.0 or higher
+- **Kotlin**: 2.1.0 or higher (the library itself is built with Kotlin 2.4.0; consumers on any Kotlin 2.x line can use it)
 - **Compose Multiplatform**: 1.6.0 or higher (only if you use `grant-compose`)
 - **Android**: MinSDK 24 (Android 7.0)
 - **iOS**: iOS 13.0 or higher
@@ -35,19 +35,19 @@ Add the modules you need to your shared module's `commonMain` source set. Only
 kotlin {
     sourceSets {
         commonMain.dependencies {
-            implementation("dev.brewkits:grant-core:2.2.0")            // Required
+            implementation("dev.brewkits:grant-core:2.3.0")            // Required
 
-            implementation("dev.brewkits:grant-compose:2.2.0")         // Optional: Compose dialogs
-            implementation("dev.brewkits:grant-core-koin:2.2.0")       // Optional: Koin DI support
+            implementation("dev.brewkits:grant-compose:2.3.0")         // Optional: Compose dialogs
+            implementation("dev.brewkits:grant-core-koin:2.3.0")       // Optional: Koin DI support
 
             // Optional: add only the permission modules you actually use on iOS.
             // Omitting a module means its iOS framework is never linked — no phantom
             // NSUsageDescription keys, no App Store rejections.
-            implementation("dev.brewkits:grant-contacts:2.2.0")        // Optional: Contacts (iOS CNContactStore)
-            implementation("dev.brewkits:grant-calendar:2.2.0")        // Optional: Calendar (iOS EventKit)
-            implementation("dev.brewkits:grant-motion:2.2.0")          // Optional: Motion (iOS CoreMotion)
-            implementation("dev.brewkits:grant-bluetooth:2.2.0")       // Optional: Bluetooth (iOS CoreBluetooth)
-            implementation("dev.brewkits:grant-location-always:2.2.0") // Optional: background "always" location (iOS requestAlwaysAuthorization)
+            implementation("dev.brewkits:grant-contacts:2.3.0")        // Optional: Contacts (iOS CNContactStore)
+            implementation("dev.brewkits:grant-calendar:2.3.0")        // Optional: Calendar (iOS EventKit)
+            implementation("dev.brewkits:grant-motion:2.3.0")          // Optional: Motion (iOS CoreMotion)
+            implementation("dev.brewkits:grant-bluetooth:2.3.0")       // Optional: Bluetooth (iOS CoreBluetooth)
+            implementation("dev.brewkits:grant-location-always:2.3.0") // Optional: background "always" location (iOS requestAlwaysAuthorization)
         }
     }
 }

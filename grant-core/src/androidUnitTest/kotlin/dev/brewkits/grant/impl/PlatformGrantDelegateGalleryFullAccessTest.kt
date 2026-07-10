@@ -119,6 +119,27 @@ class PlatformGrantDelegateGalleryFullAccessTest {
     }
 
     @Test
+    @org.robolectric.annotation.Config(sdk = [Build.VERSION_CODES.Q])
+    fun `LOCATION with COARSE only is PARTIAL access on legacy API 29 too`() = runTest {
+        // Below API 31 LOCATION maps to [FINE] only, but COARSE-held-without-FINE is still
+        // semantically partial (the app has usable coarse location). Pins that the 2.3.0
+        // partial branch does not change legacy classification in a surprising way:
+        // GRANTED still requires the mapped set; COARSE alone is PARTIAL, never DENIED.
+        grant(Manifest.permission.ACCESS_COARSE_LOCATION)
+        store.setRequested(AppGrant.LOCATION)
+
+        assertEquals(GrantStatus.PARTIAL_GRANTED, delegate.checkStatus(AppGrant.LOCATION))
+    }
+
+    @Test
+    @org.robolectric.annotation.Config(sdk = [Build.VERSION_CODES.Q])
+    fun `LOCATION with FINE granted is FULL access on legacy API 29`() = runTest {
+        grant(Manifest.permission.ACCESS_FINE_LOCATION)
+
+        assertEquals(GrantStatus.GRANTED, delegate.checkStatus(AppGrant.LOCATION))
+    }
+
+    @Test
     fun `GALLERY_IMAGES_ONLY with IMAGES granted is FULL access`() = runTest {
         grant(Manifest.permission.READ_MEDIA_IMAGES)
         store.setRequested(AppGrant.GALLERY_IMAGES_ONLY)

@@ -27,6 +27,7 @@ User Action → Check Status → Show Rationale (if needed) → Request System D
 | `NOT_DETERMINED` | Never asked before | Request grant |
 | `DENIED` | Soft denial (can ask again) | Show rationale, then request |
 | `DENIED_ALWAYS` | Hard denial (can't ask) | Show settings guide |
+| `PARTIAL_GRANTED` | Partial access: Android 14+ "Select photos" for the gallery grants, or "Approximate"-only location (2.3.0) | Execute feature with the partial scope; optionally offer an upgrade path |
 | `GRANTED` | Grant granted | Execute feature |
 
 ## 🔄 Grant Flow
@@ -616,7 +617,7 @@ val cameraGrant = GrantHandler(
 ```
 
 ### Gallery/Photos
-- **Android**: `READ_EXTERNAL_STORAGE` (API < 33), `READ_MEDIA_IMAGES` (API 33+)
+- **Android**: `READ_EXTERNAL_STORAGE` (API < 33); `READ_MEDIA_IMAGES` + `READ_MEDIA_VIDEO` (API 33+); Android 14+ "Select photos" reports `PARTIAL_GRANTED` (via `READ_MEDIA_VISUAL_USER_SELECTED`)
 - **iOS**: `NSPhotoLibraryUsageDescription`
 - **Use cases**: Photo selection, image upload
 
@@ -629,7 +630,7 @@ val galleryGrant = GrantHandler(
 ```
 
 ### Location
-- **Android**: `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`
+- **Android**: `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`; choosing "Approximate" in the OS dialog (coarse only) reports `PARTIAL_GRANTED` (2.3.0)
 - **iOS**: `NSLocationWhenInUseUsageDescription`
 - **Use cases**: Maps, nearby search, location tagging
 
@@ -744,6 +745,44 @@ val storageGrant = GrantHandler(
     scope
 )
 ```
+
+### Nearby Wi-Fi Devices
+- **Android**: `NEARBY_WIFI_DEVICES` (API 33+); `ACCESS_FINE_LOCATION` below
+- **iOS**: No-op (always `GRANTED`)
+- **Use cases**: Wi-Fi device discovery without location access on Android 13+
+
+```kotlin
+val nearbyWifiGrant = GrantHandler(grantManager, AppGrant.NEARBY_WIFI_DEVICES, scope)
+```
+
+### Local Network (Android 17+)
+- **Android**: `ACCESS_LOCAL_NETWORK` (API 37+ — a runtime permission in the `NEARBY_DEVICES`
+  group; mandatory for apps targeting Android 17). No-op (`GRANTED`) below API 37.
+- **iOS**: No-op (always `GRANTED`) — iOS has no API to query or explicitly request
+  local-network authorization; the OS prompts automatically on the first LAN access when
+  `NSLocalNetworkUsageDescription` is present in `Info.plist`.
+- **Use cases**: smart-home devices, casting receivers, printers, LAN discovery
+
+```xml
+<!-- AndroidManifest.xml -->
+<uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
+```
+
+```kotlin
+val localNetworkGrant = GrantHandler(grantManager, AppGrant.LOCAL_NETWORK, scope)
+```
+
+> Android 17 also ships a permission-free, system-mediated **device picker** for local
+> network use cases — if a picker fits your UX, you can skip the permission entirely.
+
+### Contacts on Android 17: prefer the Contact Picker for read-only flows
+
+Android 17 adds a **permission-free Contact Picker**
+(`ContactsPickerSessionContract.ACTION_PICK_CONTACTS`): the user picks specific contacts and
+your app gets an **ephemeral session URI** for just those rows — no grant involved, so Grant
+is not needed for it. Google Play policy is moving to reserve `READ_CONTACTS` for apps that
+cannot function without ongoing full access. Keep using `AppGrant.CONTACTS` /
+`AppGrant.READ_CONTACTS` only for genuinely continuous contacts features (sync, CRM, dialer).
 
 ## 🚫 Permissions Intentionally Not Covered
 

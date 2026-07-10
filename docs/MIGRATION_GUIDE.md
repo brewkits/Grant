@@ -1,7 +1,7 @@
 # Migration Guide to Grant
 
-**Version:** 2.2.0
-**Last Updated:** June 20, 2026
+**Version:** 2.3.0
+**Last Updated:** July 10, 2026
 
 This guide helps you migrate from previous versions of Grant or other permission libraries.
 
@@ -9,7 +9,8 @@ This guide helps you migrate from previous versions of Grant or other permission
 
 ## 📚 Table of Contents
 
-1. [Upgrading from Grant 2.1.0 to 2.2.0](#upgrading-from-grant-210-to-220)
+1. [Upgrading from Grant 2.2.x to 2.3.0](#upgrading-from-grant-22x-to-230)
+2. [Upgrading from Grant 2.1.0 to 2.2.0](#upgrading-from-grant-210-to-220)
 2. [Upgrading from Grant 1.x to 2.1.0](#upgrading-from-grant-1x-to-200)
 3. [Upgrading from Grant 1.3.x to 1.4.2](#upgrading-from-grant-13x-to-142)
 4. [From moko-permissions](#from-moko-permissions)
@@ -18,6 +19,87 @@ This guide helps you migrate from previous versions of Grant or other permission
 7. [From Native Android APIs](#from-native-android-apis)
 8. [Common Migration Patterns](#common-migration-patterns)
 9. [Troubleshooting](#troubleshooting)
+
+---
+
+## 🚀 Upgrading from Grant 2.2.x to 2.3.0
+
+### Overview
+
+2.3.0 is a **toolchain + Android 17 release**: Kotlin 2.4.0, Compose Multiplatform 1.11.1,
+kotlinx-coroutines 1.11.0. The public API is source-compatible with 2.2.x — for most apps
+the migration is bumping the version number. Three things deserve attention:
+
+### 1. ⚠️ Breaking (grant-compose only): the `iosX64` target is gone
+
+Compose Multiplatform 1.11 stopped publishing `iosX64` artifacts, so `grant-compose` can no
+longer build that target. **Every other module keeps `iosX64`.**
+
+- Apple-silicon Macs, real devices, CI on arm64 runners: **no action needed.**
+- If you still run the iOS **simulator on an Intel Mac** *and* use `grant-compose`:
+  stay on `grant-compose:2.2.3` (it is API-compatible with `grant-core:2.3.0` for the
+  dialog surface) or drop the iosX64 target from your app.
+
+### 2. Behavior change: "Approximate"-only location now reports `PARTIAL_GRANTED`
+
+Previously, a user who chose **Approximate** in the OS location dialog (grants
+`ACCESS_COARSE_LOCATION` but not `ACCESS_FINE_LOCATION`) was misreported as
+`DENIED`/`DENIED_ALWAYS` — even though the app held usable coarse location. 2.3.0 reports
+this state as `PARTIAL_GRANTED`, consistent with the Android 14 partial-photos model.
+
+**What to check:** anywhere you branch on `AppGrant.LOCATION` status, treat
+`PARTIAL_GRANTED` as usable (coarse) access:
+
+```kotlin
+when (locationGrant.status.value) {
+    GrantStatus.GRANTED         -> startPreciseTracking()
+    GrantStatus.PARTIAL_GRANTED -> startCoarseTracking()   // NEW in 2.3.0 for approximate-only
+    else                        -> requestOrExplain()
+}
+```
+
+If you already handled `PARTIAL_GRANTED` for the gallery grants, the same handling applies.
+
+### 3. Behavior change: `requestSuspend()` no longer hangs without a dialog host
+
+If no collector is attached to `GrantHandler.state` (i.e. no `GrantDialog` / custom renderer
+is composed), a DENIED / DENIED_ALWAYS flow used to suspend **forever** waiting for a dialog
+that could never appear. 2.3.0 completes immediately with the denied status instead and
+clears the unrenderable dialog state. The callback-based `request()` is unchanged.
+
+**What to check:** if you relied on `requestSuspend()` never returning in that situation
+(unlikely), handle the returned `DENIED`/`DENIED_ALWAYS` status.
+
+### 4. New: `AppGrant.LOCAL_NETWORK` (Android 17)
+
+Android 17 (API 37) introduced the `ACCESS_LOCAL_NETWORK` runtime permission for talking to
+LAN devices (smart home, casting, printers). To adopt:
+
+```xml
+<!-- AndroidManifest.xml -->
+<uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
+```
+
+```kotlin
+val status = grantManager.request(AppGrant.LOCAL_NETWORK)
+// Below Android 17 and on iOS this is a no-op GRANTED.
+```
+
+On iOS there is no query/request API — the OS prompts automatically on first LAN access;
+declare `NSLocalNetworkUsageDescription` in `Info.plist`.
+
+Also fixed in 2.3.0: an Android 14+ gallery with `READ_MEDIA_IMAGES` + `READ_MEDIA_VIDEO`
+granted but `READ_MEDIA_VISUAL_USER_SELECTED` not (ADB/MDM/auto-reset edge states) was
+misreported as `DENIED_ALWAYS`; it now correctly reports `GRANTED`.
+
+### Version bump
+
+```kotlin
+implementation("dev.brewkits:grant-core:2.3.0")
+implementation("dev.brewkits:grant-compose:2.3.0")          // see iosX64 note above
+implementation("dev.brewkits:grant-core-koin:2.3.0")
+// ...and any optional iOS modules you use, all at 2.3.0
+```
 
 ---
 
