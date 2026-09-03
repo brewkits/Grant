@@ -59,7 +59,22 @@ The classic argument against persisting permission state is *desync*: if you cac
 
 ### Backup exclusion (handled automatically)
 
-`grant-core` ships backup rules that exclude `grant_request_history.xml` from Android Auto Backup, cloud backup, and device-to-device transfer (`res/xml/backup_rules.xml`, `res/xml/data_extraction_rules.xml`, wired via the library manifest). This guarantees a fresh install starts with empty history and never inherits "already asked" state from another device — so there is no reinstall desync to worry about.
+`SharedPreferencesGrantStore` discards history that was not written by the current
+installation, so a fresh install never inherits "already asked" state from another device.
+
+The history is stamped with the app's `firstInstallTime`. On construction — before any read —
+the store compares that stamp against the current installation and clears the file if it
+differs, or if no stamp is present at all (data written before this mechanism, which cannot
+be shown to be local). `firstInstallTime` is stable across app *updates*, so ordinary updates
+and process death keep their history; a cloud-backup restore, device transfer, or reinstall
+starts clean. If the lookup itself fails, the history is left alone: wrongly clearing costs a
+real user an extra prompt, which is the worse error.
+
+Until 2.4.1 this was done with `android:fullBackupContent` / `android:dataExtractionRules` on
+the library manifest instead. That was removed because a library cannot set `<application>`
+attributes without colliding with apps that declare their own backup rules — and an app
+resolving the collision with `tools:replace` silently dropped the exclusion, so the protection
+was never dependable. Self-invalidation needs nothing from the consuming app's manifest.
 
 ---
 

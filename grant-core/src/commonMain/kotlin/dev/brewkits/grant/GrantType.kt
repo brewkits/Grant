@@ -46,6 +46,22 @@ enum class AppGrant : GrantPermission {
     GALLERY_VIDEO_ONLY,
 
     /**
+     * Permission to **save** media into the photo library, without the ability to read it.
+     *
+     * Use this for a camera app that stores its own captures, a scanner that exports a document,
+     * or anything else that only ever writes. Asking for full read/write access to satisfy a
+     * save-only feature is over-asking: it is a larger privacy ask, is denied more often, and
+     * invites an App Store review question about why the library is being read.
+     *
+     * - **Android**: no permission at all on API 29+ — `MediaStore` inserts into the app's own
+     *   collections under scoped storage — so this reports [GrantStatus.GRANTED] without a
+     *   prompt. On API 26-28 it maps to `WRITE_EXTERNAL_STORAGE`.
+     * - **iOS**: `PHAccessLevelAddOnly`, declared with `NSPhotoLibraryAddUsageDescription`.
+     *   Add-only never returns "Limited", so [GrantStatus.PARTIAL_GRANTED] is not reachable here.
+     */
+    GALLERY_ADD_ONLY,
+
+    /**
      * Access to shared external storage.
      *
      * - **Android**: `READ_EXTERNAL_STORAGE` / `WRITE_EXTERNAL_STORAGE`.

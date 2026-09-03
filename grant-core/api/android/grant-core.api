@@ -12,6 +12,7 @@ public class dev/brewkits/grant/AppGrant : java/lang/Enum, dev/brewkits/grant/Gr
 	public static final field CAMERA Ldev/brewkits/grant/AppGrant;
 	public static final field CONTACTS Ldev/brewkits/grant/AppGrant;
 	public static final field GALLERY Ldev/brewkits/grant/AppGrant;
+	public static final field GALLERY_ADD_ONLY Ldev/brewkits/grant/AppGrant;
 	public static final field GALLERY_IMAGES_ONLY Ldev/brewkits/grant/AppGrant;
 	public static final field GALLERY_VIDEO_ONLY Ldev/brewkits/grant/AppGrant;
 	public static final field LOCAL_NETWORK Ldev/brewkits/grant/AppGrant;

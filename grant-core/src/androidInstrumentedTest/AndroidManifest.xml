@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Test-only manifest.
+
+    VIBRATE is a harmless, always-granted normal permission used by the instrumented
+    tests as a stand-in when exercising the request pipeline. It used to live in the
+    library's main manifest, which meant manifest merger injected it into every app
+    that depended on grant-core (2.4.1). It belongs here, in the test APK, and nowhere
+    else.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.VIBRATE" />
+</manifest>

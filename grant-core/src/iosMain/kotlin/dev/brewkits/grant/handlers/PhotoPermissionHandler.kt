@@ -7,6 +7,8 @@ import dev.brewkits.grant.utils.mainContinuation
 import kotlinx.coroutines.suspendCancellableCoroutine
 import platform.Foundation.NSOperatingSystemVersion
 import platform.Foundation.NSProcessInfo
+import platform.Photos.PHAccessLevel
+import platform.Photos.PHAccessLevelAddOnly
 import platform.Photos.PHAccessLevelReadWrite
 import platform.Photos.PHAuthorizationStatusAuthorized
 import platform.Photos.PHAuthorizationStatusDenied
@@ -27,15 +29,24 @@ private const val TAG = "PhotoPermissionHandler"
  * PHAuthorizationStatusLimited (iOS 14+) maps to [GrantStatus.PARTIAL_GRANTED]
  * to inform the caller that the user selected only specific photos.
  *
+ * The access level is a constructor parameter so the same logic serves both read/write access
+ * ([AppGrant.GALLERY] and friends) and save-only access ([AppGrant.GALLERY_ADD_ONLY]). Add-only
+ * is a strictly smaller ask: it never surfaces the "Limited" picker, so PARTIAL_GRANTED cannot
+ * occur for it, and it is declared with `NSPhotoLibraryAddUsageDescription` rather than
+ * `NSPhotoLibraryUsageDescription`.
+ *
  * iOS version detection:
  * Previously used `operatingSystemVersionString` which Apple explicitly documents
  * as "not suitable for parsing." Now uses `operatingSystemVersion.majorVersion`
  * (a structured `NSOperatingSystemVersion` value) which is reliable and locale-independent.
  */
-internal class PhotoPermissionHandler : PermissionHandler {
+internal class PhotoPermissionHandler(
+    private val accessLevel: PHAccessLevel = PHAccessLevelReadWrite,
+    private val usageDescriptionKey: String = "NSPhotoLibraryUsageDescription",
+) : PermissionHandler {
 
     override fun checkStatus(): GrantStatus {
-        if (!hasInfoPlistKey(TAG, "NSPhotoLibraryUsageDescription")) return GrantStatus.DENIED_ALWAYS
+        if (!hasInfoPlistKey(TAG, usageDescriptionKey)) return GrantStatus.DENIED_ALWAYS
 
         // Use non-deprecated API on iOS 14+ (authorizationStatus() is deprecated in iOS 14).
         @OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
@@ -48,7 +59,7 @@ internal class PhotoPermissionHandler : PermissionHandler {
         )
 
         val status = if (isIos14OrNewer) {
-            PHPhotoLibrary.authorizationStatusForAccessLevel(PHAccessLevelReadWrite)
+            PHPhotoLibrary.authorizationStatusForAccessLevel(accessLevel)
         } else {
             @Suppress("DEPRECATION")
             PHPhotoLibrary.authorizationStatus()
@@ -65,7 +76,7 @@ internal class PhotoPermissionHandler : PermissionHandler {
     }
 
     override suspend fun request(): GrantStatus {
-        if (!hasInfoPlistKey(TAG, "NSPhotoLibraryUsageDescription")) return GrantStatus.DENIED_ALWAYS
+        if (!hasInfoPlistKey(TAG, usageDescriptionKey)) return GrantStatus.DENIED_ALWAYS
 
         // Use isOperatingSystemAtLeastVersion() — the documented, locale-safe API.
         // NSOperatingSystemVersion is a C struct that requires cValue<> in Kotlin/Native.
@@ -80,7 +91,7 @@ internal class PhotoPermissionHandler : PermissionHandler {
 
         return suspendCancellableCoroutine { cont ->
             if (isIos14OrNewer) {
-                PHPhotoLibrary.requestAuthorizationForAccessLevel(PHAccessLevelReadWrite) { status ->
+                PHPhotoLibrary.requestAuthorizationForAccessLevel(accessLevel) { status ->
                     val result = when (status) {
                         PHAuthorizationStatusAuthorized    -> GrantStatus.GRANTED
                         PHAuthorizationStatusLimited       -> GrantStatus.PARTIAL_GRANTED
@@ -92,6 +103,9 @@ internal class PhotoPermissionHandler : PermissionHandler {
                     mainContinuation<GrantStatus> { s -> cont.resume(s) }.invoke(result)
                 }
             } else {
+                // PHAccessLevel did not exist before iOS 14; the legacy call is read/write only.
+                // An add-only caller therefore gets the wider prompt on iOS 13 — the alternative
+                // is failing outright, and the app still ends up able to save.
                 @Suppress("DEPRECATION")
                 PHPhotoLibrary.requestAuthorization { status ->
                     val result = when (status) {

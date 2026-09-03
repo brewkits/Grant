@@ -128,6 +128,18 @@ android {
     namespace = "dev.brewkits.grant"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
+    testOptions {
+        unitTests.all {
+            // Robolectric loads a full android-all jar per @Config(sdk = ...) level, in the
+            // same JVM. The suite spans API 21 through 34, and adding one more multi-SDK
+            // class was enough to OOM the default test heap:
+            //   OutOfMemoryError: Failed to load .../android-all-instrumented-9-...jar
+            // org.gradle.jvmargs in gradle.properties sizes the Gradle daemon, NOT this
+            // forked test JVM, so the heap has to be set here.
+            it.maxHeapSize = "2g"
+        }
+    }
+
     defaultConfig {
         minSdk = libs.versions.android.minSdk.get().toInt()
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

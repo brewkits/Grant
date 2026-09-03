@@ -153,6 +153,19 @@ class MyViewModel(
 }
 ```
 
+> **`ServiceType.WIFI` needs a permission your app must declare.** As of 2.4.1 `grant-core`
+> declares no `<uses-permission>` entries at all, so nothing is injected into your manifest.
+> `WifiManager.isWifiEnabled` requires `ACCESS_WIFI_STATE`; add it yourself if you use this
+> check:
+>
+> ```xml
+> <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+> ```
+>
+> Without it the call throws `SecurityException`, which Grant catches and reports as
+> `ServiceStatus.UNKNOWN` — no crash, but the check silently stops working. No other
+> `ServiceType` requires a declaration.
+
 ---
 
 ## Platform-Specific Initialization

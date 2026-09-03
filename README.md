@@ -45,11 +45,12 @@ fun CameraScreen(viewModel: CameraViewModel) {
 ## Features
 
 - **Logic-first API** — works in ViewModels, repositories, or composables. No Activity or Fragment references, no lifecycle binding.
+- **Adds no permissions to your app** — `grant-core` declares zero `<uses-permission>` entries, so nothing appears on your Play listing that you did not ask for. The Android counterpart to the iOS framework isolation below.
 - **iOS framework isolation** — Contacts, Calendar, Motion, Bluetooth, and background location live in opt-in modules. Frameworks you don't use are never linked, so Apple's static scanner never demands phantom `NSUsageDescription` keys.
 - **iOS crash guard** — validates `Info.plist` keys before requesting, turning the classic `SIGABRT` production crash into a clear error.
 - **Android process-death recovery** — a request in flight survives system-initiated process death via `SavedStateHandle`, with no timeouts.
 - **Deadlock-free by construction** — reentrant locking plus a `withTimeout` test policy that converts silent deadlocks into failing tests.
-- **19 built-in permissions** — Camera, Gallery (incl. Android 14 partial access), Location (incl. "Approximate"-only), Bluetooth, Local Network (Android 17), and more — plus `RawPermission` for anything the library doesn't ship yet.
+- **20 built-in permissions** — Camera, Gallery (incl. Android 14 partial access and a save-only mode that never prompts), Location (incl. "Approximate"-only), Bluetooth, Local Network (Android 17), and more — plus `RawPermission` for anything the library doesn't ship yet.
 - **Permission groups as one unit** — `GrantGroupHandler` requests several permissions in a single batch, drives one `StateFlow` for the whole group, and fires `onAllGranted` only when every one is satisfied.
 - **Funnel analytics** — attach an optional `GrantEventListener` to any handler and observe every stage: requested, granted, denied, rationale shown, settings guide shown, settings opened.
 - **Service-state checks** — one call answers both "is the permission granted?" and "is GPS/Bluetooth actually on?".
@@ -232,7 +233,7 @@ Most KMP permission libraries are thin wrappers around the native APIs. Grant is
 
 ## Supported permissions
 
-19 built-in permissions across Camera, Microphone, Gallery, Storage, Location, Notifications, Bluetooth, Contacts, Calendar, Motion, Exact Alarms, Nearby Wi-Fi, and Local Network — anything else via `RawPermission`.
+20 built-in permissions across Camera, Microphone, Gallery (read and save-only), Storage, Location, Notifications, Bluetooth, Contacts, Calendar, Motion, Exact Alarms, Nearby Wi-Fi, and Local Network — anything else via `RawPermission`.
 
 <details>
 <summary><strong>Full permission matrix</strong></summary>
@@ -244,6 +245,7 @@ Most KMP permission libraries are thin wrappers around the native APIs. Grant is
 | Gallery (full) | ✅ | ✅ | Android 14+ partial access → `PARTIAL_GRANTED` |
 | Gallery (images only) | ✅ | ✅ | `AppGrant.GALLERY_IMAGES_ONLY` |
 | Gallery (video only) | ✅ | ✅ | `AppGrant.GALLERY_VIDEO_ONLY` |
+| Gallery (save only) | ✅ | ✅ | `AppGrant.GALLERY_ADD_ONLY` — no prompt at all on Android 10+; `PHAccessLevelAddOnly` on iOS |
 | Storage (legacy) | ✅ | ✅ | Pre-API 33 fallback |
 | Location (when in use) | ✅ | ✅ | GPS service check; "Approximate"-only → `PARTIAL_GRANTED` |
 | Location (always) | ✅ | ✅ | Android two-step background flow handled |

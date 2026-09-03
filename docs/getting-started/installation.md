@@ -135,6 +135,34 @@ val serviceManager = ServiceFactory.createServiceManager(context)
 Using Koin instead of the factory? Register both `grantModule` and
 `grantPlatformModule` from `grant-core-koin`.
 
+## Permissions this library adds to your app: none
+
+`grant-core` declares **no `<uses-permission>` entries**. Manifest merger copies a library's
+permission declarations into every app that depends on it, where they appear on the Play
+Store listing and in every security review — for permissions the app never asked for. A
+permission library doing that is the problem it exists to solve, so the count stays at zero.
+
+Two entries were removed in 2.4.1:
+
+| Permission | Why it is gone |
+|---|---|
+| `VIBRATE` | Never used by production code. It was only a stand-in permission in the instrumented tests, which now declare it themselves. |
+| `ACCESS_WIFI_STATE` | Needed only by the optional `ServiceType.WIFI` check. |
+
+**If you use `ServiceType.WIFI`**, declare it yourself:
+
+```xml
+<uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+```
+
+Without it, `WifiManager.isWifiEnabled` throws `SecurityException`, which Grant catches and
+reports as `ServiceStatus.UNKNOWN` — your app degrades rather than crashing, but the WiFi
+check silently stops working. Every other `ServiceType` is unaffected.
+
+Runtime permissions your app requests through Grant (`CAMERA`, `LOCATION`, …) must still be
+declared in your own manifest, as always — Grant requests them, it does not declare them
+for you.
+
 ## Why there is no SPM or CocoaPods support
 
 Grant is consumed with **Gradle, from a Kotlin Multiplatform module**. It is not published as a

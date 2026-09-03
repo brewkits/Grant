@@ -33,12 +33,26 @@
         Note: App developers can override these rules in their app's manifest
         if they need different backup behavior.
     -->
-    <uses-permission android:name="android.permission.VIBRATE" />
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <!--
+        This library deliberately declares NO <uses-permission>.
 
-    <application
-        android:fullBackupContent="@xml/backup_rules"
-        android:dataExtractionRules="@xml/data_extraction_rules">
+        Manifest merger copies a library's uses-permission entries into every consuming
+        app, so a permission declared here appears on the app's Play Store listing and in
+        every security audit — for a permission the app never asked for. A permission
+        library injecting permissions is precisely the problem this library exists to
+        solve, so the count here stays at zero.
+
+        Removed in 2.4.1:
+        - VIBRATE: never used by production code; it was only ever a harmless dummy
+          permission in the instrumented tests, which now declare it themselves.
+        - ACCESS_WIFI_STATE: needed only by the optional ServiceType.WIFI check
+          (WifiManager.isWifiEnabled). Apps that use that check declare it themselves;
+          see docs. checkWifiService() already catches SecurityException and reports
+          ServiceStatus.UNKNOWN, so an app that does not declare it degrades rather
+          than crashes.
+    -->
+
+    <application>
         <activity
             android:name="dev.brewkits.grant.impl.GrantRequestActivity"
             android:theme="@style/Theme.Transparent"

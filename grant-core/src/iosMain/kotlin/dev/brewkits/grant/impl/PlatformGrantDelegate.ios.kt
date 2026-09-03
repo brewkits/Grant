@@ -99,6 +99,14 @@ actual class PlatformGrantDelegate(
     private val cameraHandler by lazy { AVPermissionHandler.camera() }
     private val microphoneHandler by lazy { AVPermissionHandler.microphone() }
     private val photoHandler by lazy { PhotoPermissionHandler() }
+
+    /** Save-only photo access — a smaller ask than [photoHandler]; see [AppGrant.GALLERY_ADD_ONLY]. */
+    private val photoAddOnlyHandler by lazy {
+        PhotoPermissionHandler(
+            accessLevel = platform.Photos.PHAccessLevelAddOnly,
+            usageDescriptionKey = "NSPhotoLibraryAddUsageDescription",
+        )
+    }
     private val locationWhenInUseHandler by lazy { LocationPermissionHandler(delegate = locationDelegate) }
     private val notificationHandler by lazy { NotificationPermissionHandler() }
 
@@ -272,6 +280,7 @@ actual class PlatformGrantDelegate(
         AppGrant.STORAGE,
         AppGrant.GALLERY_IMAGES_ONLY,
         AppGrant.GALLERY_VIDEO_ONLY   -> photoHandler
+        AppGrant.GALLERY_ADD_ONLY     -> photoAddOnlyHandler
 
         AppGrant.LOCATION             -> locationWhenInUseHandler
         AppGrant.LOCATION_ALWAYS      -> getOptionalHandler(grant, "dev.brewkits:grant-location-always", "GrantLocationAlways.initialize()")

@@ -9,7 +9,7 @@ class GrantTypeTest {
     @Test
     fun testAllGrantTypesExist() {
         val grants = AppGrant.entries
-        assertEquals(19, grants.size, "Expected 19 grant types")
+        assertEquals(20, grants.size, "Expected 20 grant types")
     }
 
     @Test
@@ -35,6 +35,7 @@ class GrantTypeTest {
         assertTrue(grants.contains(AppGrant.READ_CALENDAR), "READ_CALENDAR grant should exist")
         assertTrue(grants.contains(AppGrant.NEARBY_WIFI_DEVICES), "NEARBY_WIFI_DEVICES grant should exist")
         assertTrue(grants.contains(AppGrant.LOCAL_NETWORK), "LOCAL_NETWORK grant should exist")
+        assertTrue(grants.contains(AppGrant.GALLERY_ADD_ONLY), "GALLERY_ADD_ONLY grant should exist")
     }
 
     @Test
@@ -57,28 +58,41 @@ class GrantTypeTest {
         assertEquals("CALENDAR", AppGrant.CALENDAR.name)
         assertEquals("READ_CALENDAR", AppGrant.READ_CALENDAR.name)
         assertEquals("NEARBY_WIFI_DEVICES", AppGrant.NEARBY_WIFI_DEVICES.name)
+        assertEquals("GALLERY_ADD_ONLY", AppGrant.GALLERY_ADD_ONLY.name)
     }
 
+    /**
+     * Pins the current declaration order.
+     *
+     * **Ordinals are not a compatibility contract.** Nothing persists or transmits them:
+     * [SharedPreferencesGrantStore] keys its request history off `AppGrant.name`, and no
+     * production code reads `.ordinal` or indexes `entries`. A new grant may therefore be
+     * inserted wherever it reads best — `GALLERY_ADD_ONLY` sits beside the other gallery
+     * grants rather than being appended — and updating this test is the whole cost of
+     * doing so. Do not move an entry to avoid touching this list.
+     */
     @Test
     fun testGrantEnumOrdinals() {
         assertEquals(0, AppGrant.CAMERA.ordinal)
         assertEquals(1, AppGrant.GALLERY.ordinal)
         assertEquals(2, AppGrant.GALLERY_IMAGES_ONLY.ordinal)
         assertEquals(3, AppGrant.GALLERY_VIDEO_ONLY.ordinal)
-        assertEquals(4, AppGrant.STORAGE.ordinal)
-        assertEquals(5, AppGrant.LOCATION.ordinal)
-        assertEquals(6, AppGrant.LOCATION_ALWAYS.ordinal)
-        assertEquals(7, AppGrant.NOTIFICATION.ordinal)
-        assertEquals(8, AppGrant.SCHEDULE_EXACT_ALARM.ordinal)
-        assertEquals(9, AppGrant.BLUETOOTH.ordinal)
-        assertEquals(10, AppGrant.BLUETOOTH_ADVERTISE.ordinal)
-        assertEquals(11, AppGrant.MICROPHONE.ordinal)
-        assertEquals(12, AppGrant.CONTACTS.ordinal)
-        assertEquals(13, AppGrant.READ_CONTACTS.ordinal)
-        assertEquals(14, AppGrant.MOTION.ordinal)
-        assertEquals(15, AppGrant.CALENDAR.ordinal)
-        assertEquals(16, AppGrant.READ_CALENDAR.ordinal)
-        assertEquals(17, AppGrant.NEARBY_WIFI_DEVICES.ordinal)
+        assertEquals(4, AppGrant.GALLERY_ADD_ONLY.ordinal)
+        assertEquals(5, AppGrant.STORAGE.ordinal)
+        assertEquals(6, AppGrant.LOCATION.ordinal)
+        assertEquals(7, AppGrant.LOCATION_ALWAYS.ordinal)
+        assertEquals(8, AppGrant.NOTIFICATION.ordinal)
+        assertEquals(9, AppGrant.SCHEDULE_EXACT_ALARM.ordinal)
+        assertEquals(10, AppGrant.BLUETOOTH.ordinal)
+        assertEquals(11, AppGrant.BLUETOOTH_ADVERTISE.ordinal)
+        assertEquals(12, AppGrant.MICROPHONE.ordinal)
+        assertEquals(13, AppGrant.CONTACTS.ordinal)
+        assertEquals(14, AppGrant.READ_CONTACTS.ordinal)
+        assertEquals(15, AppGrant.MOTION.ordinal)
+        assertEquals(16, AppGrant.CALENDAR.ordinal)
+        assertEquals(17, AppGrant.READ_CALENDAR.ordinal)
+        assertEquals(18, AppGrant.NEARBY_WIFI_DEVICES.ordinal)
+        assertEquals(19, AppGrant.LOCAL_NETWORK.ordinal)
     }
 
     @Test
