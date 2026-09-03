@@ -49,7 +49,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build project
-        run: ./gradlew build -x test
+        run: ./gradlew build -x test -x checkKotlinAbi
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3

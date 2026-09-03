@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.kover)
     id("maven-publish")
+    alias(libs.plugins.dokka)
 }
 
 group = "dev.brewkits"
@@ -24,6 +25,15 @@ kotlin {
     }
 
     jvmToolchain(17)
+
+    // Public API surface lock (KGP 2.4 built-in ABI validation, klib included).
+    // Two breaking changes shipped unnoticed in v2.1.0 (GrantDialogStrings, the
+    // IosPermissionHandler -> PermissionHandler rename) because nothing compared the
+    // surface between releases. Dumps live in api/ and are checked in CI.
+    @OptIn(org.jetbrains.kotlin.gradle.dsl.abi.ExperimentalAbiValidation::class)
+    abiValidation {
+        // Calling this block enables validation; klib dumps are always produced.
+    }
 
     listOf(
         iosX64(),

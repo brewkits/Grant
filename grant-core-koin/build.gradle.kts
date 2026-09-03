@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
     id("maven-publish")
+    alias(libs.plugins.dokka)
 }
 
 group = "dev.brewkits"
@@ -23,6 +24,12 @@ kotlin {
     }
 
     jvmToolchain(17)
+
+    // Public API surface lock (KGP 2.4 built-in ABI validation, klib included).
+    // Dumps live in api/ and are verified by CI. See grant-core for rationale.
+    @OptIn(org.jetbrains.kotlin.gradle.dsl.abi.ExperimentalAbiValidation::class)
+    abiValidation {
+    }
 
     listOf(
         iosX64(),

@@ -1,0 +1,57 @@
+public final class dev/brewkits/grant/compose/GrantComposeExtensionsKt {
+	public static final fun collectAsStateWithLifecycle (Ldev/brewkits/grant/GrantAndServiceHandler;Landroidx/compose/runtime/Composer;I)Landroidx/compose/runtime/State;
+	public static final fun collectAsStateWithLifecycle (Ldev/brewkits/grant/GrantGroupHandler;Landroidx/compose/runtime/Composer;I)Landroidx/compose/runtime/State;
+	public static final fun collectAsStateWithLifecycle (Ldev/brewkits/grant/GrantHandler;Landroidx/compose/runtime/Composer;I)Landroidx/compose/runtime/State;
+	public static final fun collectStatusAsState (Ldev/brewkits/grant/GrantHandler;Landroidx/compose/runtime/Composer;I)Landroidx/compose/runtime/State;
+	public static final fun collectStatusesAsState (Ldev/brewkits/grant/GrantGroupHandler;Landroidx/compose/runtime/Composer;I)Landroidx/compose/runtime/State;
+}
+
+public final class dev/brewkits/grant/compose/GrantDialogStrings {
+	public static final field $stable I
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component10 ()Ljava/lang/String;
+	public final fun component11 ()Ljava/lang/String;
+	public final fun component12 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun component6 ()Ljava/lang/String;
+	public final fun component7 ()Ljava/lang/String;
+	public final fun component8 ()Ljava/lang/String;
+	public final fun component9 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Ldev/brewkits/grant/compose/GrantDialogStrings;
+	public static synthetic fun copy$default (Ldev/brewkits/grant/compose/GrantDialogStrings;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Ldev/brewkits/grant/compose/GrantDialogStrings;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getRationaleConfirm ()Ljava/lang/String;
+	public final fun getRationaleDismiss ()Ljava/lang/String;
+	public final fun getRationaleMessage ()Ljava/lang/String;
+	public final fun getRationaleTitle ()Ljava/lang/String;
+	public final fun getServiceSettingsConfirm ()Ljava/lang/String;
+	public final fun getServiceSettingsDismiss ()Ljava/lang/String;
+	public final fun getServiceSettingsMessage ()Ljava/lang/String;
+	public final fun getServiceSettingsTitle ()Ljava/lang/String;
+	public final fun getSettingsConfirm ()Ljava/lang/String;
+	public final fun getSettingsDismiss ()Ljava/lang/String;
+	public final fun getSettingsMessage ()Ljava/lang/String;
+	public final fun getSettingsTitle ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/brewkits/grant/compose/GrantDialogStringsKt {
+	public static final fun GrantDialogStringsProvider (Ldev/brewkits/grant/compose/GrantDialogStrings;Lkotlin/jvm/functions/Function2;Landroidx/compose/runtime/Composer;I)V
+	public static final fun getLocalGrantDialogStrings ()Landroidx/compose/runtime/ProvidableCompositionLocal;
+}
+
+public final class dev/brewkits/grant/compose/GrantDialogsKt {
+	public static final fun GrantAndServiceDialog (Ldev/brewkits/grant/GrantAndServiceHandler;Ldev/brewkits/grant/compose/GrantDialogStrings;Landroidx/compose/runtime/Composer;II)V
+	public static final fun GrantDialog (Ldev/brewkits/grant/GrantHandler;Ldev/brewkits/grant/compose/GrantDialogStrings;Landroidx/compose/runtime/Composer;II)V
+	public static final fun GrantGroupDialog (Ldev/brewkits/grant/GrantGroupHandler;Ldev/brewkits/grant/compose/GrantDialogStrings;Landroidx/compose/runtime/Composer;II)V
+	public static final fun GrantRationaleDialog (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Landroidx/compose/runtime/Composer;II)V
+	public static final fun GrantSettingsDialog (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Landroidx/compose/runtime/Composer;II)V
+}
+

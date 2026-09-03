@@ -1,0 +1,5 @@
+public final class dev/brewkits/grant/contacts/GrantContacts {
+	public static final field INSTANCE Ldev/brewkits/grant/contacts/GrantContacts;
+	public final fun initialize ()V
+}
+

@@ -1,0 +1,8 @@
+public final class dev/brewkits/grant/di/GrantModuleKt {
+	public static final fun getGrantModule ()Lorg/koin/core/module/Module;
+}
+
+public final class dev/brewkits/grant/di/GrantPlatformModule_androidKt {
+	public static final fun getGrantPlatformModule ()Lorg/koin/core/module/Module;
+}
+

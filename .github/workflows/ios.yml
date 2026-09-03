@@ -43,6 +43,12 @@ jobs:
       - name: Build Compose iOS Framework
         run: ./gradlew :grant-compose:linkDebugFrameworkIosArm64 :grant-compose:linkDebugFrameworkIosSimulatorArm64 || true
 
+      # Runs here, not in ci.yml: the klib dumps cover the three Apple targets, which
+      # only a macOS runner can compile. Fails the build when the public API surface
+      # drifts from the committed api/*.api dumps — regenerate with ./gradlew updateKotlinAbi.
+      - name: Check public API surface (ABI)
+        run: ./gradlew checkKotlinAbi
+
       - name: Upload iOS build artifacts
         if: always()
         uses: actions/upload-artifact@v4

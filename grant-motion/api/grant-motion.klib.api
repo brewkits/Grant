@@ -1,0 +1,11 @@
+// Klib ABI Dump
+// Targets: [iosArm64, iosSimulatorArm64, iosX64]
+// Rendering settings:
+// - Signature version: 2
+// - Show manifest properties: true
+// - Show declarations: true
+
+// Library unique name: <dev.brewkits:grant-motion>
+final object dev.brewkits.grant.motion/GrantMotion { // dev.brewkits.grant.motion/GrantMotion|null[0]
+    final fun initialize() // dev.brewkits.grant.motion/GrantMotion.initialize|initialize(){}[0]
+}
