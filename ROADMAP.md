@@ -1,6 +1,6 @@
 # Grant Library — Roadmap
 
-> Last updated: 2026-09-03 · Current stable: **v2.3.0** (live on Maven Central) · Next: **v2.4.0**
+> Last updated: 2026-09-03 · Current stable: **v2.3.0** (live on Maven Central) · Next: **v2.4.0**, then **v2.5.0**
 
 ---
 
@@ -46,6 +46,16 @@
 **3. iOS 27 review** — *no action needed*
 - [x] The widely reported "unified Privacy Management declaration" in OS 27 is an **MDM/enterprise feature** configured by IT administrators for managed apps, not a developer API. It does not change Grant's design, and `GrantGroupHandler` is not superseded by it.
 - [x] Consumer coverage of "granular photo editing access" in iOS 27 could **not** be corroborated at the PhotoKit/`PHAccessLevel` level. Left unverified rather than planned around; revisit when Apple's own documentation lands.
+
+### v2.5.0 — Group UX
+
+**1. Opt-in pre-request rationale for groups**
+- [ ] A single "priming" dialog that explains a whole `GrantGroupHandler` set **before** any system prompt fires, instead of the current per-permission rationale shown **after** a refusal.
+- [ ] **Additive and opt-in — the default flow does not change.** Today `GrantGroupHandler` batches the system prompts first and then walks refusals individually (`rationaleMessages: Map<GrantPermission, String>`). That order deliberately follows the platform: Android's `shouldShowRequestPermissionRationale()` only returns `true` *after* a denial, so OS-native rationale is inherently post-denial. Priming is an app-level pattern layered on top, not a replacement.
+- [ ] **Where it pays:** sensitive permissions where a cold prompt is expensive because the OS grants a limited number of asks — `LOCATION_ALWAYS`, `CONTACTS`, `CALENDAR`. **Where it costs:** users who would have accepted anyway now pay an extra tap, so it must never become the default.
+- [ ] Needs a `GrantGroupUiState` flag for the priming stage and a `GrantEventListener` event so the funnel can measure whether priming actually reduces denials — otherwise the feature cannot be evaluated.
+
+*Origin: an external evaluation proposed this alongside "permission funnel analytics" and "atomic batch requests". Those two already ship — `GrantEventListener` (v2.1.0) and `GrantGroupHandler` respectively — and the merged pre-request rationale was the one genuinely new idea in the proposal. That an expert reviewer missed both shipped features was itself the finding: `GrantGroupHandler` appeared **zero** times in the README and `GrantEventListener` only once, buried inside a code sample. Both now have their own Features bullet and Usage section.*
 
 ## 📋 Backlog / Considering
 
