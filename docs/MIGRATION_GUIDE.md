@@ -246,7 +246,12 @@ commonMain.dependencies {
 ```
 
 #### 3. iOS Stability
-Ensure you are using the latest `Package.swift` if integrating via SPM. v1.4.2 includes refined re-entrant locks for iOS delegates.
+v1.4.2 includes refined re-entrant locks for iOS delegates.
+
+> **Note:** Grant is not distributed via Swift Package Manager. The `Package.swift` that
+> shipped between v1.4.0 and v2.3.0 never resolved and was removed in v2.4.0 — see
+> [Why there is no SPM or CocoaPods support](getting-started/installation.md#why-there-is-no-spm-or-cocoapods-support).
+> Add Grant to your KMP module with Gradle instead.
 
 ---
 

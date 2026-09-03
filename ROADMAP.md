@@ -7,16 +7,13 @@
 ## 🛠️ In Progress / Upcoming
 
 ### v2.4.0 — Apple Reach + API Stability
-*Focus: lock the public API surface down, publish real API docs, and settle how (or whether) Grant reaches Swift consumers.*
+*Focus: lock the public API surface down, publish real API docs, and stop advertising a Swift distribution that never worked.*
 
-**1. Decide the Swift Package Manager story** ⚠️ *blocked on a product decision*
-- [x] Investigated. `Package.swift` points at a `1.4.2` asset with a literal `PLACEHOLDER_CHECKSUM_WILL_BE_REPLACED_BY_CI`, and no release has ever attached an xcframework — the SPM path is dead for every Swift consumer today.
-- [ ] **Blocker found:** shipping one xcframework per module does not work. Verified on the release `iosArm64` frameworks: `IosPermissionHandlerRegistry` and `GrantLogger` — both `grant-core` classes — are statically duplicated into `GrantContacts.framework` (Kotlin/Native copies the dependency in; `implementation(project(":grant-core"))` only hides it from the framework's public headers). An app linking both would get **two registry singletons with separate state**: `GrantContacts.initialize()` would register its handler into one copy while `grant-core` reads the other, so the handler is silently never found. There are also 19 duplicate `T` symbols including the runtime's `_IsInstance`.
-- [ ] A single umbrella xcframework fixes the duplication but re-links `Contacts`/`EventKit`/`CoreMotion`/`CoreBluetooth` into every consumer — a direct regression of the Issue #38 and #45 isolation work. Not acceptable.
-- [ ] **Decision needed** — pick one:
-  - **(a) SPM ships `grant-core` only.** One xcframework, honest scope; optional modules stay Gradle/KMP-only.
-  - **(b) Drop SPM.** Delete `Package.swift`, document Grant as a KMP-consumed library.
-  - **(c) Pre-composed variants.** Publish an xcframework per module combination — 2⁵ = 32 variants. Rejected as unmaintainable.
+**1. Swift Package Manager** ✅ *decided: dropped*
+- [x] Investigated. `Package.swift` referenced a `1.4.2` asset with a literal `PLACEHOLDER_CHECKSUM_WILL_BE_REPLACED_BY_CI`, and **no release has ever attached an xcframework** (verified: `assets=0` on v1.4.2, v2.0.0, v2.1.0, v2.2.0, v2.2.3, v2.3.0). The SPM path never resolved once, so it had no consumers to break.
+- [x] **Not repairable without giving up more.** Kotlin/Native statically copies dependency code into every framework: `IosPermissionHandlerRegistry` and `GrantLogger` — both `grant-core` classes — are present inside `GrantContacts.framework` as well. An app linking both would hold **two registry singletons with separate state**, so `GrantContacts.initialize()` would register a handler `grant-core` never sees. (Also 19 duplicate `T` symbols, including the runtime's `_IsInstance`.) One umbrella xcframework avoids that but re-links `Contacts`/`EventKit`/`CoreMotion`/`CoreBluetooth` into every consumer — a direct regression of the Issue #38 and #45 isolation work.
+- [x] **Decision: drop SPM.** `Package.swift` deleted. Rationale documented in `docs/getting-started/installation.md` ("Why there is no SPM or CocoaPods support") and the stale pointer in `docs/MIGRATION_GUIDE.md` corrected.
+- Supporting evidence: 0 SPM/xcframework requests across all 17 issues ever filed; a `grant-core`-only package would still leave **8 of 16 iOS-relevant permissions unreachable** (`LOCATION_ALWAYS`, `BLUETOOTH`, `BLUETOOTH_ADVERTISE`, `CONTACTS`, `READ_CONTACTS`, `MOTION`, `CALENDAR`, `READ_CALENDAR`); and KMP consumers never needed it — their iOS app already gets `grant-core` through its own shared framework.
 
 **2. Public API stability** ✅ *done*
 - [x] Enabled KGP 2.4's built-in ABI validation on all eight published modules (the standalone `binary-compatibility-validator` plugin is superseded by it and handles klib worse).

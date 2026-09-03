@@ -135,6 +135,39 @@ val serviceManager = ServiceFactory.createServiceManager(context)
 Using Koin instead of the factory? Register both `grantModule` and
 `grantPlatformModule` from `grant-core-koin`.
 
+## Why there is no SPM or CocoaPods support
+
+Grant is consumed with **Gradle, from a Kotlin Multiplatform module**. It is not published as a
+Swift package or a CocoaPod, and this is deliberate rather than a gap waiting to be filled.
+
+A `Package.swift` existed between v1.4.0 and v2.3.0. It never worked — it referenced a v1.4.2
+binary with a placeholder checksum, and no release ever attached an `.xcframework` asset. It was
+removed in v2.4.0 rather than repaired, because repairing it is not possible without giving up
+something more valuable.
+
+**The technical reason.** Kotlin/Native statically copies a dependency's code into every framework
+that uses it. `grant-core` classes such as `IosPermissionHandlerRegistry` and `GrantLogger` are
+therefore present inside `GrantContacts.framework` as well as inside `GrantCore.framework`. An app
+linking both would hold **two registry singletons with separate state**: `GrantContacts.initialize()`
+would register its handler into one copy while `grant-core` reads the other, so the handler would
+silently never be found. Shipping one xcframework per module is not viable.
+
+The alternative — a single umbrella xcframework containing everything — would re-link
+`Contacts`, `EventKit`, `CoreMotion` and `CoreBluetooth` into every consumer. That is exactly what
+the opt-in module architecture exists to prevent (see
+[Apple App Store Rejection: Unused Permission Frameworks](../ios/APPLE_FRAMEWORK_LINKING_ISSUE.md)), and it would put every app back in front
+of Apple's static scanner asking for usage-description keys it does not need.
+
+**If your app is Swift-only (no KMP):** Grant is not the right fit, and that is a genuine
+recommendation rather than a deflection. You would be linking a Kotlin/Native runtime and a
+6 MB framework for a permission wrapper, and half of the iOS-relevant permissions
+(`CONTACTS`, `CALENDAR`, `MOTION`, `BLUETOOTH`, `LOCATION_ALWAYS`, …) live in optional modules that
+SPM cannot reach at all. A small native Swift helper or a Swift-native permissions library will
+serve you better.
+
+**If you already use KMP:** you do not need SPM. Your iOS app consumes your own shared framework,
+which already contains `grant-core` through its Gradle dependency. Nothing extra is required.
+
 ## Next Steps
 
 - [Quick Start](quick-start.md) — request your first permission in 5 minutes
