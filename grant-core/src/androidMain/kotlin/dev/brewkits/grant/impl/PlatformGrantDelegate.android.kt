@@ -113,6 +113,13 @@ actual class PlatformGrantDelegate(
         }
     }
 
+    /**
+     * The app's compiled `targetSdkVersion`, used to mirror platform behaviour changes that the
+     * OS gates on the target rather than on the device's API level.
+     */
+    private val targetSdkVersion: Int
+        get() = context.applicationInfo.targetSdkVersion
+
     private fun isPartialGalleryAccessGranted(): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return false
         return ContextCompat.checkSelfPermission(context, READ_MEDIA_VISUAL_USER_SELECTED) == PackageManager.PERMISSION_GRANTED
@@ -489,6 +496,14 @@ actual class PlatformGrantDelegate(
                     listOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO)
                 else listOf(Manifest.permission.READ_EXTERNAL_STORAGE)
             }
+            // Save-only media access. Scoped storage (API 29+) lets an app insert into its own
+            // MediaStore collections with no permission at all, so the list is empty there and
+            // checkStatus reports GRANTED without ever showing a prompt. Only API 26-28 needs
+            // WRITE_EXTERNAL_STORAGE. minSdk is 26, so no branch below that is required.
+            AppGrant.GALLERY_ADD_ONLY -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) emptyList()
+                else listOf(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            }
             AppGrant.GALLERY_IMAGES_ONLY -> {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) 
                     listOf(Manifest.permission.READ_MEDIA_IMAGES, READ_MEDIA_VISUAL_USER_SELECTED)
@@ -529,8 +544,23 @@ actual class PlatformGrantDelegate(
             // Android 17 (API 37) local-network runtime permission. String literal + numeric
             // API check because compileSdk 36 has neither the Manifest constant nor the
             // VERSION_CODES entry — same convention as READ_MEDIA_VISUAL_USER_SELECTED above.
-            // Below API 37 the list is empty → checkStatus reports GRANTED (no-op).
-            AppGrant.LOCAL_NETWORK -> if (Build.VERSION.SDK_INT >= 37) listOf(ACCESS_LOCAL_NETWORK) else emptyList()
+            //
+            // Gated on the app's targetSdkVersion as well as the device's API level, because
+            // the platform gates enforcement on the target: ACCESS_LOCAL_NETWORK appears only
+            // in "Behavior changes: apps targeting Android 17 or higher", NOT in the "all apps"
+            // list. An app targeting API 36 keeps working on the local network on an Android 17
+            // device without holding the permission — and, targeting 36, has no reason to
+            // declare it. Mapping it there anyway made checkSelfPermission fail for an
+            // undeclared permission and escalated a working feature to DENIED_ALWAYS, sending
+            // the user to Settings to find a toggle that is not listed.
+            //
+            // Not a rare combination: Play requires a recent targetSdk but not the newest, so
+            // "targets 36, runs on 17" is the norm for roughly a year after each release.
+            //
+            // Either condition failing → empty list → checkStatus reports GRANTED (no-op).
+            AppGrant.LOCAL_NETWORK ->
+                if (Build.VERSION.SDK_INT >= 37 && targetSdkVersion >= 37) listOf(ACCESS_LOCAL_NETWORK)
+                else emptyList()
         }
     }
 }

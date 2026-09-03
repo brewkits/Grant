@@ -629,6 +629,28 @@ val galleryGrant = GrantHandler(
 )
 ```
 
+### Gallery — save only (`GALLERY_ADD_ONLY`)
+- **Android**: no permission on API 29+ (scoped storage lets an app insert into its own
+  `MediaStore` collections), so this reports `GRANTED` with **no prompt at all**;
+  `WRITE_EXTERNAL_STORAGE` on API 26-28
+- **iOS**: `PHAccessLevelAddOnly`, declared with **`NSPhotoLibraryAddUsageDescription`**
+  (not `NSPhotoLibraryUsageDescription`)
+- **Use cases**: a camera app saving its own captures, a scanner exporting a document — any
+  feature that only ever writes to the library
+- **Never reports `PARTIAL_GRANTED`**: add-only access does not surface the "Limited" picker
+
+Prefer this over `AppGrant.GALLERY` when you do not read the library. Asking for full
+read/write to satisfy a save-only feature is over-asking: a larger privacy ask, denied more
+often, and an invitation for App Store review to question why the library is being read.
+
+```kotlin
+val saveGrant = GrantHandler(
+    grantManager,
+    AppGrant.GALLERY_ADD_ONLY,
+    scope
+)
+```
+
 ### Location
 - **Android**: `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`; choosing "Approximate" in the OS dialog (coarse only) reports `PARTIAL_GRANTED` (2.3.0)
 - **iOS**: `NSLocationWhenInUseUsageDescription`

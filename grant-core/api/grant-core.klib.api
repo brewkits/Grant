@@ -56,6 +56,7 @@ open enum class dev.brewkits.grant/AppGrant : dev.brewkits.grant/GrantPermission
     enum entry CAMERA // dev.brewkits.grant/AppGrant.CAMERA|null[0]
     enum entry CONTACTS // dev.brewkits.grant/AppGrant.CONTACTS|null[0]
     enum entry GALLERY // dev.brewkits.grant/AppGrant.GALLERY|null[0]
+    enum entry GALLERY_ADD_ONLY // dev.brewkits.grant/AppGrant.GALLERY_ADD_ONLY|null[0]
     enum entry GALLERY_IMAGES_ONLY // dev.brewkits.grant/AppGrant.GALLERY_IMAGES_ONLY|null[0]
     enum entry GALLERY_VIDEO_ONLY // dev.brewkits.grant/AppGrant.GALLERY_VIDEO_ONLY|null[0]
     enum entry LOCAL_NETWORK // dev.brewkits.grant/AppGrant.LOCAL_NETWORK|null[0]

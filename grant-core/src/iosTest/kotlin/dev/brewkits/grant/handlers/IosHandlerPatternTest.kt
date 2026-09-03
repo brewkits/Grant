@@ -95,6 +95,10 @@ private object IosHandlerDispatchValidator {
         AppGrant.GALLERY_IMAGES_ONLY,
         AppGrant.GALLERY_VIDEO_ONLY   -> stubHandler("PHOTO")
 
+        // Save-only access: its own handler instance (PHAccessLevelAddOnly +
+        // NSPhotoLibraryAddUsageDescription), deliberately not folded into "PHOTO" above.
+        AppGrant.GALLERY_ADD_ONLY     -> stubHandler("PHOTO_ADD_ONLY")
+
         AppGrant.LOCATION             -> stubHandler("LOCATION_WHEN_IN_USE")
         AppGrant.LOCATION_ALWAYS      -> stubHandler("LOCATION_ALWAYS")
 
