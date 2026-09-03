@@ -51,6 +51,8 @@ fun CameraScreen(viewModel: CameraViewModel) {
 - **Android process-death recovery** — a request in flight survives system-initiated process death via `SavedStateHandle`, with no timeouts.
 - **Deadlock-free by construction** — reentrant locking plus a `withTimeout` test policy that converts silent deadlocks into failing tests.
 - **20 built-in permissions** — Camera, Gallery (incl. Android 14 partial access and a save-only mode that never prompts), Location (incl. "Approximate"-only), Bluetooth, Local Network (Android 17), and more — plus `RawPermission` for anything the library doesn't ship yet.
+- **Permission groups as one unit** — `GrantGroupHandler` requests several permissions in a single batch, drives one `StateFlow` for the whole group, and fires `onAllGranted` only when every one is satisfied.
+- **Funnel analytics** — attach an optional `GrantEventListener` to any handler and observe every stage: requested, granted, denied, rationale shown, settings guide shown, settings opened.
 - **Service-state checks** — one call answers both "is the permission granted?" and "is GPS/Bluetooth actually on?".
 - **Material 3 dialogs** — optional `grant-compose` module renders the rationale and settings-guide flow out of the box.
 - **Heavily tested** — 2,100+ test executions across Android and iOS targets on every build, including concurrency-stress, regression, and process-death suites.
@@ -113,11 +115,6 @@ class CameraViewModel(grantManager: GrantManager) : ViewModel() {
         grantManager = grantManager,
         grant = AppGrant.CAMERA,
         scope = viewModelScope,
-        eventListener = object : GrantEventListener {
-            override fun onGranted(grant: GrantPermission, status: GrantStatus) {
-                analytics.track("camera_permission_granted")
-            }
-        }
     )
 
     // Suspend until the flow resolves…
@@ -130,6 +127,65 @@ class CameraViewModel(grantManager: GrantManager) : ViewModel() {
         .filter { it == GrantStatus.GRANTED }
         .onEach { cameraEngine.start() }
 }
+```
+
+### Request several permissions as one unit
+
+A feature that needs more than one permission — a video call needs Camera **and** Microphone — should not
+ask twice and should not half-succeed. `GrantGroupHandler` batches the system prompts into one pass, then
+walks any refusals individually to show the right rationale or settings guide. `onAllGranted` runs only when
+every permission in the group is satisfied:
+
+```kotlin
+class CallViewModel(grantManager: GrantManager) : ViewModel() {
+    val callGrants = GrantGroupHandler(
+        grantManager = grantManager,
+        grants = listOf(AppGrant.CAMERA, AppGrant.MICROPHONE),
+        scope = viewModelScope,
+    )
+
+    fun onJoinCall() {
+        callGrants.request(
+            rationaleMessages = mapOf(
+                AppGrant.CAMERA     to "Your camera is needed so others can see you.",
+                AppGrant.MICROPHONE to "Your microphone is needed so others can hear you.",
+            )
+        ) {
+            // Runs only when BOTH are granted.
+            callEngine.join()
+        }
+    }
+}
+```
+
+`callGrants.state` is a single `StateFlow<GrantGroupUiState>` for the whole group, and `GrantGroupDialog(callGrants)`
+renders it. Per-permission results stay available through `callGrants.statuses`.
+
+### Track the permission funnel
+
+Every handler takes an optional `GrantEventListener`. Each method has a default empty implementation, so
+override only the stages you measure — useful for finding where users actually drop off:
+
+```kotlin
+val cameraGrant = GrantHandler(
+    grantManager = grantManager,
+    grant = AppGrant.CAMERA,
+    scope = viewModelScope,
+    eventListener = object : GrantEventListener {
+        override fun onRationaleShown(grant: GrantPermission) {
+            analytics.track("permission_rationale_shown", grant.toString())
+        }
+
+        override fun onDenied(grant: GrantPermission, status: GrantStatus) {
+            // status distinguishes DENIED from DENIED_ALWAYS
+            analytics.track("permission_denied", grant.toString(), status.toString())
+        }
+
+        override fun onSettingsOpened(grant: GrantPermission) {
+            analytics.track("permission_settings_opened", grant.toString())
+        }
+    },
+)
 ```
 
 ### Chain sequential permissions
