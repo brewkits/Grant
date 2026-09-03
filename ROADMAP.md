@@ -1,6 +1,6 @@
 # Grant Library — Roadmap
 
-> Last updated: 2026-09-03 · Current stable: **v2.3.0** (live on Maven Central) · Next: **v2.4.0**, then **v2.5.0**
+> Last updated: 2026-09-04 · Current stable: **v2.3.0** (live on Maven Central) · Next: **v2.4.0**, then **v2.5.0**, then **v2.6.0** (multi-platform: JS/Wasm shipped, macOS/Windows planned)
 
 ---
 
@@ -71,6 +71,37 @@
 - [ ] Needs a `GrantGroupUiState` flag for the priming stage and a `GrantEventListener` event so the funnel can measure whether priming actually reduces denials — otherwise the feature cannot be evaluated.
 
 *Origin: an external evaluation proposed this alongside "permission funnel analytics" and "atomic batch requests". Those two already ship — `GrantEventListener` (v2.1.0) and `GrantGroupHandler` respectively — and the merged pre-request rationale was the one genuinely new idea in the proposal. That an expert reviewer missed both shipped features was itself the finding: `GrantGroupHandler` appeared **zero** times in the README and `GrantEventListener` only once, buried inside a code sample. Both now have their own Features bullet and Usage section.*
+
+### v2.6.0 — Multi-platform expansion (JS/Wasm, macOS, Windows)
+
+*Origin: a full-market survey found no general-purpose KMP permission library with working desktop or web support. The closest by reach, **Calf** (1642 ★), ships a `desktopMain` source set for permissions, but `launchMultiplePermissionRequest()` there is an empty function body — it compiles and does nothing. The rule this expansion follows throughout: **a platform ships only when its permission flow is real, verified on the actual OS, and covered by a test that would fail if the implementation regressed to a no-op** — never a silently-inert stub.*
+
+**Scope decisions:**
+- **macOS**: via JVM/Compose Desktop (`jvm()` + JNA `objc_msgSend` bridge to TCC), not a standalone Kotlin/Native target — serves real Compose Desktop apps, which the Kotlin/Native path cannot.
+- **Windows**: service-check only, through `ServiceManager`/`ServiceType` — never through `GrantManager`/`AppGrant`. The only registry-readable signal (`CapabilityAccessManager\ConsentStore`) is a **global** Win32 toggle, not per-app consent; routing it through `AppGrant`/`request()` would imply a request flow that does not exist.
+- **Linux**: out of scope — no cross-distro standard signal to read at all.
+
+**Tier 1 — JS / Wasm (browser)** ✅ *shipped*
+- [x] `grant-core` gains `js { browser() }` and `wasmJs { browser() }`, both consuming the real `navigator.permissions` / `getUserMedia` / `Notification.requestPermission` / `Geolocation.getCurrentPosition` APIs — never a stub. `wasmJs` exists specifically because Compose Multiplatform Web targets it, not the classic `js` backend; an earlier draft shipped `js`-only under a "JS/Wasm" label before this was caught — see caveat below.
+- [x] All logic lives in **`webMain`**, the shared source set the KMP default hierarchy template provides for `js`+`wasmJs` since Kotlin 2.2.20 (project is on 2.4.0). `BrowserApis.kt`'s bindings are `dynamic`-free — every `external interface` extends `JsAny` (required on `wasmJs`, a harmless no-op marker on classic `js`) — which is what makes one binding file, and one delegate implementation, cover both targets instead of two copies drifting apart. Confirmed empirically (not assumed from docs): a probe `external interface : JsAny` with a `String` property compiled cleanly on both `compileKotlinJs` and `compileKotlinWasmJs` before the full rewrite.
+- [x] Only **four** `AppGrant` values have a real browser equivalent: `CAMERA`, `MICROPHONE`, `LOCATION`, `NOTIFICATION`. Every other value resolves to `GrantStatus.DENIED_ALWAYS` with a logged reason — never a fabricated `GRANTED`, the same discipline `hasInfoPlistKey()` already holds iOS to.
+- [x] `turbine` bumped `1.0.0 → 1.1.0` — the pinned version had no `wasmJs` published artifact; `1.1.0` was the first that did. `koin-test` and `kotest-assertions-core` already published `wasmJs` variants at the versions already in use, no bump needed there.
+- [x] **358/358 tests pass on both targets**, in real headless Chrome (`jsBrowserTest` **and** `wasmJsBrowserTest`), including 9 tests in `WebGrantDelegateTest` that call through the real `PlatformGrantDelegate` — not a fake — mirroring the rule CLAUDE.md already holds `IosGrantDelegateTest` to.
+- [x] ABI dump regenerated: `js` and `wasmJs` share one `// Targets: [iosArm64, iosSimulatorArm64, iosX64, js, wasmJs]` block (identical public surface across both, as expected from 100%-shared `webMain` code) — confirmed the iOS-only declarations did **not** disappear, just moved to their own `// Targets: [ios]` sub-blocks, KGP's standard multi-target dump layout.
+- [x] Full multi-module build (`./gradlew build allTests checkKotlinAbi`, root — not just `:grant-core`) verified green both before and after adding `wasmJs`, confirming `grant-compose`/`grant-core-koin`/the five iOS opt-in modules are unaffected.
+- **Caught in review before landing, not after**: a draft of this tier shipped `js`-only while the branch/plan were labeled "JS/Wasm" — the same overclaim-by-naming this expansion exists to avoid in competitors. Corrected by actually adding `wasmJs` rather than renaming the claim down.
+- [ ] **Still open before calling this tier fully done per its own verification bar**: a small Compose-for-Web sample page, run in at least Chrome and Firefox, manually clicking through a real `getUserMedia`/notification prompt — the automated headless-Chrome suite exercises the real delegate code paths (including the Firefox-`TypeError` fallback logic) but cannot itself click an OS-level consent dialog or run in Firefox. Tracked here rather than silently dropped.
+
+**Tier 2 — macOS via JVM/Compose Desktop** — *not started*
+- [ ] `grant-core` gains `jvm()` with a minimal `actual PlatformGrantDelegate` (unsupported + log, same honest-fallback pattern as the web delegate) — required because `PlatformGrantDelegate` is `expect class` in `commonMain`, so the `jvm()` actual **must** live in `grant-core`; there is no way to satisfy it from outside the module that declares it.
+- [ ] A new `grant-desktop` module carries JNA + the real macOS TCC handlers (`AVCaptureDevice`, `CLLocationManager`, `CNContactStore`, `EKEventStore`), registering into a handler registry the same way `grant-contacts`/`grant-calendar`/`grant-motion` register via `initialize()`. Keeps JNA off every JVM consumer's classpath by default.
+- [ ] **Per-permission audit against a corrected rule** (an earlier plan draft got this backwards and was fixed before any code was written): a permission the OS does not gate at all → `GRANTED` is honest (the `LOCAL_NETWORK` < API 37 precedent). A permission the OS *does* gate but Grant has no macOS API for → `DENIED_ALWAYS` + log, **never** a fabricated `GRANTED`. `STORAGE` (macOS sandboxing/security-scoped bookmarks) falls in the second bucket; `MOTION` needs the same audit, not an assumed `GRANTED`.
+- [ ] Runtime OS-dispatch inside `jvm()`'s single compiled target (no `macosJvm` source set exists) is the first thing to implement and test — everything else in this tier depends on it.
+
+**Tier 2.5 — Windows, `ServiceManager` only** — *not started*
+- [ ] Read `CapabilityAccessManager\ConsentStore\{webcam,microphone}` via JNA's `Advapi32`/`WinReg` bindings, exposed as new `ServiceType` entries. Ship only once verified on a real `windows-latest` GitHub Actions runner — not on registry-docs confidence alone.
+
+**Out of scope, with reasons** (so it isn't re-litigated by assumption): Linux desktop (no reliable cross-environment signal), watchOS/tvOS (different problem shape, stays in Backlog below), standalone Kotlin/Native `macosX64`/`macosArm64` (can't be consumed by a Compose Desktop app).
 
 ## 📋 Backlog / Considering
 
