@@ -22,7 +22,7 @@ import kotlin.coroutines.resume
  * - Rationale dialog when grant was denied softly
  * - Settings guide dialog when grant is permanently denied
  */
-data class GrantUiState(
+public data class GrantUiState(
     /**
      * Whether any grant dialog should be visible
      */
@@ -134,7 +134,7 @@ data class GrantUiState(
  *                           Use AndroidSavedStateDelegate on Android for automatic restoration.
  *                           Defaults to NoOpSavedStateDelegate (no persistence).
  */
-class GrantHandler(
+public class GrantHandler(
     private val grantManager: GrantManager,
     private val grant: GrantPermission,
     private val scope: CoroutineScope,
@@ -152,10 +152,10 @@ class GrantHandler(
     }
 
     private val _state  = MutableStateFlow(GrantUiState())
-    val state: StateFlow<GrantUiState> = _state.asStateFlow()
+    public val state: StateFlow<GrantUiState> = _state.asStateFlow()
 
     private val _status = MutableStateFlow(GrantStatus.NOT_DETERMINED)
-    val status: StateFlow<GrantStatus> = _status.asStateFlow()
+    public val status: StateFlow<GrantStatus> = _status.asStateFlow()
 
     private val _grantedEvents = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     internal val grantedEvents: kotlinx.coroutines.flow.SharedFlow<Unit> = _grantedEvents.asSharedFlow()
@@ -234,7 +234,7 @@ class GrantHandler(
      * Refresh the current grant status.
      * Call this after user returns from Settings.
      */
-    fun refreshStatus() {
+    public fun refreshStatus() {
         scope.launch {
             val newStatus = grantManager.checkStatus(grant)
             val oldStatus = _status.value
@@ -260,7 +260,7 @@ class GrantHandler(
     /**
      * Call this when the app returns to foreground to check if user changed settings.
      */
-    fun onReturnFromSettings() {
+    public fun onReturnFromSettings() {
         refreshStatus()
     }
 
@@ -279,7 +279,7 @@ class GrantHandler(
      * @param onGranted        Callback executed ONLY when grant is GRANTED or PARTIAL_GRANTED.
      *                         Callback is cleared after execution to prevent memory leaks.
      */
-    fun request(
+    public fun request(
         rationaleMessage: String? = null,
         settingsMessage: String? = null,
         onGranted: (GrantStatus) -> Unit
@@ -322,7 +322,7 @@ class GrantHandler(
      * @return The final [GrantStatus] after the flow completes. Returns [GrantStatus.BUSY]
      *         if a request is already in progress.
      */
-    suspend fun requestSuspend(
+    public suspend fun requestSuspend(
         rationaleMessage: String? = null,
         settingsMessage: String? = null
     ): GrantStatus = suspendCancellableCoroutine { cont ->
@@ -378,7 +378,7 @@ class GrantHandler(
      * @param settingsMessage  Custom message for settings dialog (optional)
      * @return A Flow emitting the final [GrantStatus].
      */
-    fun requestFlow(
+    public fun requestFlow(
         rationaleMessage: String? = null,
         settingsMessage: String? = null
     ): Flow<GrantStatus> = flow {
@@ -388,7 +388,7 @@ class GrantHandler(
     /**
      * Called when user confirms rationale dialog and wants to proceed.
      */
-    fun onRationaleConfirmed() {
+    public fun onRationaleConfirmed() {
         scope.launch {
             if (!requestMutex.tryLock()) return@launch
             try {
@@ -409,7 +409,7 @@ class GrantHandler(
     /**
      * Called when user clicks "Open Settings" button
      */
-    fun onSettingsConfirmed() {
+    public fun onSettingsConfirmed() {
         scope.launch {
             if (!requestMutex.tryLock()) return@launch
             try {
@@ -427,7 +427,7 @@ class GrantHandler(
     /**
      * Called when user dismisses any dialog (Cancel/Outside tap)
      */
-    fun onDismiss() {
+    public fun onDismiss() {
         scope.launch {
             if (!requestMutex.tryLock()) return@launch
             try {
@@ -514,7 +514,7 @@ class GrantHandler(
      * )
      * ```
      */
-    fun requestWithCustomUi(
+    public fun requestWithCustomUi(
         rationaleMessage: String? = null,
         settingsMessage: String? = null,
         onShowRationale: (message: String, onConfirm: () -> Unit, onDismiss: () -> Unit) -> Unit,

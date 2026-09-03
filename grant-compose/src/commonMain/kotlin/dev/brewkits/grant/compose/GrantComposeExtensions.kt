@@ -35,7 +35,7 @@ import dev.brewkits.grant.GrantUiState
  * @return State holder containing the current GrantUiState
  */
 @Composable
-fun GrantHandler.collectAsStateWithLifecycle(): State<GrantUiState> {
+public fun GrantHandler.collectAsStateWithLifecycle(): State<GrantUiState> {
     return this.state.collectAsStateWithLifecycle()
 }
 
@@ -58,7 +58,7 @@ fun GrantHandler.collectAsStateWithLifecycle(): State<GrantUiState> {
  * @return State holder containing the current GrantStatus
  */
 @Composable
-fun GrantHandler.collectStatusAsState(): State<GrantStatus> {
+public fun GrantHandler.collectStatusAsState(): State<GrantStatus> {
     return this.status.collectAsStateWithLifecycle()
 }
 
@@ -77,7 +77,7 @@ fun GrantHandler.collectStatusAsState(): State<GrantStatus> {
  * @return State holder containing the current GrantGroupUiState
  */
 @Composable
-fun GrantGroupHandler.collectAsStateWithLifecycle(): State<GrantGroupUiState> {
+public fun GrantGroupHandler.collectAsStateWithLifecycle(): State<GrantGroupUiState> {
     return this.state.collectAsStateWithLifecycle()
 }
 
@@ -96,7 +96,7 @@ fun GrantGroupHandler.collectAsStateWithLifecycle(): State<GrantGroupUiState> {
  * @return State holder containing the current map of grant statuses
  */
 @Composable
-fun GrantGroupHandler.collectStatusesAsState(): State<Map<GrantPermission, GrantStatus>> {
+public fun GrantGroupHandler.collectStatusesAsState(): State<Map<GrantPermission, GrantStatus>> {
     return this.statuses.collectAsStateWithLifecycle()
 }
 
@@ -104,6 +104,6 @@ fun GrantGroupHandler.collectStatusesAsState(): State<Map<GrantPermission, Grant
  * Extension function to collect state from GrantAndServiceHandler in a Composable.
  */
 @Composable
-fun GrantAndServiceHandler.collectAsStateWithLifecycle(): State<GrantAndServiceUiState> {
+public fun GrantAndServiceHandler.collectAsStateWithLifecycle(): State<GrantAndServiceUiState> {
     return this.state.collectAsStateWithLifecycle()
 }

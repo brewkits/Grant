@@ -13,7 +13,7 @@ import kotlinx.coroutines.sync.Mutex
 /**
  * UI State for the unified Grant and Service flow.
  */
-data class GrantAndServiceUiState(
+public data class GrantAndServiceUiState(
     /** Whether any dialog should be visible. */
     val isVisible: Boolean = false,
     
@@ -76,7 +76,7 @@ data class GrantAndServiceUiState(
  * }
  * ```
  */
-class GrantAndServiceHandler(
+public class GrantAndServiceHandler(
     private val grantManager: GrantManager,
     private val serviceManager: ServiceManager,
     private val grant: GrantPermission,
@@ -102,7 +102,7 @@ class GrantAndServiceHandler(
     /**
      * Observable state for driving the UI.
      */
-    val state: StateFlow<GrantAndServiceUiState> = _state.asStateFlow()
+    public val state: StateFlow<GrantAndServiceUiState> = _state.asStateFlow()
 
     @kotlin.concurrent.Volatile
     private var onReadyCallback: (() -> Unit)? = null
@@ -171,7 +171,7 @@ class GrantAndServiceHandler(
      * Re-checks both permission and hardware service status.
      * If both are ready and there is a pending onReadyCallback, it will be executed.
      */
-    fun refreshStatus() {
+    public fun refreshStatus() {
         scope.launch {
             val isReady = checkInternal()
             _state.update { it.copy(isReady = isReady) }
@@ -194,7 +194,7 @@ class GrantAndServiceHandler(
      * @param serviceSettingsMessage Text for the hardware service settings guide.
      * @param onReady Callback executed ONLY when both permission and service are ready.
      */
-    fun request(
+    public fun request(
         rationaleMessage: String? = null,
         permissionSettingsMessage: String? = null,
         serviceSettingsMessage: String? = null,
@@ -225,7 +225,7 @@ class GrantAndServiceHandler(
     /**
      * Confirms the rationale and proceeds to request the OS permission.
      */
-    fun onRationaleConfirmed() {
+    public fun onRationaleConfirmed() {
         if (!requestMutex.tryLock()) return
         val job = scope.launch {
             try {
@@ -249,7 +249,7 @@ class GrantAndServiceHandler(
     /**
      * Confirms and opens system settings for the permission.
      */
-    fun onPermissionSettingsConfirmed() {
+    public fun onPermissionSettingsConfirmed() {
         if (!requestMutex.tryLock()) return
         try {
             resetState()
@@ -267,7 +267,7 @@ class GrantAndServiceHandler(
     /**
      * Confirms and opens system settings for the hardware service.
      */
-    fun onServiceSettingsConfirmed() {
+    public fun onServiceSettingsConfirmed() {
         if (!requestMutex.tryLock()) return
         try {
             resetState()
@@ -286,7 +286,7 @@ class GrantAndServiceHandler(
     /**
      * Dismisses the current dialog and cancels the flow.
      */
-    fun onDismiss() {
+    public fun onDismiss() {
         if (!requestMutex.tryLock()) return
         try {
             resetState()

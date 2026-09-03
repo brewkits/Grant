@@ -14,38 +14,47 @@ package dev.brewkits.grant.utils
  * }
  * ```
  */
-object GrantLogger {
+public object GrantLogger {
     /**
-     * Globally enables or disables internal library logging.
+     * Enables the built-in console output.
      *
-     * Defaults to `false`.
+     * Defaults to `false`: a library that sits in front of contacts, calendar and location
+     * must not write logs the host app never asked for.
+     *
+     * This gates the **console output only** — it does not gate [logHandler]. See there.
      */
-    var isEnabled: Boolean = false
+    public var isEnabled: Boolean = false
 
     /**
-     * A custom lambda for redirecting library logs.
+     * A custom sink for library logs.
      *
-     * If provided, this handler takes precedence over the default console output.
+     * Installing a handler is **itself an opt-in**: it receives messages regardless of
+     * [isEnabled], which gates only the built-in console output. Setting `isEnabled = false`
+     * therefore does *not* silence a handler already installed — set this back to `null`
+     * to do that.
+     *
+     * Only permission identifiers and flow state are passed here. The contents of a
+     * permission — a contact, an event, a coordinate — never reach the logger.
      */
-    var logHandler: ((level: LogLevel, tag: String, message: String) -> Unit)? = null
+    public var logHandler: ((level: LogLevel, tag: String, message: String) -> Unit)? = null
 
     /** Logs a debug message. */
-    fun d(tag: String, message: String) {
+    public fun d(tag: String, message: String) {
         log(LogLevel.DEBUG, tag, message)
     }
 
     /** Logs an informational message. */
-    fun i(tag: String, message: String) {
+    public fun i(tag: String, message: String) {
         log(LogLevel.INFO, tag, message)
     }
 
     /** Logs a warning message. */
-    fun w(tag: String, message: String) {
+    public fun w(tag: String, message: String) {
         log(LogLevel.WARNING, tag, message)
     }
 
     /** Logs an error message with an optional exception. */
-    fun e(tag: String, message: String, error: Throwable? = null) {
+    public fun e(tag: String, message: String, error: Throwable? = null) {
         val fullMessage = if (error != null) {
             "$message: ${error.message}"
         } else {
@@ -72,7 +81,7 @@ object GrantLogger {
     }
 
     /** Log severity levels. */
-    enum class LogLevel {
+    public enum class LogLevel {
         DEBUG, INFO, WARNING, ERROR
     }
 }

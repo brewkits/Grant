@@ -60,7 +60,7 @@ private const val TAG = "iOSGrantDelegate"
  * - Notification status is checked via its own async path to avoid nested dispatch
  */
 @Suppress("UnusedPrivateProperty")
-actual class PlatformGrantDelegate(
+public actual class PlatformGrantDelegate(
     private val store: GrantStore
 ) {
 
@@ -114,7 +114,7 @@ actual class PlatformGrantDelegate(
     // PUBLIC API
     // ====================================================================
 
-    actual suspend fun checkStatus(grant: GrantPermission): GrantStatus {
+    public actual suspend fun checkStatus(grant: GrantPermission): GrantStatus {
         val identifier = grant.identifier
         return getMutexFor(identifier).withLock {
             mapsMutex.withLock {
@@ -145,10 +145,10 @@ actual class PlatformGrantDelegate(
         }
     }
 
-    actual suspend fun request(grant: GrantPermission): GrantStatus =
+    public actual suspend fun request(grant: GrantPermission): GrantStatus =
         getMutexFor(grant.identifier).withLock { requestInternal(grant) }
 
-    actual suspend fun request(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus> {
+    public actual suspend fun request(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus> {
         if (grants.isEmpty()) return emptyMap()
         if (grants.size == 1) return mapOf(grants.first() to request(grants.first()))
 
@@ -183,7 +183,7 @@ actual class PlatformGrantDelegate(
      * Opens the app's settings page in iOS Settings.
      * Logs a warning if the Settings URL cannot be resolved (e.g., App Extensions, App Clips).
      */
-    actual fun openSettings() {
+    public actual fun openSettings() {
         val url = NSURL.URLWithString(UIApplicationOpenSettingsURLString)
         if (url == null) {
             GrantLogger.w(TAG, "UIApplicationOpenSettingsURLString could not be resolved. Settings cannot be opened.")
@@ -319,7 +319,7 @@ actual class PlatformGrantDelegate(
      */
     private fun hasInfoPlistKey(key: String): Boolean = hasInfoPlistKey(TAG, key)
 
-    actual fun setLauncher(launcher: GrantLauncher) {}
+    public actual fun setLauncher(launcher: GrantLauncher) {}
 }
 
 // ────────────────────────────────────────────────────────────────────────────

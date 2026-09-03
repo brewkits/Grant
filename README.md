@@ -231,6 +231,29 @@ Most KMP permission libraries are thin wrappers around the native APIs. Grant is
 | Android 14 partial access | ✅ | partial | ✅ |
 | Custom permissions | ✅ | limited | limited |
 
+## Size and supply chain
+
+| Artifact | Release AAR |
+|---|---|
+| `grant-core` | 292 KB |
+| `grant-compose` | 32 KB |
+| `grant-core-koin` | 8 KB |
+| `grant-contacts` · `grant-calendar` · `grant-motion` · `grant-bluetooth` · `grant-location-always` | 4 KB each |
+
+Download size is not app size. In a real R8-minified build (the demo, with
+`-allowaccessmodification`), Grant contributes **83 classes** out of 2,686 — the rest is
+stripped. Adding an optional module such as `grant-bluetooth` costs single-digit kilobytes.
+
+Every published module emits a **CycloneDX SBOM** (`./gradlew cyclonedxBom` →
+`<module>/build/reports/bom.json`), so you can answer "what is inside this dependency?"
+without unpacking it.
+
+**No Baseline Profile is shipped, deliberately.** Grant's entire startup contribution is one
+`ContentProvider.onCreate()` that registers an activity-lifecycle callback; there is no hot
+path for AOT compilation to improve. The permission request path is user-triggered and gated
+behind a system dialog, where JIT versus AOT is not measurable. A profile here would be
+ceremony, not speed.
+
 ## Supported permissions
 
 20 built-in permissions across Camera, Microphone, Gallery (read and save-only), Storage, Location, Notifications, Bluetooth, Contacts, Calendar, Motion, Exact Alarms, Nearby Wi-Fi, and Local Network — anything else via `RawPermission`.
@@ -283,6 +306,7 @@ Most KMP permission libraries are thin wrappers around the native APIs. Grant is
 | [iOS setup](docs/platform-specific/ios/info-plist.md) | `Info.plist` configuration — read before shipping |
 | [Migration guide](docs/MIGRATION_GUIDE.md) | Upgrading to 2.3.0 (and from v1.x → 2.x) |
 | [Service checking](docs/grant-core/SERVICES.md) | Combining permission and hardware service checks |
+| [Support policy](SUPPORT.md) | Versioning, supported versions, platform support, and what Grant will not do |
 | [Manual injection](docs/MANUAL_INJECTION.md) | Using Grant without a DI framework |
 | [Android reliability](docs/FIX_DEAD_CLICK_ANDROID.md) | How Grant fixes "dead clicks" on Android |
 | [Best practices](docs/BEST_PRACTICES.md) | Patterns for production apps |

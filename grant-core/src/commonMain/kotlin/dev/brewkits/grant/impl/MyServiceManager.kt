@@ -10,7 +10,7 @@ import dev.brewkits.grant.ServiceType
  * This class delegates to platform-specific implementations while
  * providing common logic and caching.
  */
-class MyServiceManager internal constructor(
+public class MyServiceManager internal constructor(
     private val platformDelegate: PlatformServiceDelegate
 ) : ServiceManager {
 

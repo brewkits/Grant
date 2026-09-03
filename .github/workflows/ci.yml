@@ -55,6 +55,13 @@ jobs:
       - name: Build demo app
         run: ./gradlew :demo:assembleDebug
 
+      # Release is minified (see demo/build.gradle.kts), so this is the R8 regression
+      # guard: grant-core ships no consumer ProGuard rules, on the basis that its
+      # manifest-declared components are kept automatically. If that ever stops being
+      # true, this step fails here rather than in a consumer's release build.
+      - name: Build demo app under R8 (release)
+        run: ./gradlew :demo:assembleRelease
+
       - name: Upload build artifacts
         if: always()
         uses: actions/upload-artifact@v4

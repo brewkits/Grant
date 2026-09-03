@@ -7,13 +7,13 @@ import dev.brewkits.grant.handlers.ContactsPermissionHandler
 /**
  * Entry point for initializing the Grant Contacts module.
  */
-actual object GrantContacts {
+public actual object GrantContacts {
     private var isInitialized = false
 
     /**
      * Registers the Contacts permission handler for iOS.
      */
-    actual fun initialize() {
+    public actual fun initialize() {
         if (isInitialized) return
         isInitialized = true
         IosPermissionHandlerRegistry.register(AppGrant.CONTACTS.identifier, ContactsPermissionHandler())

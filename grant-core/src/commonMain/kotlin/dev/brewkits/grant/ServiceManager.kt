@@ -10,14 +10,14 @@ package dev.brewkits.grant
  * Use [ServiceManager] in combination with [GrantManager] or use the high-level
  * [GrantAndServiceChecker] to verify both software and hardware readiness.
  */
-interface ServiceManager {
+public interface ServiceManager {
     /**
      * Checks the current availability and state of a system service.
      *
      * @param service The type of service to check (e.g., [ServiceType.LOCATION_GPS]).
      * @return The current [ServiceStatus].
      */
-    suspend fun checkServiceStatus(service: ServiceType): ServiceStatus
+    public suspend fun checkServiceStatus(service: ServiceType): ServiceStatus
 
     /**
      * A convenience check to see if a service is fully [ServiceStatus.ENABLED].
@@ -25,7 +25,7 @@ interface ServiceManager {
      * @param service The type of service to check.
      * @return `true` if the service is [ServiceStatus.ENABLED], `false` otherwise.
      */
-    suspend fun isServiceEnabled(service: ServiceType): Boolean {
+    public suspend fun isServiceEnabled(service: ServiceType): Boolean {
         return checkServiceStatus(service) == ServiceStatus.ENABLED
     }
 
@@ -38,5 +38,5 @@ interface ServiceManager {
      * @param service The service the user needs to enable.
      * @return `true` if the settings page was opened successfully.
      */
-    suspend fun openServiceSettings(service: ServiceType): Boolean
+    public suspend fun openServiceSettings(service: ServiceType): Boolean
 }

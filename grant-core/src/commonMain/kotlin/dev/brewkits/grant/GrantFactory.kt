@@ -19,7 +19,7 @@ import dev.brewkits.grant.impl.PlatformGrantDelegate
  * val grantManager = GrantFactory.create()
  * ```
  */
-object GrantFactory {
+public object GrantFactory {
     /**
      * Creates and returns a production-ready [GrantManager] instance.
      *
@@ -30,7 +30,7 @@ object GrantFactory {
      *   death — see Issue #55) and [InMemoryGrantStore] on iOS.
      * @return A fully configured [GrantManager].
      */
-    fun create(
+    public fun create(
         context: Any? = null,
         store: GrantStore? = null
     ): GrantManager {
@@ -44,4 +44,4 @@ object GrantFactory {
  *
  * A `null` [store] selects the platform default (persistent on Android, in-memory on iOS).
  */
-expect fun createPlatformDelegate(context: Any?, store: GrantStore?): PlatformGrantDelegate
+public expect fun createPlatformDelegate(context: Any?, store: GrantStore?): PlatformGrantDelegate

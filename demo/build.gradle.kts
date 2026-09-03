@@ -104,7 +104,19 @@ android {
 
     buildTypes {
         getByName("release") {
-            isMinifyEnabled = false
+            // Minification is ON so that every release build of the demo exercises the
+            // library under R8 — the configuration nearly every production consumer uses,
+            // and one grant-core had never been validated against.
+            //
+            // grant-core intentionally ships no consumer ProGuard rules: its Activity and
+            // ContentProvider are declared in the library manifest, so R8 keeps them
+            // without help. This build is what turns that from an assumption into a
+            // checked fact. See demo/proguard-rules.pro.
+            isMinifyEnabled = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 

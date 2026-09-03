@@ -9,7 +9,7 @@ import dev.brewkits.grant.impl.PlatformGrantDelegate
  * Requires an Android [Context]. When [store] is `null`, a persistent
  * [SharedPreferencesGrantStore] is used so request history survives process death.
  */
-actual fun createPlatformDelegate(context: Any?, store: GrantStore?): PlatformGrantDelegate {
+public actual fun createPlatformDelegate(context: Any?, store: GrantStore?): PlatformGrantDelegate {
     require(context is Context) {
         "Android requires Context. Pass applicationContext to GrantFactory.create().\n" +
         "Example: GrantFactory.create(applicationContext)"

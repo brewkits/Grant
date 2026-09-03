@@ -5,7 +5,7 @@ import dev.brewkits.grant.utils.withLock
 /**
  * The default implementation of [GrantStore] that persists state in-memory.
  */
-class InMemoryGrantStore : GrantStore {
+public class InMemoryGrantStore : GrantStore {
     private val statusCache = mutableMapOf<AppGrant, GrantStatus>()
     private val requestedCache = mutableSetOf<AppGrant>()
     private val rawPermissionRequests = mutableSetOf<String>()

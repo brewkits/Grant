@@ -28,7 +28,7 @@ import kotlinx.coroutines.coroutineScope
  * }
  * ```
  */
-class GrantAndServiceChecker(
+public class GrantAndServiceChecker(
     private val grantManager: GrantManager,
     private val serviceManager: ServiceManager
 ) {
@@ -38,7 +38,7 @@ class GrantAndServiceChecker(
      * @param grant The specific location permission to check (defaults to [AppGrant.LOCATION]).
      * @return A [LocationReadyStatus] representing the aggregate state.
      */
-    suspend fun checkLocationReady(grant: AppGrant = AppGrant.LOCATION): LocationReadyStatus = coroutineScope {
+    public suspend fun checkLocationReady(grant: AppGrant = AppGrant.LOCATION): LocationReadyStatus = coroutineScope {
         val grantStatusDef = async { grantManager.checkStatus(grant) }
         val serviceStatusDef = async { serviceManager.checkServiceStatus(ServiceType.LOCATION_GPS) }
         
@@ -65,7 +65,7 @@ class GrantAndServiceChecker(
     /**
      * Checks if Bluetooth features are fully ready (Permission + Radio hardware).
      */
-    suspend fun checkBluetoothReady(): BluetoothReadyStatus = coroutineScope {
+    public suspend fun checkBluetoothReady(): BluetoothReadyStatus = coroutineScope {
         val grantStatusDef = async { grantManager.checkStatus(AppGrant.BLUETOOTH) }
         val serviceStatusDef = async { serviceManager.checkServiceStatus(ServiceType.BLUETOOTH) }
         
@@ -92,7 +92,7 @@ class GrantAndServiceChecker(
     /**
      * Performs a generic readiness check for any permission/service combination.
      */
-    suspend fun checkReady(
+    public suspend fun checkReady(
         grant: AppGrant,
         serviceType: ServiceType
     ): ReadyStatus = coroutineScope {
@@ -116,7 +116,7 @@ class GrantAndServiceChecker(
      * - [AppGrant.LOCATION] -> [ServiceType.LOCATION_GPS]
      * - [AppGrant.BLUETOOTH] -> [ServiceType.BLUETOOTH]
      */
-    suspend fun isReady(grant: AppGrant): Boolean = coroutineScope {
+    public suspend fun isReady(grant: AppGrant): Boolean = coroutineScope {
         val grantStatusDef = async { grantManager.checkStatus(grant) }
         val serviceType = when (grant) {
             AppGrant.LOCATION, AppGrant.LOCATION_ALWAYS -> ServiceType.LOCATION_GPS
@@ -141,38 +141,38 @@ class GrantAndServiceChecker(
 /**
  * Aggregate status for Location feature readiness.
  */
-sealed class LocationReadyStatus {
+public sealed class LocationReadyStatus {
     /** Feature is fully functional. */
-    object Ready : LocationReadyStatus()
+    public object Ready : LocationReadyStatus()
 
     /** Permission is missing; hardware status is secondary. */
-    data class GrantDenied(val grantStatus: GrantStatus) : LocationReadyStatus()
+    public data class GrantDenied(val grantStatus: GrantStatus) : LocationReadyStatus()
 
     /** Permission is OK, but GPS hardware is disabled. */
-    object ServiceDisabled : LocationReadyStatus()
+    public object ServiceDisabled : LocationReadyStatus()
 
     /** Both the OS permission and the hardware service are disabled. */
-    data class BothRequired(val grantStatus: GrantStatus) : LocationReadyStatus()
+    public data class BothRequired(val grantStatus: GrantStatus) : LocationReadyStatus()
 
     /** Status could not be determined. */
-    object Unknown : LocationReadyStatus()
+    public object Unknown : LocationReadyStatus()
 }
 
 /**
  * Aggregate status for Bluetooth feature readiness.
  */
-sealed class BluetoothReadyStatus {
-    object Ready : BluetoothReadyStatus()
-    data class GrantDenied(val grantStatus: GrantStatus) : BluetoothReadyStatus()
-    object ServiceDisabled : BluetoothReadyStatus()
-    data class BothRequired(val grantStatus: GrantStatus) : BluetoothReadyStatus()
-    object Unknown : BluetoothReadyStatus()
+public sealed class BluetoothReadyStatus {
+    public object Ready : BluetoothReadyStatus()
+    public data class GrantDenied(val grantStatus: GrantStatus) : BluetoothReadyStatus()
+    public object ServiceDisabled : BluetoothReadyStatus()
+    public data class BothRequired(val grantStatus: GrantStatus) : BluetoothReadyStatus()
+    public object Unknown : BluetoothReadyStatus()
 }
 
 /**
  * A generic data structure representing the aggregate state of a permission and service.
  */
-data class ReadyStatus(
+public data class ReadyStatus(
     val grantStatus: GrantStatus,
     val serviceStatus: ServiceStatus,
     val isReady: Boolean

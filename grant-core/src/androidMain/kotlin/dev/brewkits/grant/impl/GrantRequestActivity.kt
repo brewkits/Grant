@@ -18,19 +18,19 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.UUID
 
-class GrantRequestViewModel(private val savedStateHandle: SavedStateHandle) : ViewModel() {
-    companion object {
+public class GrantRequestViewModel(private val savedStateHandle: SavedStateHandle) : ViewModel() {
+    public companion object {
         private const val KEY_ALREADY_LAUNCHED = "already_launched"
         private const val KEY_REQUEST_ID = "request_id"
     }
 
-    var alreadyLaunched: Boolean
+    public var alreadyLaunched: Boolean
         get() = savedStateHandle.get<Boolean>(KEY_ALREADY_LAUNCHED) ?: false
         set(value) {
             savedStateHandle[KEY_ALREADY_LAUNCHED] = value
         }
 
-    var requestId: String?
+    public var requestId: String?
         get() = savedStateHandle.get<String>(KEY_REQUEST_ID)
         set(value) {
             savedStateHandle[KEY_REQUEST_ID] = value
@@ -40,7 +40,7 @@ class GrantRequestViewModel(private val savedStateHandle: SavedStateHandle) : Vi
 /**
  * Transparent Activity for handling runtime grant requests.
  */
-class GrantRequestActivity : ComponentActivity() {
+public class GrantRequestActivity : ComponentActivity() {
 
     private var requestMultipleGrantsLauncher: ActivityResultLauncher<Array<String>>? = null
     private var currentGrants = arrayOf<String>()
@@ -143,7 +143,7 @@ class GrantRequestActivity : ComponentActivity() {
         pendingResults[requestId]?.complete(result)
     }
 
-    companion object {
+    public companion object {
         private const val TAG = "GrantRequestActivity"
         private const val EXTRA_GRANTS = "grants"
         private const val EXTRA_REQUEST_ID = "request_id"
@@ -160,12 +160,12 @@ class GrantRequestActivity : ComponentActivity() {
         /**
          * Check if any GrantRequestActivity is currently active.
          */
-        fun isAnyActivityActive(): Boolean = isActivityActive.get()
+        public fun isAnyActivityActive(): Boolean = isActivityActive.get()
 
         /**
          * Launch this Activity to request one or more grants.
          */
-        fun requestGrants(context: Context, androidGrants: List<String>): String {
+        public fun requestGrants(context: Context, androidGrants: List<String>): String {
             val requestId = UUID.randomUUID().toString()
             val now = System.currentTimeMillis()
 
@@ -244,7 +244,7 @@ class GrantRequestActivity : ComponentActivity() {
         }
     }
 
-    enum class GrantResult {
+    public enum class GrantResult {
         GRANTED,
         DENIED,
         DENIED_PERMANENTLY,

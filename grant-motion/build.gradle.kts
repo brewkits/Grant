@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kover)
     id("maven-publish")
     alias(libs.plugins.dokka)
+    alias(libs.plugins.cyclonedx)
 }
 
 group = "dev.brewkits"
@@ -25,6 +26,11 @@ kotlin {
     }
 
     jvmToolchain(17)
+
+    // Every public declaration must state its visibility and return type explicitly.
+    // The ABI gate below records what the public surface IS; this stops something
+    // becoming public by accident in the first place.
+    explicitApi()
 
     // Public API surface lock (KGP 2.4 built-in ABI validation, klib included).
     // Dumps live in api/ and are verified by CI. See grant-core for rationale.
@@ -112,4 +118,16 @@ publishing {
             }
         }
     }
+}
+
+// Software Bill of Materials for this published artifact.
+// ./gradlew cyclonedxBom  ->  <module>/build/reports/bom.json
+//
+// Applied per published module rather than at the root: the root task would also walk
+// :demo, whose Kotlin/Native and Compose configurations CycloneDX 1.4 cannot resolve, and
+// a per-artifact BOM is the right granularity for consumers anyway.
+tasks.named<org.cyclonedx.gradle.CycloneDxTask>("cyclonedxBom") {
+    // Runtime dependencies are the ones that actually reach a consumer.
+    setIncludeConfigs(listOf("releaseRuntimeClasspath"))
+    notCompatibleWithConfigurationCache("CycloneDX 1.4 resolves configurations at execution time")
 }

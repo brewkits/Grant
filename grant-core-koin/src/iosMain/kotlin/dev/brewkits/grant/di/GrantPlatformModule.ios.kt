@@ -2,6 +2,7 @@ package dev.brewkits.grant.di
 
 import dev.brewkits.grant.InMemoryGrantStore
 import dev.brewkits.grant.impl.PlatformGrantDelegate
+import org.koin.core.module.Module
 import org.koin.dsl.module
 
 /**
@@ -10,7 +11,7 @@ import org.koin.dsl.module
  * Provides PlatformGrantDelegate that handles all iOS grant requests
  * using native iOS frameworks (AVFoundation, CoreLocation, etc.).
  */
-actual val grantPlatformModule = module {
+public actual val grantPlatformModule: Module = module {
     single {
         PlatformGrantDelegate(store = InMemoryGrantStore())
     }

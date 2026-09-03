@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform) apply false
     alias(libs.plugins.kover) apply false
     alias(libs.plugins.dokka)
+    alias(libs.plugins.cyclonedx) apply false
 }
 
 subprojects {

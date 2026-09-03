@@ -7,13 +7,13 @@ import dev.brewkits.grant.handlers.CalendarPermissionHandler
 /**
  * Entry point for initializing the Grant Calendar module.
  */
-actual object GrantCalendar {
+public actual object GrantCalendar {
     private var isInitialized = false
 
     /**
      * Registers the Calendar permission handler for iOS.
      */
-    actual fun initialize() {
+    public actual fun initialize() {
         if (isInitialized) return
         isInitialized = true
         IosPermissionHandlerRegistry.register(AppGrant.CALENDAR.identifier, CalendarPermissionHandler())

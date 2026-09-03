@@ -16,7 +16,7 @@ import dev.brewkits.grant.GrantStatus
  * - `androidMain`: [PlatformGrantDelegate] actual — full Android implementation
  * - `iosMain`: [PlatformGrantDelegate] actual — full iOS implementation
  */
-class DefaultGrantManager(
+public class DefaultGrantManager(
     private val platformDelegate: PlatformGrantDelegate
 ) : GrantManager {
 
@@ -29,7 +29,7 @@ class DefaultGrantManager(
     override suspend fun request(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus> =
         platformDelegate.request(grants)
 
-    override fun openSettings() =
+    override fun openSettings(): Unit =
         platformDelegate.openSettings()
 
     override fun setLauncher(launcher: dev.brewkits.grant.GrantLauncher) {
@@ -45,7 +45,7 @@ class DefaultGrantManager(
     replaceWith = ReplaceWith("DefaultGrantManager", "dev.brewkits.grant.impl.DefaultGrantManager"),
     level = DeprecationLevel.WARNING
 )
-typealias MyGrantManager = DefaultGrantManager
+public typealias MyGrantManager = DefaultGrantManager
 
 /**
  * Platform-specific delegate for grant operations.
@@ -58,10 +58,10 @@ typealias MyGrantManager = DefaultGrantManager
  * - Android (`androidMain`): Uses ActivityCompat, ContextCompat, Activity Result API
  * - iOS (`iosMain`): Uses AVFoundation, CoreLocation, CoreBluetooth, EventKit, etc.
  */
-expect class PlatformGrantDelegate {
-    suspend fun checkStatus(grant: GrantPermission): GrantStatus
-    suspend fun request(grant: GrantPermission): GrantStatus
-    suspend fun request(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus>
-    fun openSettings()
-    fun setLauncher(launcher: dev.brewkits.grant.GrantLauncher)
+public expect class PlatformGrantDelegate {
+    public suspend fun checkStatus(grant: GrantPermission): GrantStatus
+    public suspend fun request(grant: GrantPermission): GrantStatus
+    public suspend fun request(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus>
+    public fun openSettings()
+    public fun setLauncher(launcher: dev.brewkits.grant.GrantLauncher)
 }

@@ -36,7 +36,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
  * a `strings` parameter directly to [GrantDialog].
  */
 @Immutable
-data class GrantDialogStrings(
+public data class GrantDialogStrings(
     val rationaleTitle: String = "Permission Required",
     val rationaleConfirm: String = "Continue",
     val rationaleDismiss: String = "Cancel",
@@ -60,7 +60,7 @@ data class GrantDialogStrings(
  * Default value is the English [GrantDialogStrings] — used when no
  * [GrantDialogStringsProvider] ancestor is present.
  */
-val LocalGrantDialogStrings: ProvidableCompositionLocal<GrantDialogStrings> =
+public val LocalGrantDialogStrings: ProvidableCompositionLocal<GrantDialogStrings> =
     staticCompositionLocalOf { GrantDialogStrings() }
 
 /**
@@ -70,7 +70,7 @@ val LocalGrantDialogStrings: ProvidableCompositionLocal<GrantDialogStrings> =
  * Place this once inside your app theme or root composable.
  */
 @Composable
-fun GrantDialogStringsProvider(
+public fun GrantDialogStringsProvider(
     strings: GrantDialogStrings,
     content: @Composable () -> Unit,
 ) {
