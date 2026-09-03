@@ -11,13 +11,14 @@ This guide helps you migrate from previous versions of Grant or other permission
 
 1. [Upgrading from Grant 2.2.x to 2.3.0](#upgrading-from-grant-22x-to-230)
 2. [Upgrading from Grant 2.1.0 to 2.2.0](#upgrading-from-grant-210-to-220)
-3. [Upgrading from Grant 1.x to 2.0.0](#upgrading-from-grant-1x-to-200)
-4. [Upgrading from Grant 1.3.x to 1.4.2](#upgrading-from-grant-13x-to-142)
-5. [From moko-permissions](#from-moko-permissions)
-6. [From Google Accompanist](#from-google-accompanist)
-7. [From Custom Implementation](#from-custom-implementation)
-8. [From Native Android APIs](#from-native-android-apis)
-9. [Common Migration Patterns](#common-migration-patterns)
+3. [Upgrading from Grant 2.0.0 to 2.1.0](#upgrading-from-grant-200-to-210)
+4. [Upgrading from Grant 1.x to 2.0.0](#upgrading-from-grant-1x-to-200)
+5. [Upgrading from Grant 1.3.x to 1.4.2](#upgrading-from-grant-13x-to-142)
+6. [From moko-permissions](#from-moko-permissions)
+7. [From Google Accompanist](#from-google-accompanist)
+8. [From Custom Implementation](#from-custom-implementation)
+9. [From Native Android APIs](#from-native-android-apis)
+10. [Common Migration Patterns](#common-migration-patterns)
 9. [Troubleshooting](#troubleshooting)
 
 ---
@@ -151,6 +152,156 @@ GrantLocationAlways.initialize()
 > ⚠️ If you request `BLUETOOTH` / `BLUETOOTH_ADVERTISE` / `LOCATION_ALWAYS` on iOS **without** adding the corresponding module and calling `initialize()`, the handler is not registered: `checkStatus()` and `request()` log a warning and return `NOT_DETERMINED` (no system dialog is shown — it does not hang or crash). On Android these permissions continue to work without any extra module.
 
 #### 4. No changes required for Android
+
+---
+
+## 🛡️ Upgrading from Grant 2.0.0 to 2.1.0
+
+### Overview
+
+v2.1.0 is the **Analytics & i18n** release. It carries two breaking changes, both narrow:
+
+- **`grant-compose` only** — the individual `String` parameters on the dialog composables are replaced by a single `strings: GrantDialogStrings`.
+- **iOS custom-handler authors only** — the `IosPermissionHandler` interface is renamed to `PermissionHandler`.
+
+If you do not use `grant-compose` and have not written a custom `RawPermission` handler for iOS, **this upgrade is a version bump and nothing else**. Android app code is unaffected either way.
+
+### What Changed?
+
+- **`GrantDialogStrings`** — one immutable holder for every user-visible dialog string, supplied app-wide through `GrantDialogStringsProvider` (a `CompositionLocal`) instead of repeated per-callsite arguments.
+- **`GrantEventListener`** — new, optional, non-breaking. Observes the permission funnel (`onRequested`, `onGranted`, `onDenied`, `onRationaleShown`, `onSettingsGuideShown`, `onSettingsOpened`).
+- **`IosPermissionHandler` → `PermissionHandler`** — the `Ios` prefix was redundant in a source set that is already iOS-only.
+- **Bug fixes** — Issue #41 (double-denial dead-end on Android: the flow now escalates to the settings guide when the OS returns `DENIED` after a rationale was already shown) and Issue #33 (a false-positive `onGranted` when background location was denied but foreground was granted).
+
+### Step-by-Step Upgrade
+
+#### 1. Bump every Grant artifact to `2.1.0`
+
+```kotlin
+// shared/build.gradle.kts
+commonMain.dependencies {
+    implementation("dev.brewkits:grant-core:2.1.0")
+    implementation("dev.brewkits:grant-compose:2.1.0")
+    // …and any optional modules you use, at the same version
+}
+```
+
+#### 2. Replace the dialog string parameters — `grant-compose` only
+
+The compiler catches every one of these; there is no silent behaviour change.
+
+**Before (2.0.0):**
+
+```kotlin
+GrantDialog(
+    handler = viewModel.cameraGrant,
+    rationaleTitle = "Camera access",
+    rationaleConfirm = "Continue",
+    rationaleDismiss = "Not now",
+    settingsTitle = "Camera denied",
+    settingsConfirm = "Open Settings",
+    settingsDismiss = "Not now",
+)
+```
+
+**After (2.1.0):**
+
+```kotlin
+GrantDialog(
+    handler = viewModel.cameraGrant,
+    strings = GrantDialogStrings(
+        rationaleTitle = "Camera access",
+        rationaleConfirm = "Continue",
+        rationaleDismiss = "Not now",
+        settingsTitle = "Camera denied",
+        settingsConfirm = "Open Settings",
+        settingsDismiss = "Not now",
+    ),
+)
+```
+
+The parameter names are unchanged — they simply moved inside `GrantDialogStrings`, so this is a mechanical edit. The same applies to `GrantGroupDialog` and `GrantAndServiceDialog`.
+
+`GrantAndServiceDialog` is the one case where names were also **consolidated**, because it previously had a separate set for the service-settings dialog:
+
+| 2.0.0 parameter | 2.1.0 field on `GrantDialogStrings` |
+|---|---|
+| `permissionSettingsTitle` | `settingsTitle` |
+| `permissionSettingsConfirm` | `settingsConfirm` |
+| `serviceSettingsTitle` | `serviceSettingsTitle` |
+| `serviceSettingsConfirm` | `serviceSettingsConfirm` |
+| `dismissText` | `settingsDismiss` / `serviceSettingsDismiss` (now separate) |
+
+#### 3. Prefer setting the strings once, app-wide
+
+If you were passing the same strings at several call sites, the provider replaces all of them. This is the reason the API changed — it is what makes the dialogs translatable.
+
+```kotlin
+// Once, in your app theme or root composable:
+GrantDialogStringsProvider(
+    strings = GrantDialogStrings(
+        rationaleTitle   = stringResource(Res.string.grant_rationale_title),
+        rationaleConfirm = stringResource(Res.string.grant_ok),
+        rationaleDismiss = stringResource(Res.string.grant_cancel),
+        settingsTitle    = stringResource(Res.string.grant_settings_title),
+        settingsConfirm  = stringResource(Res.string.grant_open_settings),
+        settingsDismiss  = stringResource(Res.string.grant_cancel),
+    )
+) {
+    MyAppContent()   // every GrantDialog() inside picks these up
+}
+```
+
+Individual call sites can still override by passing `strings = …` directly; the parameter defaults to `LocalGrantDialogStrings.current`.
+
+> The library ships English defaults purely as a last-resort fallback. Translation is the host app's responsibility — a `GrantDialog` with no provider and no explicit `strings` renders English.
+
+`GrantDialogStrings` also carries three body-text fields that had no parameter equivalent in 2.0.0: `rationaleMessage`, `settingsMessage` and `serviceSettingsMessage`. They are used when the caller does not supply a message, so you can now translate that text too.
+
+#### 4. Rename the handler interface — iOS custom handlers only
+
+Applies only if you implemented a custom handler for a `RawPermission` on iOS. There is **no deprecated typealias**, so this is a hard rename and the compiler will flag it.
+
+**Before (2.0.0):**
+
+```kotlin
+class MyHandler : IosPermissionHandler {
+    override fun checkStatus(): GrantStatus = …
+    override suspend fun request(): GrantStatus = …
+}
+```
+
+**After (2.1.0):**
+
+```kotlin
+class MyHandler : PermissionHandler {
+    override fun checkStatus(): GrantStatus = …
+    override suspend fun request(): GrantStatus = …
+}
+```
+
+The method signatures are identical, and the import stays `dev.brewkits.grant.handlers.*`.
+
+> ⚠️ The **registry object keeps its original name** — it is still `IosPermissionHandlerRegistry`, and `IosPermissionHandlerRegistry.register(identifier, handler)` is unchanged. Only the interface was renamed.
+
+#### 5. Optionally attach a `GrantEventListener`
+
+Additive — skip this if you do not need funnel analytics. Every method has a default empty implementation, so override only what you use.
+
+```kotlin
+val cameraGrant = GrantHandler(
+    grantManager = grantManager,
+    grant = AppGrant.CAMERA,
+    scope = viewModelScope,
+    eventListener = object : GrantEventListener {
+        override fun onDenied(grant: GrantPermission, status: GrantStatus) {
+            analytics.track("permission_denied", grant.toString(), status.toString())
+        }
+    },
+)
+```
+
+`GrantGroupHandler` and `GrantAndServiceHandler` accept the same `eventListener` parameter.
 
 ---
 
