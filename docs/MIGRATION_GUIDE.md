@@ -255,7 +255,7 @@ v1.4.2 includes refined re-entrant locks for iOS delegates.
 
 ---
 
-## 2️⃣ From moko-permissions
+## From moko-permissions
 
 If you are migrating from `moko-permissions`, you'll find Grant's `GrantHandler` very similar but more focused on state flows.
 
@@ -277,7 +277,7 @@ handler.request()
 
 ---
 
-## 3️⃣ From Google Accompanist
+## From Google Accompanist
 
 Accompanist Permissions is deprecated. Grant provides a more robust, multiplatform alternative with built-in rationale support.
 
@@ -290,7 +290,7 @@ Accompanist Permissions is deprecated. Grant provides a more robust, multiplatfo
 
 ---
 
-## 4️⃣ From Custom Implementation
+## From Custom Implementation
 
 If you were manually handling `ActivityResultLauncher` or `onRequestPermissionsResult`, Grant automates this via its "Transparent Activity" pattern.
 
@@ -298,13 +298,13 @@ If you were manually handling `ActivityResultLauncher` or `onRequestPermissionsR
 
 ---
 
-## 5️⃣ From Native Android APIs
+## From Native Android APIs
 
 Replace `ActivityCompat.requestPermissions` with `GrantHandler.request`. Grant handles the complexity of checking `shouldShowRequestPermissionRationale` and directing users to settings automatically.
 
 ---
 
-## 6️⃣ Common Migration Patterns
+## Common Migration Patterns
 
 ### Handling "Always Denied"
 Grant automatically detects when a user has permanently denied a permission and surfaces a `showSettingsGuide` event in the `GrantUiState`.
@@ -314,7 +314,7 @@ Use `GrantGroupHandler` to request multiple permissions at once, ensuring the UI
 
 ---
 
-## 7️⃣ Troubleshooting
+## Troubleshooting
 
 ### iOS Framework Linking
 If you see "Koin not found" during iOS build after upgrading to 1.3.0+, ensure you have added `:grant-core-koin` to your `commonMain` dependencies and exported it if necessary.
