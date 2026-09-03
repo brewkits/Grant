@@ -11,13 +11,13 @@ This guide helps you migrate from previous versions of Grant or other permission
 
 1. [Upgrading from Grant 2.2.x to 2.3.0](#upgrading-from-grant-22x-to-230)
 2. [Upgrading from Grant 2.1.0 to 2.2.0](#upgrading-from-grant-210-to-220)
-2. [Upgrading from Grant 1.x to 2.1.0](#upgrading-from-grant-1x-to-200)
-3. [Upgrading from Grant 1.3.x to 1.4.2](#upgrading-from-grant-13x-to-142)
-4. [From moko-permissions](#from-moko-permissions)
-5. [From Google Accompanist](#from-google-accompanist)
-6. [From Custom Implementation](#from-custom-implementation)
-7. [From Native Android APIs](#from-native-android-apis)
-8. [Common Migration Patterns](#common-migration-patterns)
+3. [Upgrading from Grant 1.x to 2.0.0](#upgrading-from-grant-1x-to-200)
+4. [Upgrading from Grant 1.3.x to 1.4.2](#upgrading-from-grant-13x-to-142)
+5. [From moko-permissions](#from-moko-permissions)
+6. [From Google Accompanist](#from-google-accompanist)
+7. [From Custom Implementation](#from-custom-implementation)
+8. [From Native Android APIs](#from-native-android-apis)
+9. [Common Migration Patterns](#common-migration-patterns)
 9. [Troubleshooting](#troubleshooting)
 
 ---
@@ -107,7 +107,7 @@ implementation("dev.brewkits:grant-core-koin:2.3.0")
 
 ### Overview
 
-v2.2.0 (Issue #45) continues the **iOS Framework Isolation** work started in v2.1.0. Two more sensitive paths were moved out of `grant-core` into opt-in modules so apps that don't use them are never flagged by Apple's static scanner:
+v2.2.0 (Issue #45) continues the **iOS Framework Isolation** work started in v2.0.0. Two more sensitive paths were moved out of `grant-core` into opt-in modules so apps that don't use them are never flagged by Apple's static scanner:
 
 - **`grant-bluetooth`** — `CoreBluetooth.framework` is no longer linked by `grant-core`, so the `NSBluetoothAlwaysUsageDescription` requirement disappears for apps that don't use Bluetooth.
 - **`grant-location-always`** — the `requestAlwaysAuthorization` (background location) selector moved out of core. `grant-core` now calls **only** `requestWhenInUseAuthorization`. Apps using only foreground location are no longer asked for `NSLocationAlwaysAndWhenInUseUsageDescription`.
@@ -154,11 +154,11 @@ GrantLocationAlways.initialize()
 
 ---
 
-## 🛡️ Upgrading from Grant 1.x to 2.1.0
+## 🛡️ Upgrading from Grant 1.x to 2.0.0
 
 ### Overview
 
-v2.1.0 is the **iOS Framework Isolation** release. `Contacts.framework`, `EventKit.framework`, and `CoreMotion.framework` are now opt-in Gradle/Maven modules. **Android is completely unaffected** — no code changes required on Android.
+v2.0.0 is the **iOS Framework Isolation** release. `Contacts.framework`, `EventKit.framework`, and `CoreMotion.framework` are now opt-in Gradle/Maven modules. **Android is completely unaffected** — no code changes required on Android.
 
 ### What Changed?
 
@@ -173,7 +173,7 @@ v2.1.0 is the **iOS Framework Isolation** release. `Contacts.framework`, `EventK
 ```kotlin
 // shared/build.gradle.kts
 commonMain.dependencies {
-    implementation("dev.brewkits:grant-core:2.1.0")
+    implementation("dev.brewkits:grant-core:2.0.0")
 }
 ```
 
@@ -182,11 +182,11 @@ commonMain.dependencies {
 ```kotlin
 // shared/build.gradle.kts
 commonMain.dependencies {
-    implementation("dev.brewkits:grant-core:2.1.0")
+    implementation("dev.brewkits:grant-core:2.0.0")
     // Add only the ones your app actually uses:
-    implementation("dev.brewkits:grant-contacts:2.1.0")  // Contacts
-    implementation("dev.brewkits:grant-calendar:2.1.0")  // Calendar / EventKit
-    implementation("dev.brewkits:grant-motion:2.1.0")    // CoreMotion / Step Counter
+    implementation("dev.brewkits:grant-contacts:2.0.0")  // Contacts
+    implementation("dev.brewkits:grant-calendar:2.0.0")  // Calendar / EventKit
+    implementation("dev.brewkits:grant-motion:2.0.0")    // CoreMotion / Step Counter
 }
 ```
 

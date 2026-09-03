@@ -2,7 +2,7 @@
 
 > **Related:** Issue #25, Issue #38, Issue #45  
 > **Severity:** 🔴 Critical (causes App Store rejection at upload time)  
-> **Status:** ✅ FULLY RESOLVED — Contacts/Calendar/Motion in v2.1.0; Bluetooth + always-Location in v2.2.0 — see [Section 5](#5-resolution--v210--v220)
+> **Status:** ✅ FULLY RESOLVED — Contacts/Calendar/Motion in v2.0.0; Bluetooth + always-Location in v2.2.0 — see [Section 5](#5-resolution--v200--v220)
 
 ---
 
@@ -109,17 +109,17 @@ The corollary: no amount of DCE, linker flags, conditional initialization, or di
 
 ---
 
-## 5. Resolution — v2.1.0 / v2.2.0
+## 5. Resolution — v2.0.0 / v2.2.0
 
 ### What changed
 
-Permission handlers whose mere presence in the binary triggers an Apple `NSUsageDescription` requirement were moved out of `grant-core` into independent Gradle/Maven modules. v2.1.0 isolated Contacts, Calendar, and Motion; v2.2.0 (Issue #45) isolated Bluetooth and "always" (background) Location:
+Permission handlers whose mere presence in the binary triggers an Apple `NSUsageDescription` requirement were moved out of `grant-core` into independent Gradle/Maven modules. v2.0.0 isolated Contacts, Calendar, and Motion; v2.2.0 (Issue #45) isolated Bluetooth and "always" (background) Location:
 
 | Module | Source moved | What is isolated | Since |
 |---|---|---|---|
-| `grant-contacts` | `ContactsPermissionHandler.kt` | `Contacts.framework` | v2.1.0 |
-| `grant-calendar` | `CalendarPermissionHandler.kt` | `EventKit.framework` | v2.1.0 |
-| `grant-motion` | `MotionPermissionHandler.kt` | `CoreMotion.framework` | v2.1.0 |
+| `grant-contacts` | `ContactsPermissionHandler.kt` | `Contacts.framework` | v2.0.0 |
+| `grant-calendar` | `CalendarPermissionHandler.kt` | `EventKit.framework` | v2.0.0 |
+| `grant-motion` | `MotionPermissionHandler.kt` | `CoreMotion.framework` | v2.0.0 |
 | `grant-bluetooth` | `BluetoothPermissionHandler.kt` | `CoreBluetooth.framework` | v2.2.0 |
 | `grant-location-always` | `LocationAlwaysPermissionHandler.kt` | the `requestAlwaysAuthorization` selector (background location) | v2.2.0 |
 

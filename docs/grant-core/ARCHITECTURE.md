@@ -53,7 +53,7 @@ This document explains the architectural decisions behind KMP Grant library and 
 └──────────────────┘           └──────────────────┘
 ```
 
-## 🍎 iOS Framework Isolation (v2.1.0 → v2.2.0)
+## 🍎 iOS Framework Isolation (v2.0.0 → v2.2.0)
 
 To avoid App Store rejections due to "unused sensitive permissions", Grant isolates the sensitive iOS frameworks into separate Gradle/Maven artifacts. Apps that don't add these optional modules never link these frameworks — Apple's static scanner never requires the corresponding `NSUsageDescription` keys.
 
@@ -65,9 +65,9 @@ The sensitive frameworks and selectors are isolated into their own Gradle module
 
 | Module | What it isolates | Since |
 |---|---|---|
-| `grant-contacts` | `Contacts.framework` | v2.1.0 |
-| `grant-calendar` | `EventKit.framework` | v2.1.0 |
-| `grant-motion` | `CoreMotion.framework` | v2.1.0 |
+| `grant-contacts` | `Contacts.framework` | v2.0.0 |
+| `grant-calendar` | `EventKit.framework` | v2.0.0 |
+| `grant-motion` | `CoreMotion.framework` | v2.0.0 |
 | `grant-bluetooth` | `CoreBluetooth.framework` | v2.2.0 |
 | `grant-location-always` | the `requestAlwaysAuthorization` selector (background location) | v2.2.0 |
 
