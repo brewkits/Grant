@@ -1,0 +1,12 @@
+// Klib ABI Dump
+// Targets: [iosArm64, iosSimulatorArm64, iosX64]
+// Rendering settings:
+// - Signature version: 2
+// - Show manifest properties: true
+// - Show declarations: true
+
+// Library unique name: <dev.brewkits:grant-core-koin>
+final val dev.brewkits.grant.di/grantModule // dev.brewkits.grant.di/grantModule|{}grantModule[0]
+    final fun <get-grantModule>(): org.koin.core.module/Module // dev.brewkits.grant.di/grantModule.<get-grantModule>|<get-grantModule>(){}[0]
+final val dev.brewkits.grant.di/grantPlatformModule // dev.brewkits.grant.di/grantPlatformModule|{}grantPlatformModule[0]
+    final fun <get-grantPlatformModule>(): org.koin.core.module/Module // dev.brewkits.grant.di/grantPlatformModule.<get-grantPlatformModule>|<get-grantPlatformModule>(){}[0]

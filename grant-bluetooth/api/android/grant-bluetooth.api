@@ -1,0 +1,5 @@
+public final class dev/brewkits/grant/bluetooth/GrantBluetooth {
+	public static final field INSTANCE Ldev/brewkits/grant/bluetooth/GrantBluetooth;
+	public final fun initialize ()V
+}
+

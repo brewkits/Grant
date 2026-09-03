@@ -1,10 +1,12 @@
 name: iOS Build
 
+# Cost control: build workflows run only when code lands on main (i.e. on merge),
+# not on every branch push or pull request. macOS runners bill at a 10x minute
+# multiplier, so per-PR runs were the bulk of the spend. Use the Actions tab's
+# "Run workflow" button (workflow_dispatch) to validate a branch on demand.
 on:
   push:
-    branches: [ "**" ]
-  pull_request:
-    branches: [ "**" ]
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -42,6 +44,12 @@ jobs:
 
       - name: Build Compose iOS Framework
         run: ./gradlew :grant-compose:linkDebugFrameworkIosArm64 :grant-compose:linkDebugFrameworkIosSimulatorArm64 || true
+
+      # Runs here, not in ci.yml: the klib dumps cover the three Apple targets, which
+      # only a macOS runner can compile. Fails the build when the public API surface
+      # drifts from the committed api/*.api dumps — regenerate with ./gradlew updateKotlinAbi.
+      - name: Check public API surface (ABI)
+        run: ./gradlew checkKotlinAbi
 
       - name: Upload iOS build artifacts
         if: always()

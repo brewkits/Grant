@@ -37,7 +37,9 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build and test all modules
-        run: ./gradlew build allTests
+        # -x checkKotlinAbi: Linux runner cannot compile the Apple klibs the dumps cover;
+        # ios.yml gates the API surface on macOS.
+        run: ./gradlew build allTests -x checkKotlinAbi
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1

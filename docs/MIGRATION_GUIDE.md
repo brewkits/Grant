@@ -11,13 +11,14 @@ This guide helps you migrate from previous versions of Grant or other permission
 
 1. [Upgrading from Grant 2.2.x to 2.3.0](#upgrading-from-grant-22x-to-230)
 2. [Upgrading from Grant 2.1.0 to 2.2.0](#upgrading-from-grant-210-to-220)
-2. [Upgrading from Grant 1.x to 2.1.0](#upgrading-from-grant-1x-to-200)
-3. [Upgrading from Grant 1.3.x to 1.4.2](#upgrading-from-grant-13x-to-142)
-4. [From moko-permissions](#from-moko-permissions)
-5. [From Google Accompanist](#from-google-accompanist)
-6. [From Custom Implementation](#from-custom-implementation)
-7. [From Native Android APIs](#from-native-android-apis)
-8. [Common Migration Patterns](#common-migration-patterns)
+3. [Upgrading from Grant 2.0.0 to 2.1.0](#upgrading-from-grant-200-to-210)
+4. [Upgrading from Grant 1.x to 2.0.0](#upgrading-from-grant-1x-to-200)
+5. [Upgrading from Grant 1.3.x to 1.4.2](#upgrading-from-grant-13x-to-142)
+6. [From moko-permissions](#from-moko-permissions)
+7. [From Google Accompanist](#from-google-accompanist)
+8. [From Custom Implementation](#from-custom-implementation)
+9. [From Native Android APIs](#from-native-android-apis)
+10. [Common Migration Patterns](#common-migration-patterns)
 9. [Troubleshooting](#troubleshooting)
 
 ---
@@ -107,7 +108,7 @@ implementation("dev.brewkits:grant-core-koin:2.3.0")
 
 ### Overview
 
-v2.2.0 (Issue #45) continues the **iOS Framework Isolation** work started in v2.1.0. Two more sensitive paths were moved out of `grant-core` into opt-in modules so apps that don't use them are never flagged by Apple's static scanner:
+v2.2.0 (Issue #45) continues the **iOS Framework Isolation** work started in v2.0.0. Two more sensitive paths were moved out of `grant-core` into opt-in modules so apps that don't use them are never flagged by Apple's static scanner:
 
 - **`grant-bluetooth`** — `CoreBluetooth.framework` is no longer linked by `grant-core`, so the `NSBluetoothAlwaysUsageDescription` requirement disappears for apps that don't use Bluetooth.
 - **`grant-location-always`** — the `requestAlwaysAuthorization` (background location) selector moved out of core. `grant-core` now calls **only** `requestWhenInUseAuthorization`. Apps using only foreground location are no longer asked for `NSLocationAlwaysAndWhenInUseUsageDescription`.
@@ -154,11 +155,161 @@ GrantLocationAlways.initialize()
 
 ---
 
-## 🛡️ Upgrading from Grant 1.x to 2.1.0
+## 🛡️ Upgrading from Grant 2.0.0 to 2.1.0
 
 ### Overview
 
-v2.1.0 is the **iOS Framework Isolation** release. `Contacts.framework`, `EventKit.framework`, and `CoreMotion.framework` are now opt-in Gradle/Maven modules. **Android is completely unaffected** — no code changes required on Android.
+v2.1.0 is the **Analytics & i18n** release. It carries two breaking changes, both narrow:
+
+- **`grant-compose` only** — the individual `String` parameters on the dialog composables are replaced by a single `strings: GrantDialogStrings`.
+- **iOS custom-handler authors only** — the `IosPermissionHandler` interface is renamed to `PermissionHandler`.
+
+If you do not use `grant-compose` and have not written a custom `RawPermission` handler for iOS, **this upgrade is a version bump and nothing else**. Android app code is unaffected either way.
+
+### What Changed?
+
+- **`GrantDialogStrings`** — one immutable holder for every user-visible dialog string, supplied app-wide through `GrantDialogStringsProvider` (a `CompositionLocal`) instead of repeated per-callsite arguments.
+- **`GrantEventListener`** — new, optional, non-breaking. Observes the permission funnel (`onRequested`, `onGranted`, `onDenied`, `onRationaleShown`, `onSettingsGuideShown`, `onSettingsOpened`).
+- **`IosPermissionHandler` → `PermissionHandler`** — the `Ios` prefix was redundant in a source set that is already iOS-only.
+- **Bug fixes** — Issue #41 (double-denial dead-end on Android: the flow now escalates to the settings guide when the OS returns `DENIED` after a rationale was already shown) and Issue #33 (a false-positive `onGranted` when background location was denied but foreground was granted).
+
+### Step-by-Step Upgrade
+
+#### 1. Bump every Grant artifact to `2.1.0`
+
+```kotlin
+// shared/build.gradle.kts
+commonMain.dependencies {
+    implementation("dev.brewkits:grant-core:2.1.0")
+    implementation("dev.brewkits:grant-compose:2.1.0")
+    // …and any optional modules you use, at the same version
+}
+```
+
+#### 2. Replace the dialog string parameters — `grant-compose` only
+
+The compiler catches every one of these; there is no silent behaviour change.
+
+**Before (2.0.0):**
+
+```kotlin
+GrantDialog(
+    handler = viewModel.cameraGrant,
+    rationaleTitle = "Camera access",
+    rationaleConfirm = "Continue",
+    rationaleDismiss = "Not now",
+    settingsTitle = "Camera denied",
+    settingsConfirm = "Open Settings",
+    settingsDismiss = "Not now",
+)
+```
+
+**After (2.1.0):**
+
+```kotlin
+GrantDialog(
+    handler = viewModel.cameraGrant,
+    strings = GrantDialogStrings(
+        rationaleTitle = "Camera access",
+        rationaleConfirm = "Continue",
+        rationaleDismiss = "Not now",
+        settingsTitle = "Camera denied",
+        settingsConfirm = "Open Settings",
+        settingsDismiss = "Not now",
+    ),
+)
+```
+
+The parameter names are unchanged — they simply moved inside `GrantDialogStrings`, so this is a mechanical edit. The same applies to `GrantGroupDialog` and `GrantAndServiceDialog`.
+
+`GrantAndServiceDialog` is the one case where names were also **consolidated**, because it previously had a separate set for the service-settings dialog:
+
+| 2.0.0 parameter | 2.1.0 field on `GrantDialogStrings` |
+|---|---|
+| `permissionSettingsTitle` | `settingsTitle` |
+| `permissionSettingsConfirm` | `settingsConfirm` |
+| `serviceSettingsTitle` | `serviceSettingsTitle` |
+| `serviceSettingsConfirm` | `serviceSettingsConfirm` |
+| `dismissText` | `settingsDismiss` / `serviceSettingsDismiss` (now separate) |
+
+#### 3. Prefer setting the strings once, app-wide
+
+If you were passing the same strings at several call sites, the provider replaces all of them. This is the reason the API changed — it is what makes the dialogs translatable.
+
+```kotlin
+// Once, in your app theme or root composable:
+GrantDialogStringsProvider(
+    strings = GrantDialogStrings(
+        rationaleTitle   = stringResource(Res.string.grant_rationale_title),
+        rationaleConfirm = stringResource(Res.string.grant_ok),
+        rationaleDismiss = stringResource(Res.string.grant_cancel),
+        settingsTitle    = stringResource(Res.string.grant_settings_title),
+        settingsConfirm  = stringResource(Res.string.grant_open_settings),
+        settingsDismiss  = stringResource(Res.string.grant_cancel),
+    )
+) {
+    MyAppContent()   // every GrantDialog() inside picks these up
+}
+```
+
+Individual call sites can still override by passing `strings = …` directly; the parameter defaults to `LocalGrantDialogStrings.current`.
+
+> The library ships English defaults purely as a last-resort fallback. Translation is the host app's responsibility — a `GrantDialog` with no provider and no explicit `strings` renders English.
+
+`GrantDialogStrings` also carries three body-text fields that had no parameter equivalent in 2.0.0: `rationaleMessage`, `settingsMessage` and `serviceSettingsMessage`. They are used when the caller does not supply a message, so you can now translate that text too.
+
+#### 4. Rename the handler interface — iOS custom handlers only
+
+Applies only if you implemented a custom handler for a `RawPermission` on iOS. There is **no deprecated typealias**, so this is a hard rename and the compiler will flag it.
+
+**Before (2.0.0):**
+
+```kotlin
+class MyHandler : IosPermissionHandler {
+    override fun checkStatus(): GrantStatus = …
+    override suspend fun request(): GrantStatus = …
+}
+```
+
+**After (2.1.0):**
+
+```kotlin
+class MyHandler : PermissionHandler {
+    override fun checkStatus(): GrantStatus = …
+    override suspend fun request(): GrantStatus = …
+}
+```
+
+The method signatures are identical, and the import stays `dev.brewkits.grant.handlers.*`.
+
+> ⚠️ The **registry object keeps its original name** — it is still `IosPermissionHandlerRegistry`, and `IosPermissionHandlerRegistry.register(identifier, handler)` is unchanged. Only the interface was renamed.
+
+#### 5. Optionally attach a `GrantEventListener`
+
+Additive — skip this if you do not need funnel analytics. Every method has a default empty implementation, so override only what you use.
+
+```kotlin
+val cameraGrant = GrantHandler(
+    grantManager = grantManager,
+    grant = AppGrant.CAMERA,
+    scope = viewModelScope,
+    eventListener = object : GrantEventListener {
+        override fun onDenied(grant: GrantPermission, status: GrantStatus) {
+            analytics.track("permission_denied", grant.toString(), status.toString())
+        }
+    },
+)
+```
+
+`GrantGroupHandler` and `GrantAndServiceHandler` accept the same `eventListener` parameter.
+
+---
+
+## 🛡️ Upgrading from Grant 1.x to 2.0.0
+
+### Overview
+
+v2.0.0 is the **iOS Framework Isolation** release. `Contacts.framework`, `EventKit.framework`, and `CoreMotion.framework` are now opt-in Gradle/Maven modules. **Android is completely unaffected** — no code changes required on Android.
 
 ### What Changed?
 
@@ -173,7 +324,7 @@ v2.1.0 is the **iOS Framework Isolation** release. `Contacts.framework`, `EventK
 ```kotlin
 // shared/build.gradle.kts
 commonMain.dependencies {
-    implementation("dev.brewkits:grant-core:2.1.0")
+    implementation("dev.brewkits:grant-core:2.0.0")
 }
 ```
 
@@ -182,11 +333,11 @@ commonMain.dependencies {
 ```kotlin
 // shared/build.gradle.kts
 commonMain.dependencies {
-    implementation("dev.brewkits:grant-core:2.1.0")
+    implementation("dev.brewkits:grant-core:2.0.0")
     // Add only the ones your app actually uses:
-    implementation("dev.brewkits:grant-contacts:2.1.0")  // Contacts
-    implementation("dev.brewkits:grant-calendar:2.1.0")  // Calendar / EventKit
-    implementation("dev.brewkits:grant-motion:2.1.0")    // CoreMotion / Step Counter
+    implementation("dev.brewkits:grant-contacts:2.0.0")  // Contacts
+    implementation("dev.brewkits:grant-calendar:2.0.0")  // Calendar / EventKit
+    implementation("dev.brewkits:grant-motion:2.0.0")    // CoreMotion / Step Counter
 }
 ```
 
@@ -246,11 +397,16 @@ commonMain.dependencies {
 ```
 
 #### 3. iOS Stability
-Ensure you are using the latest `Package.swift` if integrating via SPM. v1.4.2 includes refined re-entrant locks for iOS delegates.
+v1.4.2 includes refined re-entrant locks for iOS delegates.
+
+> **Note:** Grant is not distributed via Swift Package Manager. The `Package.swift` that
+> shipped between v1.4.0 and v2.3.0 never resolved and was removed in v2.4.0 — see
+> [Why there is no SPM or CocoaPods support](getting-started/installation.md#why-there-is-no-spm-or-cocoapods-support).
+> Add Grant to your KMP module with Gradle instead.
 
 ---
 
-## 2️⃣ From moko-permissions
+## From moko-permissions
 
 If you are migrating from `moko-permissions`, you'll find Grant's `GrantHandler` very similar but more focused on state flows.
 
@@ -272,7 +428,7 @@ handler.request()
 
 ---
 
-## 3️⃣ From Google Accompanist
+## From Google Accompanist
 
 Accompanist Permissions is deprecated. Grant provides a more robust, multiplatform alternative with built-in rationale support.
 
@@ -285,7 +441,7 @@ Accompanist Permissions is deprecated. Grant provides a more robust, multiplatfo
 
 ---
 
-## 4️⃣ From Custom Implementation
+## From Custom Implementation
 
 If you were manually handling `ActivityResultLauncher` or `onRequestPermissionsResult`, Grant automates this via its "Transparent Activity" pattern.
 
@@ -293,13 +449,13 @@ If you were manually handling `ActivityResultLauncher` or `onRequestPermissionsR
 
 ---
 
-## 5️⃣ From Native Android APIs
+## From Native Android APIs
 
 Replace `ActivityCompat.requestPermissions` with `GrantHandler.request`. Grant handles the complexity of checking `shouldShowRequestPermissionRationale` and directing users to settings automatically.
 
 ---
 
-## 6️⃣ Common Migration Patterns
+## Common Migration Patterns
 
 ### Handling "Always Denied"
 Grant automatically detects when a user has permanently denied a permission and surfaces a `showSettingsGuide` event in the `GrantUiState`.
@@ -309,7 +465,7 @@ Use `GrantGroupHandler` to request multiple permissions at once, ensuring the UI
 
 ---
 
-## 7️⃣ Troubleshooting
+## Troubleshooting
 
 ### iOS Framework Linking
 If you see "Koin not found" during iOS build after upgrading to 1.3.0+, ensure you have added `:grant-core-koin` to your `commonMain` dependencies and exported it if necessary.

@@ -1,10 +1,12 @@
 name: CI
 
+# Cost control: build workflows run only when code lands on main (i.e. on merge),
+# not on every branch push or pull request. macOS runners bill at a 10x minute
+# multiplier, so per-PR runs were the bulk of the spend. Use the Actions tab's
+# "Run workflow" button (workflow_dispatch) to validate a branch on demand.
 on:
   push:
-    branches: [ "**" ]
-  pull_request:
-    branches: [ "**" ]
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -29,23 +31,26 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      # -x checkKotlinAbi: the ABI check is wired into `check` (and so into `build`), but its
+      # klib dumps cover the Apple targets, which Kotlin/Native cannot compile on a Linux
+      # runner. ios.yml runs checkKotlinAbi on macOS against both surfaces.
       - name: Build grant-core
-        run: ./gradlew :grant-core:build
+        run: ./gradlew :grant-core:build -x checkKotlinAbi
 
       - name: Run tests (all modules)
         run: ./gradlew allTests
 
       - name: Build grant-compose
-        run: ./gradlew :grant-compose:build
+        run: ./gradlew :grant-compose:build -x checkKotlinAbi
 
       - name: Build grant-core-koin
-        run: ./gradlew :grant-core-koin:build
+        run: ./gradlew :grant-core-koin:build -x checkKotlinAbi
 
       - name: Build grant-bluetooth
-        run: ./gradlew :grant-bluetooth:build
+        run: ./gradlew :grant-bluetooth:build -x checkKotlinAbi
 
       - name: Build grant-location-always
-        run: ./gradlew :grant-location-always:build
+        run: ./gradlew :grant-location-always:build -x checkKotlinAbi
 
       - name: Build demo app
         run: ./gradlew :demo:assembleDebug

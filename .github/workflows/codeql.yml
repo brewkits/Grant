@@ -1,10 +1,12 @@
 name: CodeQL Security Analysis
 
+# Cost control: build workflows run only when code lands on main (i.e. on merge),
+# not on every branch push or pull request. macOS runners bill at a 10x minute
+# multiplier, so per-PR runs were the bulk of the spend. Use the Actions tab's
+# "Run workflow" button (workflow_dispatch) to validate a branch on demand.
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches: [ main ]
   schedule:
     - cron: '0 0 * * 1' # Weekly on Monday at midnight UTC
   workflow_dispatch:
@@ -49,7 +51,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build project
-        run: ./gradlew build -x test
+        run: ./gradlew build -x test -x checkKotlinAbi
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3

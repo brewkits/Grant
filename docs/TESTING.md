@@ -6,19 +6,24 @@ Comprehensive test coverage for the Grant permission management library.
 
 ## Test Coverage Summary
 
-### Total Tests (v2.1.0)
+### Total Tests (v2.3.0)
+
+Android counts are `testDebugUnitTest`; the release variant runs the same suite again and is not
+counted twice here.
 
 | Module | Android | iOS Simulator | Total |
 |--------|---------|---------------|-------|
-| `grant-core` | 416 | 379 | **795** |
-| `grant-contacts` | 54 | 54 | **108** |
+| `grant-core` | 475 | 414 | **889** |
 | `grant-calendar` | 60 | 60 | **120** |
+| `grant-contacts` | 54 | 54 | **108** |
+| `grant-bluetooth` | 51 | 56 | **107** |
 | `grant-motion` | 52 | 52 | **104** |
+| `grant-location-always` | 48 | 52 | **100** |
 | `grant-compose` | 1 | 1 | **2** |
 | `grant-core-koin` | 1 | 1 | **2** |
-| **Total** | **584** | **547** | **1131** |
+| **Total** | **742** | **690** | **1432** |
 
-- **Pass rate**: 100% (1131 / 1131)
+- **Pass rate**: 100% (1432 / 1432)
 - **Platforms**: Android JVM (Robolectric) + iOS Simulator (arm64)
 
 ---
@@ -176,4 +181,4 @@ Per CLAUDE.md, every method on `PlatformGrantDelegate` (including `request()`) m
 
 ---
 
-*Last updated: 2026-05-15 — v2.1.0 (1131 tests, 100% pass rate)*
+*Last updated: 2026-09-03 — v2.3.0 (1432 tests across 8 modules, 100% pass rate)*

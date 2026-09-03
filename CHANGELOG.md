@@ -158,7 +158,7 @@ Both follow the same transparent module-isolation approach as the v2.0.0 `grant-
 ### ⚠️ Breaking Changes (Compose UI layer only)
 
 - **`GrantDialog` / `GrantGroupDialog` / `GrantAndServiceDialog` — string params replaced by `GrantDialogStrings`**
-  The six individual `String` parameters on each dialog composable (`rationaleTitle`, `rationaleConfirm`, `rationaleDismiss`, `settingsTitle`, `settingsConfirm`, `settingsDismiss`) have been replaced by a single `strings: GrantDialogStrings` parameter. See the [migration guide](docs/MIGRATION_GUIDE.md#upgrading-from-2x-to-21x) for the one-time callsite update.
+  The six individual `String` parameters on each dialog composable (`rationaleTitle`, `rationaleConfirm`, `rationaleDismiss`, `settingsTitle`, `settingsConfirm`, `settingsDismiss`) have been replaced by a single `strings: GrantDialogStrings` parameter. See [Upgrading from Grant 2.0.0 to 2.1.0](docs/MIGRATION_GUIDE.md#upgrading-from-grant-200-to-210) for the one-time callsite update.
 
 - **`IosPermissionHandler` renamed to `PermissionHandler`** *(iOS custom handler authors only)*
   The interface used to implement custom `RawPermission` handlers on iOS has been renamed from `IosPermissionHandler` to `PermissionHandler`. `IosPermissionHandlerRegistry` retains its name. Affects only apps that implemented their own handler classes — update the `implements` clause from `IosPermissionHandler` to `PermissionHandler`.
@@ -266,7 +266,7 @@ Apple's App Store static scanner rejects apps that link frameworks without decla
 
 ### Migration from 1.x
 
-See [Upgrading from Grant 1.x to 2.0.0](docs/MIGRATION_GUIDE.md#upgrading-from-1x-to-20x) in the migration guide.
+See [Upgrading from Grant 1.x to 2.0.0](docs/MIGRATION_GUIDE.md#upgrading-from-grant-1x-to-200) in the migration guide.
 
 ---
 

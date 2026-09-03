@@ -1,0 +1,540 @@
+// Klib ABI Dump
+// Targets: [iosArm64, iosSimulatorArm64, iosX64]
+// Rendering settings:
+// - Signature version: 2
+// - Show manifest properties: true
+// - Show declarations: true
+
+// Library unique name: <dev.brewkits:grant-core>
+final enum class dev.brewkits.grant/GrantStatus : kotlin/Enum<dev.brewkits.grant/GrantStatus> { // dev.brewkits.grant/GrantStatus|null[0]
+    enum entry BUSY // dev.brewkits.grant/GrantStatus.BUSY|null[0]
+    enum entry DENIED // dev.brewkits.grant/GrantStatus.DENIED|null[0]
+    enum entry DENIED_ALWAYS // dev.brewkits.grant/GrantStatus.DENIED_ALWAYS|null[0]
+    enum entry GRANTED // dev.brewkits.grant/GrantStatus.GRANTED|null[0]
+    enum entry NOT_DETERMINED // dev.brewkits.grant/GrantStatus.NOT_DETERMINED|null[0]
+    enum entry PARTIAL_GRANTED // dev.brewkits.grant/GrantStatus.PARTIAL_GRANTED|null[0]
+
+    final val entries // dev.brewkits.grant/GrantStatus.entries|#static{}entries[0]
+        final fun <get-entries>(): kotlin.enums/EnumEntries<dev.brewkits.grant/GrantStatus> // dev.brewkits.grant/GrantStatus.entries.<get-entries>|<get-entries>#static(){}[0]
+
+    final fun valueOf(kotlin/String): dev.brewkits.grant/GrantStatus // dev.brewkits.grant/GrantStatus.valueOf|valueOf#static(kotlin.String){}[0]
+    final fun values(): kotlin/Array<dev.brewkits.grant/GrantStatus> // dev.brewkits.grant/GrantStatus.values|values#static(){}[0]
+}
+
+final enum class dev.brewkits.grant/ServiceStatus : kotlin/Enum<dev.brewkits.grant/ServiceStatus> { // dev.brewkits.grant/ServiceStatus|null[0]
+    enum entry DISABLED // dev.brewkits.grant/ServiceStatus.DISABLED|null[0]
+    enum entry ENABLED // dev.brewkits.grant/ServiceStatus.ENABLED|null[0]
+    enum entry NOT_AVAILABLE // dev.brewkits.grant/ServiceStatus.NOT_AVAILABLE|null[0]
+    enum entry UNKNOWN // dev.brewkits.grant/ServiceStatus.UNKNOWN|null[0]
+
+    final val entries // dev.brewkits.grant/ServiceStatus.entries|#static{}entries[0]
+        final fun <get-entries>(): kotlin.enums/EnumEntries<dev.brewkits.grant/ServiceStatus> // dev.brewkits.grant/ServiceStatus.entries.<get-entries>|<get-entries>#static(){}[0]
+
+    final fun valueOf(kotlin/String): dev.brewkits.grant/ServiceStatus // dev.brewkits.grant/ServiceStatus.valueOf|valueOf#static(kotlin.String){}[0]
+    final fun values(): kotlin/Array<dev.brewkits.grant/ServiceStatus> // dev.brewkits.grant/ServiceStatus.values|values#static(){}[0]
+}
+
+final enum class dev.brewkits.grant/ServiceType : kotlin/Enum<dev.brewkits.grant/ServiceType> { // dev.brewkits.grant/ServiceType|null[0]
+    enum entry BLUETOOTH // dev.brewkits.grant/ServiceType.BLUETOOTH|null[0]
+    enum entry CAMERA_HARDWARE // dev.brewkits.grant/ServiceType.CAMERA_HARDWARE|null[0]
+    enum entry HEALTH // dev.brewkits.grant/ServiceType.HEALTH|null[0]
+    enum entry LOCATION_GPS // dev.brewkits.grant/ServiceType.LOCATION_GPS|null[0]
+    enum entry NFC // dev.brewkits.grant/ServiceType.NFC|null[0]
+    enum entry WIFI // dev.brewkits.grant/ServiceType.WIFI|null[0]
+
+    final val entries // dev.brewkits.grant/ServiceType.entries|#static{}entries[0]
+        final fun <get-entries>(): kotlin.enums/EnumEntries<dev.brewkits.grant/ServiceType> // dev.brewkits.grant/ServiceType.entries.<get-entries>|<get-entries>#static(){}[0]
+
+    final fun valueOf(kotlin/String): dev.brewkits.grant/ServiceType // dev.brewkits.grant/ServiceType.valueOf|valueOf#static(kotlin.String){}[0]
+    final fun values(): kotlin/Array<dev.brewkits.grant/ServiceType> // dev.brewkits.grant/ServiceType.values|values#static(){}[0]
+}
+
+open enum class dev.brewkits.grant/AppGrant : dev.brewkits.grant/GrantPermission, kotlin/Enum<dev.brewkits.grant/AppGrant> { // dev.brewkits.grant/AppGrant|null[0]
+    enum entry BLUETOOTH // dev.brewkits.grant/AppGrant.BLUETOOTH|null[0]
+    enum entry BLUETOOTH_ADVERTISE // dev.brewkits.grant/AppGrant.BLUETOOTH_ADVERTISE|null[0]
+    enum entry CALENDAR // dev.brewkits.grant/AppGrant.CALENDAR|null[0]
+    enum entry CAMERA // dev.brewkits.grant/AppGrant.CAMERA|null[0]
+    enum entry CONTACTS // dev.brewkits.grant/AppGrant.CONTACTS|null[0]
+    enum entry GALLERY // dev.brewkits.grant/AppGrant.GALLERY|null[0]
+    enum entry GALLERY_IMAGES_ONLY // dev.brewkits.grant/AppGrant.GALLERY_IMAGES_ONLY|null[0]
+    enum entry GALLERY_VIDEO_ONLY // dev.brewkits.grant/AppGrant.GALLERY_VIDEO_ONLY|null[0]
+    enum entry LOCAL_NETWORK // dev.brewkits.grant/AppGrant.LOCAL_NETWORK|null[0]
+    enum entry LOCATION // dev.brewkits.grant/AppGrant.LOCATION|null[0]
+    enum entry LOCATION_ALWAYS // dev.brewkits.grant/AppGrant.LOCATION_ALWAYS|null[0]
+    enum entry MICROPHONE // dev.brewkits.grant/AppGrant.MICROPHONE|null[0]
+    enum entry MOTION // dev.brewkits.grant/AppGrant.MOTION|null[0]
+    enum entry NEARBY_WIFI_DEVICES // dev.brewkits.grant/AppGrant.NEARBY_WIFI_DEVICES|null[0]
+    enum entry NOTIFICATION // dev.brewkits.grant/AppGrant.NOTIFICATION|null[0]
+    enum entry READ_CALENDAR // dev.brewkits.grant/AppGrant.READ_CALENDAR|null[0]
+    enum entry READ_CONTACTS // dev.brewkits.grant/AppGrant.READ_CONTACTS|null[0]
+    enum entry SCHEDULE_EXACT_ALARM // dev.brewkits.grant/AppGrant.SCHEDULE_EXACT_ALARM|null[0]
+    enum entry STORAGE // dev.brewkits.grant/AppGrant.STORAGE|null[0]
+
+    final val entries // dev.brewkits.grant/AppGrant.entries|#static{}entries[0]
+        final fun <get-entries>(): kotlin.enums/EnumEntries<dev.brewkits.grant/AppGrant> // dev.brewkits.grant/AppGrant.entries.<get-entries>|<get-entries>#static(){}[0]
+    open val identifier // dev.brewkits.grant/AppGrant.identifier|{}identifier[0]
+        open fun <get-identifier>(): kotlin/String // dev.brewkits.grant/AppGrant.identifier.<get-identifier>|<get-identifier>(){}[0]
+
+    final fun valueOf(kotlin/String): dev.brewkits.grant/AppGrant // dev.brewkits.grant/AppGrant.valueOf|valueOf#static(kotlin.String){}[0]
+    final fun values(): kotlin/Array<dev.brewkits.grant/AppGrant> // dev.brewkits.grant/AppGrant.values|values#static(){}[0]
+}
+
+abstract interface dev.brewkits.grant.handlers/PermissionHandler { // dev.brewkits.grant.handlers/PermissionHandler|null[0]
+    abstract fun checkStatus(): dev.brewkits.grant/GrantStatus // dev.brewkits.grant.handlers/PermissionHandler.checkStatus|checkStatus(){}[0]
+    abstract suspend fun request(): dev.brewkits.grant/GrantStatus // dev.brewkits.grant.handlers/PermissionHandler.request|request(){}[0]
+}
+
+abstract interface dev.brewkits.grant/GrantEventListener { // dev.brewkits.grant/GrantEventListener|null[0]
+    open fun onDenied(dev.brewkits.grant/GrantPermission, dev.brewkits.grant/GrantStatus) // dev.brewkits.grant/GrantEventListener.onDenied|onDenied(dev.brewkits.grant.GrantPermission;dev.brewkits.grant.GrantStatus){}[0]
+    open fun onGranted(dev.brewkits.grant/GrantPermission, dev.brewkits.grant/GrantStatus) // dev.brewkits.grant/GrantEventListener.onGranted|onGranted(dev.brewkits.grant.GrantPermission;dev.brewkits.grant.GrantStatus){}[0]
+    open fun onRationaleShown(dev.brewkits.grant/GrantPermission) // dev.brewkits.grant/GrantEventListener.onRationaleShown|onRationaleShown(dev.brewkits.grant.GrantPermission){}[0]
+    open fun onRequested(dev.brewkits.grant/GrantPermission, dev.brewkits.grant/GrantStatus) // dev.brewkits.grant/GrantEventListener.onRequested|onRequested(dev.brewkits.grant.GrantPermission;dev.brewkits.grant.GrantStatus){}[0]
+    open fun onSettingsGuideShown(dev.brewkits.grant/GrantPermission) // dev.brewkits.grant/GrantEventListener.onSettingsGuideShown|onSettingsGuideShown(dev.brewkits.grant.GrantPermission){}[0]
+    open fun onSettingsOpened(dev.brewkits.grant/GrantPermission) // dev.brewkits.grant/GrantEventListener.onSettingsOpened|onSettingsOpened(dev.brewkits.grant.GrantPermission){}[0]
+}
+
+abstract interface dev.brewkits.grant/GrantFlowScope // dev.brewkits.grant/GrantFlowScope|null[0]
+
+abstract interface dev.brewkits.grant/GrantLauncher { // dev.brewkits.grant/GrantLauncher|null[0]
+    abstract fun launch(kotlin.collections/List<kotlin/String>, kotlin/Function1<kotlin.collections/Map<kotlin/String, kotlin/Boolean>, kotlin/Unit>) // dev.brewkits.grant/GrantLauncher.launch|launch(kotlin.collections.List<kotlin.String>;kotlin.Function1<kotlin.collections.Map<kotlin.String,kotlin.Boolean>,kotlin.Unit>){}[0]
+}
+
+abstract interface dev.brewkits.grant/GrantManager { // dev.brewkits.grant/GrantManager|null[0]
+    abstract fun openSettings() // dev.brewkits.grant/GrantManager.openSettings|openSettings(){}[0]
+    abstract fun setLauncher(dev.brewkits.grant/GrantLauncher) // dev.brewkits.grant/GrantManager.setLauncher|setLauncher(dev.brewkits.grant.GrantLauncher){}[0]
+    abstract suspend fun checkStatus(dev.brewkits.grant/GrantPermission): dev.brewkits.grant/GrantStatus // dev.brewkits.grant/GrantManager.checkStatus|checkStatus(dev.brewkits.grant.GrantPermission){}[0]
+    abstract suspend fun request(dev.brewkits.grant/GrantPermission): dev.brewkits.grant/GrantStatus // dev.brewkits.grant/GrantManager.request|request(dev.brewkits.grant.GrantPermission){}[0]
+    abstract suspend fun request(kotlin.collections/List<dev.brewkits.grant/GrantPermission>): kotlin.collections/Map<dev.brewkits.grant/GrantPermission, dev.brewkits.grant/GrantStatus> // dev.brewkits.grant/GrantManager.request|request(kotlin.collections.List<dev.brewkits.grant.GrantPermission>){}[0]
+}
+
+abstract interface dev.brewkits.grant/GrantStore { // dev.brewkits.grant/GrantStore|null[0]
+    abstract fun clear() // dev.brewkits.grant/GrantStore.clear|clear(){}[0]
+    abstract fun clear(dev.brewkits.grant/AppGrant) // dev.brewkits.grant/GrantStore.clear|clear(dev.brewkits.grant.AppGrant){}[0]
+    abstract fun getStatus(dev.brewkits.grant/AppGrant): dev.brewkits.grant/GrantStatus? // dev.brewkits.grant/GrantStore.getStatus|getStatus(dev.brewkits.grant.AppGrant){}[0]
+    abstract fun isRawPermissionRequested(kotlin/String): kotlin/Boolean // dev.brewkits.grant/GrantStore.isRawPermissionRequested|isRawPermissionRequested(kotlin.String){}[0]
+    abstract fun isRequestedBefore(dev.brewkits.grant/AppGrant): kotlin/Boolean // dev.brewkits.grant/GrantStore.isRequestedBefore|isRequestedBefore(dev.brewkits.grant.AppGrant){}[0]
+    abstract fun markRawPermissionRequested(kotlin/String) // dev.brewkits.grant/GrantStore.markRawPermissionRequested|markRawPermissionRequested(kotlin.String){}[0]
+    abstract fun setRequested(dev.brewkits.grant/AppGrant) // dev.brewkits.grant/GrantStore.setRequested|setRequested(dev.brewkits.grant.AppGrant){}[0]
+    abstract fun setStatus(dev.brewkits.grant/AppGrant, dev.brewkits.grant/GrantStatus) // dev.brewkits.grant/GrantStore.setStatus|setStatus(dev.brewkits.grant.AppGrant;dev.brewkits.grant.GrantStatus){}[0]
+}
+
+abstract interface dev.brewkits.grant/SavedStateDelegate { // dev.brewkits.grant/SavedStateDelegate|null[0]
+    abstract fun clear(kotlin/String) // dev.brewkits.grant/SavedStateDelegate.clear|clear(kotlin.String){}[0]
+    abstract fun restoreState(kotlin/String): kotlin/String? // dev.brewkits.grant/SavedStateDelegate.restoreState|restoreState(kotlin.String){}[0]
+    abstract fun saveState(kotlin/String, kotlin/String) // dev.brewkits.grant/SavedStateDelegate.saveState|saveState(kotlin.String;kotlin.String){}[0]
+}
+
+abstract interface dev.brewkits.grant/ServiceManager { // dev.brewkits.grant/ServiceManager|null[0]
+    abstract suspend fun checkServiceStatus(dev.brewkits.grant/ServiceType): dev.brewkits.grant/ServiceStatus // dev.brewkits.grant/ServiceManager.checkServiceStatus|checkServiceStatus(dev.brewkits.grant.ServiceType){}[0]
+    abstract suspend fun openServiceSettings(dev.brewkits.grant/ServiceType): kotlin/Boolean // dev.brewkits.grant/ServiceManager.openServiceSettings|openServiceSettings(dev.brewkits.grant.ServiceType){}[0]
+    open suspend fun isServiceEnabled(dev.brewkits.grant/ServiceType): kotlin/Boolean // dev.brewkits.grant/ServiceManager.isServiceEnabled|isServiceEnabled(dev.brewkits.grant.ServiceType){}[0]
+}
+
+sealed interface dev.brewkits.grant/GrantPermission { // dev.brewkits.grant/GrantPermission|null[0]
+    abstract val identifier // dev.brewkits.grant/GrantPermission.identifier|{}identifier[0]
+        abstract fun <get-identifier>(): kotlin/String // dev.brewkits.grant/GrantPermission.identifier.<get-identifier>|<get-identifier>(){}[0]
+    open val requiresBackgroundUpgrade // dev.brewkits.grant/GrantPermission.requiresBackgroundUpgrade|{}requiresBackgroundUpgrade[0]
+        open fun <get-requiresBackgroundUpgrade>(): kotlin/Boolean // dev.brewkits.grant/GrantPermission.requiresBackgroundUpgrade.<get-requiresBackgroundUpgrade>|<get-requiresBackgroundUpgrade>(){}[0]
+}
+
+final class dev.brewkits.grant.handlers/LocationTemporaryFullAccuracyHandler : dev.brewkits.grant.handlers/PermissionHandler { // dev.brewkits.grant.handlers/LocationTemporaryFullAccuracyHandler|null[0]
+    constructor <init>(kotlin/String) // dev.brewkits.grant.handlers/LocationTemporaryFullAccuracyHandler.<init>|<init>(kotlin.String){}[0]
+
+    final fun checkStatus(): dev.brewkits.grant/GrantStatus // dev.brewkits.grant.handlers/LocationTemporaryFullAccuracyHandler.checkStatus|checkStatus(){}[0]
+    final suspend fun request(): dev.brewkits.grant/GrantStatus // dev.brewkits.grant.handlers/LocationTemporaryFullAccuracyHandler.request|request(){}[0]
+}
+
+final class dev.brewkits.grant.impl/DefaultGrantManager : dev.brewkits.grant/GrantManager { // dev.brewkits.grant.impl/DefaultGrantManager|null[0]
+    constructor <init>(dev.brewkits.grant.impl/PlatformGrantDelegate) // dev.brewkits.grant.impl/DefaultGrantManager.<init>|<init>(dev.brewkits.grant.impl.PlatformGrantDelegate){}[0]
+
+    final fun openSettings() // dev.brewkits.grant.impl/DefaultGrantManager.openSettings|openSettings(){}[0]
+    final fun setLauncher(dev.brewkits.grant/GrantLauncher) // dev.brewkits.grant.impl/DefaultGrantManager.setLauncher|setLauncher(dev.brewkits.grant.GrantLauncher){}[0]
+    final suspend fun checkStatus(dev.brewkits.grant/GrantPermission): dev.brewkits.grant/GrantStatus // dev.brewkits.grant.impl/DefaultGrantManager.checkStatus|checkStatus(dev.brewkits.grant.GrantPermission){}[0]
+    final suspend fun request(dev.brewkits.grant/GrantPermission): dev.brewkits.grant/GrantStatus // dev.brewkits.grant.impl/DefaultGrantManager.request|request(dev.brewkits.grant.GrantPermission){}[0]
+    final suspend fun request(kotlin.collections/List<dev.brewkits.grant/GrantPermission>): kotlin.collections/Map<dev.brewkits.grant/GrantPermission, dev.brewkits.grant/GrantStatus> // dev.brewkits.grant.impl/DefaultGrantManager.request|request(kotlin.collections.List<dev.brewkits.grant.GrantPermission>){}[0]
+}
+
+final class dev.brewkits.grant.impl/MyServiceManager : dev.brewkits.grant/ServiceManager { // dev.brewkits.grant.impl/MyServiceManager|null[0]
+    final suspend fun checkServiceStatus(dev.brewkits.grant/ServiceType): dev.brewkits.grant/ServiceStatus // dev.brewkits.grant.impl/MyServiceManager.checkServiceStatus|checkServiceStatus(dev.brewkits.grant.ServiceType){}[0]
+    final suspend fun openServiceSettings(dev.brewkits.grant/ServiceType): kotlin/Boolean // dev.brewkits.grant.impl/MyServiceManager.openServiceSettings|openServiceSettings(dev.brewkits.grant.ServiceType){}[0]
+}
+
+final class dev.brewkits.grant.impl/PlatformGrantDelegate { // dev.brewkits.grant.impl/PlatformGrantDelegate|null[0]
+    constructor <init>(dev.brewkits.grant/GrantStore) // dev.brewkits.grant.impl/PlatformGrantDelegate.<init>|<init>(dev.brewkits.grant.GrantStore){}[0]
+
+    final fun openSettings() // dev.brewkits.grant.impl/PlatformGrantDelegate.openSettings|openSettings(){}[0]
+    final fun setLauncher(dev.brewkits.grant/GrantLauncher) // dev.brewkits.grant.impl/PlatformGrantDelegate.setLauncher|setLauncher(dev.brewkits.grant.GrantLauncher){}[0]
+    final suspend fun checkStatus(dev.brewkits.grant/GrantPermission): dev.brewkits.grant/GrantStatus // dev.brewkits.grant.impl/PlatformGrantDelegate.checkStatus|checkStatus(dev.brewkits.grant.GrantPermission){}[0]
+    final suspend fun request(dev.brewkits.grant/GrantPermission): dev.brewkits.grant/GrantStatus // dev.brewkits.grant.impl/PlatformGrantDelegate.request|request(dev.brewkits.grant.GrantPermission){}[0]
+    final suspend fun request(kotlin.collections/List<dev.brewkits.grant/GrantPermission>): kotlin.collections/Map<dev.brewkits.grant/GrantPermission, dev.brewkits.grant/GrantStatus> // dev.brewkits.grant.impl/PlatformGrantDelegate.request|request(kotlin.collections.List<dev.brewkits.grant.GrantPermission>){}[0]
+}
+
+final class dev.brewkits.grant.impl/SimpleGrantManager : dev.brewkits.grant/GrantManager { // dev.brewkits.grant.impl/SimpleGrantManager|null[0]
+    constructor <init>() // dev.brewkits.grant.impl/SimpleGrantManager.<init>|<init>(){}[0]
+
+    final var simulationMode // dev.brewkits.grant.impl/SimpleGrantManager.simulationMode|{}simulationMode[0]
+        final fun <get-simulationMode>(): dev.brewkits.grant.impl/SimpleGrantManager.SimulationMode // dev.brewkits.grant.impl/SimpleGrantManager.simulationMode.<get-simulationMode>|<get-simulationMode>(){}[0]
+        final fun <set-simulationMode>(dev.brewkits.grant.impl/SimpleGrantManager.SimulationMode) // dev.brewkits.grant.impl/SimpleGrantManager.simulationMode.<set-simulationMode>|<set-simulationMode>(dev.brewkits.grant.impl.SimpleGrantManager.SimulationMode){}[0]
+
+    final fun openSettings() // dev.brewkits.grant.impl/SimpleGrantManager.openSettings|openSettings(){}[0]
+    final fun reset() // dev.brewkits.grant.impl/SimpleGrantManager.reset|reset(){}[0]
+    final fun setLauncher(dev.brewkits.grant/GrantLauncher) // dev.brewkits.grant.impl/SimpleGrantManager.setLauncher|setLauncher(dev.brewkits.grant.GrantLauncher){}[0]
+    final suspend fun checkStatus(dev.brewkits.grant/GrantPermission): dev.brewkits.grant/GrantStatus // dev.brewkits.grant.impl/SimpleGrantManager.checkStatus|checkStatus(dev.brewkits.grant.GrantPermission){}[0]
+    final suspend fun request(dev.brewkits.grant/GrantPermission): dev.brewkits.grant/GrantStatus // dev.brewkits.grant.impl/SimpleGrantManager.request|request(dev.brewkits.grant.GrantPermission){}[0]
+    final suspend fun request(kotlin.collections/List<dev.brewkits.grant/GrantPermission>): kotlin.collections/Map<dev.brewkits.grant/GrantPermission, dev.brewkits.grant/GrantStatus> // dev.brewkits.grant.impl/SimpleGrantManager.request|request(kotlin.collections.List<dev.brewkits.grant.GrantPermission>){}[0]
+
+    final enum class SimulationMode : kotlin/Enum<dev.brewkits.grant.impl/SimpleGrantManager.SimulationMode> { // dev.brewkits.grant.impl/SimpleGrantManager.SimulationMode|null[0]
+        enum entry ALWAYS_DENY // dev.brewkits.grant.impl/SimpleGrantManager.SimulationMode.ALWAYS_DENY|null[0]
+        enum entry ALWAYS_DENY_PERMANENTLY // dev.brewkits.grant.impl/SimpleGrantManager.SimulationMode.ALWAYS_DENY_PERMANENTLY|null[0]
+        enum entry AUTO_GRANT // dev.brewkits.grant.impl/SimpleGrantManager.SimulationMode.AUTO_GRANT|null[0]
+        enum entry REALISTIC // dev.brewkits.grant.impl/SimpleGrantManager.SimulationMode.REALISTIC|null[0]
+
+        final val entries // dev.brewkits.grant.impl/SimpleGrantManager.SimulationMode.entries|#static{}entries[0]
+            final fun <get-entries>(): kotlin.enums/EnumEntries<dev.brewkits.grant.impl/SimpleGrantManager.SimulationMode> // dev.brewkits.grant.impl/SimpleGrantManager.SimulationMode.entries.<get-entries>|<get-entries>#static(){}[0]
+
+        final fun valueOf(kotlin/String): dev.brewkits.grant.impl/SimpleGrantManager.SimulationMode // dev.brewkits.grant.impl/SimpleGrantManager.SimulationMode.valueOf|valueOf#static(kotlin.String){}[0]
+        final fun values(): kotlin/Array<dev.brewkits.grant.impl/SimpleGrantManager.SimulationMode> // dev.brewkits.grant.impl/SimpleGrantManager.SimulationMode.values|values#static(){}[0]
+    }
+}
+
+final class dev.brewkits.grant/GrantAndServiceChecker { // dev.brewkits.grant/GrantAndServiceChecker|null[0]
+    constructor <init>(dev.brewkits.grant/GrantManager, dev.brewkits.grant/ServiceManager) // dev.brewkits.grant/GrantAndServiceChecker.<init>|<init>(dev.brewkits.grant.GrantManager;dev.brewkits.grant.ServiceManager){}[0]
+
+    final suspend fun checkBluetoothReady(): dev.brewkits.grant/BluetoothReadyStatus // dev.brewkits.grant/GrantAndServiceChecker.checkBluetoothReady|checkBluetoothReady(){}[0]
+    final suspend fun checkLocationReady(dev.brewkits.grant/AppGrant = ...): dev.brewkits.grant/LocationReadyStatus // dev.brewkits.grant/GrantAndServiceChecker.checkLocationReady|checkLocationReady(dev.brewkits.grant.AppGrant){}[0]
+    final suspend fun checkReady(dev.brewkits.grant/AppGrant, dev.brewkits.grant/ServiceType): dev.brewkits.grant/ReadyStatus // dev.brewkits.grant/GrantAndServiceChecker.checkReady|checkReady(dev.brewkits.grant.AppGrant;dev.brewkits.grant.ServiceType){}[0]
+    final suspend fun isReady(dev.brewkits.grant/AppGrant): kotlin/Boolean // dev.brewkits.grant/GrantAndServiceChecker.isReady|isReady(dev.brewkits.grant.AppGrant){}[0]
+}
+
+final class dev.brewkits.grant/GrantAndServiceHandler { // dev.brewkits.grant/GrantAndServiceHandler|null[0]
+    constructor <init>(dev.brewkits.grant/GrantManager, dev.brewkits.grant/ServiceManager, dev.brewkits.grant/GrantPermission, dev.brewkits.grant/ServiceType, kotlinx.coroutines/CoroutineScope, dev.brewkits.grant/SavedStateDelegate = ..., dev.brewkits.grant/GrantEventListener? = ...) // dev.brewkits.grant/GrantAndServiceHandler.<init>|<init>(dev.brewkits.grant.GrantManager;dev.brewkits.grant.ServiceManager;dev.brewkits.grant.GrantPermission;dev.brewkits.grant.ServiceType;kotlinx.coroutines.CoroutineScope;dev.brewkits.grant.SavedStateDelegate;dev.brewkits.grant.GrantEventListener?){}[0]
+
+    final val state // dev.brewkits.grant/GrantAndServiceHandler.state|{}state[0]
+        final fun <get-state>(): kotlinx.coroutines.flow/StateFlow<dev.brewkits.grant/GrantAndServiceUiState> // dev.brewkits.grant/GrantAndServiceHandler.state.<get-state>|<get-state>(){}[0]
+
+    final fun onDismiss() // dev.brewkits.grant/GrantAndServiceHandler.onDismiss|onDismiss(){}[0]
+    final fun onPermissionSettingsConfirmed() // dev.brewkits.grant/GrantAndServiceHandler.onPermissionSettingsConfirmed|onPermissionSettingsConfirmed(){}[0]
+    final fun onRationaleConfirmed() // dev.brewkits.grant/GrantAndServiceHandler.onRationaleConfirmed|onRationaleConfirmed(){}[0]
+    final fun onServiceSettingsConfirmed() // dev.brewkits.grant/GrantAndServiceHandler.onServiceSettingsConfirmed|onServiceSettingsConfirmed(){}[0]
+    final fun refreshStatus() // dev.brewkits.grant/GrantAndServiceHandler.refreshStatus|refreshStatus(){}[0]
+    final fun request(kotlin/String? = ..., kotlin/String? = ..., kotlin/String? = ..., kotlin/Function0<kotlin/Unit>) // dev.brewkits.grant/GrantAndServiceHandler.request|request(kotlin.String?;kotlin.String?;kotlin.String?;kotlin.Function0<kotlin.Unit>){}[0]
+}
+
+final class dev.brewkits.grant/GrantAndServiceUiState { // dev.brewkits.grant/GrantAndServiceUiState|null[0]
+    constructor <init>(kotlin/Boolean = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., kotlin/String? = ..., kotlin/String? = ..., kotlin/String? = ..., kotlin/Boolean = ...) // dev.brewkits.grant/GrantAndServiceUiState.<init>|<init>(kotlin.Boolean;kotlin.Boolean;kotlin.Boolean;kotlin.Boolean;kotlin.String?;kotlin.String?;kotlin.String?;kotlin.Boolean){}[0]
+
+    final val isReady // dev.brewkits.grant/GrantAndServiceUiState.isReady|{}isReady[0]
+        final fun <get-isReady>(): kotlin/Boolean // dev.brewkits.grant/GrantAndServiceUiState.isReady.<get-isReady>|<get-isReady>(){}[0]
+    final val isVisible // dev.brewkits.grant/GrantAndServiceUiState.isVisible|{}isVisible[0]
+        final fun <get-isVisible>(): kotlin/Boolean // dev.brewkits.grant/GrantAndServiceUiState.isVisible.<get-isVisible>|<get-isVisible>(){}[0]
+    final val permissionSettingsMessage // dev.brewkits.grant/GrantAndServiceUiState.permissionSettingsMessage|{}permissionSettingsMessage[0]
+        final fun <get-permissionSettingsMessage>(): kotlin/String? // dev.brewkits.grant/GrantAndServiceUiState.permissionSettingsMessage.<get-permissionSettingsMessage>|<get-permissionSettingsMessage>(){}[0]
+    final val rationaleMessage // dev.brewkits.grant/GrantAndServiceUiState.rationaleMessage|{}rationaleMessage[0]
+        final fun <get-rationaleMessage>(): kotlin/String? // dev.brewkits.grant/GrantAndServiceUiState.rationaleMessage.<get-rationaleMessage>|<get-rationaleMessage>(){}[0]
+    final val serviceSettingsMessage // dev.brewkits.grant/GrantAndServiceUiState.serviceSettingsMessage|{}serviceSettingsMessage[0]
+        final fun <get-serviceSettingsMessage>(): kotlin/String? // dev.brewkits.grant/GrantAndServiceUiState.serviceSettingsMessage.<get-serviceSettingsMessage>|<get-serviceSettingsMessage>(){}[0]
+    final val showPermissionSettings // dev.brewkits.grant/GrantAndServiceUiState.showPermissionSettings|{}showPermissionSettings[0]
+        final fun <get-showPermissionSettings>(): kotlin/Boolean // dev.brewkits.grant/GrantAndServiceUiState.showPermissionSettings.<get-showPermissionSettings>|<get-showPermissionSettings>(){}[0]
+    final val showRationale // dev.brewkits.grant/GrantAndServiceUiState.showRationale|{}showRationale[0]
+        final fun <get-showRationale>(): kotlin/Boolean // dev.brewkits.grant/GrantAndServiceUiState.showRationale.<get-showRationale>|<get-showRationale>(){}[0]
+    final val showServiceSettings // dev.brewkits.grant/GrantAndServiceUiState.showServiceSettings|{}showServiceSettings[0]
+        final fun <get-showServiceSettings>(): kotlin/Boolean // dev.brewkits.grant/GrantAndServiceUiState.showServiceSettings.<get-showServiceSettings>|<get-showServiceSettings>(){}[0]
+
+    final fun component1(): kotlin/Boolean // dev.brewkits.grant/GrantAndServiceUiState.component1|component1(){}[0]
+    final fun component2(): kotlin/Boolean // dev.brewkits.grant/GrantAndServiceUiState.component2|component2(){}[0]
+    final fun component3(): kotlin/Boolean // dev.brewkits.grant/GrantAndServiceUiState.component3|component3(){}[0]
+    final fun component4(): kotlin/Boolean // dev.brewkits.grant/GrantAndServiceUiState.component4|component4(){}[0]
+    final fun component5(): kotlin/String? // dev.brewkits.grant/GrantAndServiceUiState.component5|component5(){}[0]
+    final fun component6(): kotlin/String? // dev.brewkits.grant/GrantAndServiceUiState.component6|component6(){}[0]
+    final fun component7(): kotlin/String? // dev.brewkits.grant/GrantAndServiceUiState.component7|component7(){}[0]
+    final fun component8(): kotlin/Boolean // dev.brewkits.grant/GrantAndServiceUiState.component8|component8(){}[0]
+    final fun copy(kotlin/Boolean = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., kotlin/String? = ..., kotlin/String? = ..., kotlin/String? = ..., kotlin/Boolean = ...): dev.brewkits.grant/GrantAndServiceUiState // dev.brewkits.grant/GrantAndServiceUiState.copy|copy(kotlin.Boolean;kotlin.Boolean;kotlin.Boolean;kotlin.Boolean;kotlin.String?;kotlin.String?;kotlin.String?;kotlin.Boolean){}[0]
+    final fun equals(kotlin/Any?): kotlin/Boolean // dev.brewkits.grant/GrantAndServiceUiState.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // dev.brewkits.grant/GrantAndServiceUiState.hashCode|hashCode(){}[0]
+    final fun toString(): kotlin/String // dev.brewkits.grant/GrantAndServiceUiState.toString|toString(){}[0]
+}
+
+final class dev.brewkits.grant/GrantFlow { // dev.brewkits.grant/GrantFlow|null[0]
+    final suspend fun execute() // dev.brewkits.grant/GrantFlow.execute|execute(){}[0]
+}
+
+final class dev.brewkits.grant/GrantGroupHandler { // dev.brewkits.grant/GrantGroupHandler|null[0]
+    constructor <init>(dev.brewkits.grant/GrantManager, kotlin.collections/List<dev.brewkits.grant/GrantPermission>, kotlinx.coroutines/CoroutineScope, dev.brewkits.grant/GrantEventListener? = ...) // dev.brewkits.grant/GrantGroupHandler.<init>|<init>(dev.brewkits.grant.GrantManager;kotlin.collections.List<dev.brewkits.grant.GrantPermission>;kotlinx.coroutines.CoroutineScope;dev.brewkits.grant.GrantEventListener?){}[0]
+
+    final val state // dev.brewkits.grant/GrantGroupHandler.state|{}state[0]
+        final fun <get-state>(): kotlinx.coroutines.flow/StateFlow<dev.brewkits.grant/GrantGroupUiState> // dev.brewkits.grant/GrantGroupHandler.state.<get-state>|<get-state>(){}[0]
+    final val statuses // dev.brewkits.grant/GrantGroupHandler.statuses|{}statuses[0]
+        final fun <get-statuses>(): kotlinx.coroutines.flow/StateFlow<kotlin.collections/Map<dev.brewkits.grant/GrantPermission, dev.brewkits.grant/GrantStatus>> // dev.brewkits.grant/GrantGroupHandler.statuses.<get-statuses>|<get-statuses>(){}[0]
+
+    final fun onDismiss() // dev.brewkits.grant/GrantGroupHandler.onDismiss|onDismiss(){}[0]
+    final fun onRationaleConfirmed() // dev.brewkits.grant/GrantGroupHandler.onRationaleConfirmed|onRationaleConfirmed(){}[0]
+    final fun onSettingsConfirmed() // dev.brewkits.grant/GrantGroupHandler.onSettingsConfirmed|onSettingsConfirmed(){}[0]
+    final fun refreshAllStatuses() // dev.brewkits.grant/GrantGroupHandler.refreshAllStatuses|refreshAllStatuses(){}[0]
+    final fun request(kotlin.collections/Map<dev.brewkits.grant/GrantPermission, kotlin/String> = ..., kotlin.collections/Map<dev.brewkits.grant/GrantPermission, kotlin/String> = ..., kotlin/Function0<kotlin/Unit>) // dev.brewkits.grant/GrantGroupHandler.request|request(kotlin.collections.Map<dev.brewkits.grant.GrantPermission,kotlin.String>;kotlin.collections.Map<dev.brewkits.grant.GrantPermission,kotlin.String>;kotlin.Function0<kotlin.Unit>){}[0]
+}
+
+final class dev.brewkits.grant/GrantGroupUiState { // dev.brewkits.grant/GrantGroupUiState|null[0]
+    constructor <init>(kotlin/Boolean = ..., dev.brewkits.grant/GrantPermission? = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., kotlin/String? = ..., kotlin/String? = ..., kotlin.collections/Set<dev.brewkits.grant/GrantPermission> = ..., kotlin/Int = ...) // dev.brewkits.grant/GrantGroupUiState.<init>|<init>(kotlin.Boolean;dev.brewkits.grant.GrantPermission?;kotlin.Boolean;kotlin.Boolean;kotlin.String?;kotlin.String?;kotlin.collections.Set<dev.brewkits.grant.GrantPermission>;kotlin.Int){}[0]
+
+    final val currentGrant // dev.brewkits.grant/GrantGroupUiState.currentGrant|{}currentGrant[0]
+        final fun <get-currentGrant>(): dev.brewkits.grant/GrantPermission? // dev.brewkits.grant/GrantGroupUiState.currentGrant.<get-currentGrant>|<get-currentGrant>(){}[0]
+    final val grantedGrants // dev.brewkits.grant/GrantGroupUiState.grantedGrants|{}grantedGrants[0]
+        final fun <get-grantedGrants>(): kotlin.collections/Set<dev.brewkits.grant/GrantPermission> // dev.brewkits.grant/GrantGroupUiState.grantedGrants.<get-grantedGrants>|<get-grantedGrants>(){}[0]
+    final val isVisible // dev.brewkits.grant/GrantGroupUiState.isVisible|{}isVisible[0]
+        final fun <get-isVisible>(): kotlin/Boolean // dev.brewkits.grant/GrantGroupUiState.isVisible.<get-isVisible>|<get-isVisible>(){}[0]
+    final val rationaleMessage // dev.brewkits.grant/GrantGroupUiState.rationaleMessage|{}rationaleMessage[0]
+        final fun <get-rationaleMessage>(): kotlin/String? // dev.brewkits.grant/GrantGroupUiState.rationaleMessage.<get-rationaleMessage>|<get-rationaleMessage>(){}[0]
+    final val settingsMessage // dev.brewkits.grant/GrantGroupUiState.settingsMessage|{}settingsMessage[0]
+        final fun <get-settingsMessage>(): kotlin/String? // dev.brewkits.grant/GrantGroupUiState.settingsMessage.<get-settingsMessage>|<get-settingsMessage>(){}[0]
+    final val showRationale // dev.brewkits.grant/GrantGroupUiState.showRationale|{}showRationale[0]
+        final fun <get-showRationale>(): kotlin/Boolean // dev.brewkits.grant/GrantGroupUiState.showRationale.<get-showRationale>|<get-showRationale>(){}[0]
+    final val showSettingsGuide // dev.brewkits.grant/GrantGroupUiState.showSettingsGuide|{}showSettingsGuide[0]
+        final fun <get-showSettingsGuide>(): kotlin/Boolean // dev.brewkits.grant/GrantGroupUiState.showSettingsGuide.<get-showSettingsGuide>|<get-showSettingsGuide>(){}[0]
+    final val totalGrants // dev.brewkits.grant/GrantGroupUiState.totalGrants|{}totalGrants[0]
+        final fun <get-totalGrants>(): kotlin/Int // dev.brewkits.grant/GrantGroupUiState.totalGrants.<get-totalGrants>|<get-totalGrants>(){}[0]
+
+    final fun component1(): kotlin/Boolean // dev.brewkits.grant/GrantGroupUiState.component1|component1(){}[0]
+    final fun component2(): dev.brewkits.grant/GrantPermission? // dev.brewkits.grant/GrantGroupUiState.component2|component2(){}[0]
+    final fun component3(): kotlin/Boolean // dev.brewkits.grant/GrantGroupUiState.component3|component3(){}[0]
+    final fun component4(): kotlin/Boolean // dev.brewkits.grant/GrantGroupUiState.component4|component4(){}[0]
+    final fun component5(): kotlin/String? // dev.brewkits.grant/GrantGroupUiState.component5|component5(){}[0]
+    final fun component6(): kotlin/String? // dev.brewkits.grant/GrantGroupUiState.component6|component6(){}[0]
+    final fun component7(): kotlin.collections/Set<dev.brewkits.grant/GrantPermission> // dev.brewkits.grant/GrantGroupUiState.component7|component7(){}[0]
+    final fun component8(): kotlin/Int // dev.brewkits.grant/GrantGroupUiState.component8|component8(){}[0]
+    final fun copy(kotlin/Boolean = ..., dev.brewkits.grant/GrantPermission? = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., kotlin/String? = ..., kotlin/String? = ..., kotlin.collections/Set<dev.brewkits.grant/GrantPermission> = ..., kotlin/Int = ...): dev.brewkits.grant/GrantGroupUiState // dev.brewkits.grant/GrantGroupUiState.copy|copy(kotlin.Boolean;dev.brewkits.grant.GrantPermission?;kotlin.Boolean;kotlin.Boolean;kotlin.String?;kotlin.String?;kotlin.collections.Set<dev.brewkits.grant.GrantPermission>;kotlin.Int){}[0]
+    final fun equals(kotlin/Any?): kotlin/Boolean // dev.brewkits.grant/GrantGroupUiState.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // dev.brewkits.grant/GrantGroupUiState.hashCode|hashCode(){}[0]
+    final fun toString(): kotlin/String // dev.brewkits.grant/GrantGroupUiState.toString|toString(){}[0]
+}
+
+final class dev.brewkits.grant/GrantHandler { // dev.brewkits.grant/GrantHandler|null[0]
+    constructor <init>(dev.brewkits.grant/GrantManager, dev.brewkits.grant/GrantPermission, kotlinx.coroutines/CoroutineScope, dev.brewkits.grant/SavedStateDelegate = ..., dev.brewkits.grant/GrantEventListener? = ...) // dev.brewkits.grant/GrantHandler.<init>|<init>(dev.brewkits.grant.GrantManager;dev.brewkits.grant.GrantPermission;kotlinx.coroutines.CoroutineScope;dev.brewkits.grant.SavedStateDelegate;dev.brewkits.grant.GrantEventListener?){}[0]
+
+    final val state // dev.brewkits.grant/GrantHandler.state|{}state[0]
+        final fun <get-state>(): kotlinx.coroutines.flow/StateFlow<dev.brewkits.grant/GrantUiState> // dev.brewkits.grant/GrantHandler.state.<get-state>|<get-state>(){}[0]
+    final val status // dev.brewkits.grant/GrantHandler.status|{}status[0]
+        final fun <get-status>(): kotlinx.coroutines.flow/StateFlow<dev.brewkits.grant/GrantStatus> // dev.brewkits.grant/GrantHandler.status.<get-status>|<get-status>(){}[0]
+
+    final fun onDismiss() // dev.brewkits.grant/GrantHandler.onDismiss|onDismiss(){}[0]
+    final fun onRationaleConfirmed() // dev.brewkits.grant/GrantHandler.onRationaleConfirmed|onRationaleConfirmed(){}[0]
+    final fun onReturnFromSettings() // dev.brewkits.grant/GrantHandler.onReturnFromSettings|onReturnFromSettings(){}[0]
+    final fun onSettingsConfirmed() // dev.brewkits.grant/GrantHandler.onSettingsConfirmed|onSettingsConfirmed(){}[0]
+    final fun refreshStatus() // dev.brewkits.grant/GrantHandler.refreshStatus|refreshStatus(){}[0]
+    final fun request(kotlin/String? = ..., kotlin/String? = ..., kotlin/Function1<dev.brewkits.grant/GrantStatus, kotlin/Unit>) // dev.brewkits.grant/GrantHandler.request|request(kotlin.String?;kotlin.String?;kotlin.Function1<dev.brewkits.grant.GrantStatus,kotlin.Unit>){}[0]
+    final fun requestFlow(kotlin/String? = ..., kotlin/String? = ...): kotlinx.coroutines.flow/Flow<dev.brewkits.grant/GrantStatus> // dev.brewkits.grant/GrantHandler.requestFlow|requestFlow(kotlin.String?;kotlin.String?){}[0]
+    final fun requestWithCustomUi(kotlin/String? = ..., kotlin/String? = ..., kotlin/Function3<kotlin/String, kotlin/Function0<kotlin/Unit>, kotlin/Function0<kotlin/Unit>, kotlin/Unit>, kotlin/Function3<kotlin/String, kotlin/Function0<kotlin/Unit>, kotlin/Function0<kotlin/Unit>, kotlin/Unit>, kotlin/Function1<dev.brewkits.grant/GrantStatus, kotlin/Unit>) // dev.brewkits.grant/GrantHandler.requestWithCustomUi|requestWithCustomUi(kotlin.String?;kotlin.String?;kotlin.Function3<kotlin.String,kotlin.Function0<kotlin.Unit>,kotlin.Function0<kotlin.Unit>,kotlin.Unit>;kotlin.Function3<kotlin.String,kotlin.Function0<kotlin.Unit>,kotlin.Function0<kotlin.Unit>,kotlin.Unit>;kotlin.Function1<dev.brewkits.grant.GrantStatus,kotlin.Unit>){}[0]
+    final suspend fun requestSuspend(kotlin/String? = ..., kotlin/String? = ...): dev.brewkits.grant/GrantStatus // dev.brewkits.grant/GrantHandler.requestSuspend|requestSuspend(kotlin.String?;kotlin.String?){}[0]
+}
+
+final class dev.brewkits.grant/GrantUiState { // dev.brewkits.grant/GrantUiState|null[0]
+    constructor <init>(kotlin/Boolean = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., kotlin/String? = ..., kotlin/String? = ...) // dev.brewkits.grant/GrantUiState.<init>|<init>(kotlin.Boolean;kotlin.Boolean;kotlin.Boolean;kotlin.String?;kotlin.String?){}[0]
+
+    final val isVisible // dev.brewkits.grant/GrantUiState.isVisible|{}isVisible[0]
+        final fun <get-isVisible>(): kotlin/Boolean // dev.brewkits.grant/GrantUiState.isVisible.<get-isVisible>|<get-isVisible>(){}[0]
+    final val rationaleMessage // dev.brewkits.grant/GrantUiState.rationaleMessage|{}rationaleMessage[0]
+        final fun <get-rationaleMessage>(): kotlin/String? // dev.brewkits.grant/GrantUiState.rationaleMessage.<get-rationaleMessage>|<get-rationaleMessage>(){}[0]
+    final val settingsMessage // dev.brewkits.grant/GrantUiState.settingsMessage|{}settingsMessage[0]
+        final fun <get-settingsMessage>(): kotlin/String? // dev.brewkits.grant/GrantUiState.settingsMessage.<get-settingsMessage>|<get-settingsMessage>(){}[0]
+    final val showRationale // dev.brewkits.grant/GrantUiState.showRationale|{}showRationale[0]
+        final fun <get-showRationale>(): kotlin/Boolean // dev.brewkits.grant/GrantUiState.showRationale.<get-showRationale>|<get-showRationale>(){}[0]
+    final val showSettingsGuide // dev.brewkits.grant/GrantUiState.showSettingsGuide|{}showSettingsGuide[0]
+        final fun <get-showSettingsGuide>(): kotlin/Boolean // dev.brewkits.grant/GrantUiState.showSettingsGuide.<get-showSettingsGuide>|<get-showSettingsGuide>(){}[0]
+
+    final fun component1(): kotlin/Boolean // dev.brewkits.grant/GrantUiState.component1|component1(){}[0]
+    final fun component2(): kotlin/Boolean // dev.brewkits.grant/GrantUiState.component2|component2(){}[0]
+    final fun component3(): kotlin/Boolean // dev.brewkits.grant/GrantUiState.component3|component3(){}[0]
+    final fun component4(): kotlin/String? // dev.brewkits.grant/GrantUiState.component4|component4(){}[0]
+    final fun component5(): kotlin/String? // dev.brewkits.grant/GrantUiState.component5|component5(){}[0]
+    final fun copy(kotlin/Boolean = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., kotlin/String? = ..., kotlin/String? = ...): dev.brewkits.grant/GrantUiState // dev.brewkits.grant/GrantUiState.copy|copy(kotlin.Boolean;kotlin.Boolean;kotlin.Boolean;kotlin.String?;kotlin.String?){}[0]
+    final fun equals(kotlin/Any?): kotlin/Boolean // dev.brewkits.grant/GrantUiState.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // dev.brewkits.grant/GrantUiState.hashCode|hashCode(){}[0]
+    final fun toString(): kotlin/String // dev.brewkits.grant/GrantUiState.toString|toString(){}[0]
+}
+
+final class dev.brewkits.grant/InMemoryGrantStore : dev.brewkits.grant/GrantStore { // dev.brewkits.grant/InMemoryGrantStore|null[0]
+    constructor <init>() // dev.brewkits.grant/InMemoryGrantStore.<init>|<init>(){}[0]
+
+    final fun clear() // dev.brewkits.grant/InMemoryGrantStore.clear|clear(){}[0]
+    final fun clear(dev.brewkits.grant/AppGrant) // dev.brewkits.grant/InMemoryGrantStore.clear|clear(dev.brewkits.grant.AppGrant){}[0]
+    final fun getStatus(dev.brewkits.grant/AppGrant): dev.brewkits.grant/GrantStatus? // dev.brewkits.grant/InMemoryGrantStore.getStatus|getStatus(dev.brewkits.grant.AppGrant){}[0]
+    final fun isRawPermissionRequested(kotlin/String): kotlin/Boolean // dev.brewkits.grant/InMemoryGrantStore.isRawPermissionRequested|isRawPermissionRequested(kotlin.String){}[0]
+    final fun isRequestedBefore(dev.brewkits.grant/AppGrant): kotlin/Boolean // dev.brewkits.grant/InMemoryGrantStore.isRequestedBefore|isRequestedBefore(dev.brewkits.grant.AppGrant){}[0]
+    final fun markRawPermissionRequested(kotlin/String) // dev.brewkits.grant/InMemoryGrantStore.markRawPermissionRequested|markRawPermissionRequested(kotlin.String){}[0]
+    final fun setRequested(dev.brewkits.grant/AppGrant) // dev.brewkits.grant/InMemoryGrantStore.setRequested|setRequested(dev.brewkits.grant.AppGrant){}[0]
+    final fun setStatus(dev.brewkits.grant/AppGrant, dev.brewkits.grant/GrantStatus) // dev.brewkits.grant/InMemoryGrantStore.setStatus|setStatus(dev.brewkits.grant.AppGrant;dev.brewkits.grant.GrantStatus){}[0]
+}
+
+final class dev.brewkits.grant/NoOpSavedStateDelegate : dev.brewkits.grant/SavedStateDelegate { // dev.brewkits.grant/NoOpSavedStateDelegate|null[0]
+    constructor <init>() // dev.brewkits.grant/NoOpSavedStateDelegate.<init>|<init>(){}[0]
+
+    final fun clear(kotlin/String) // dev.brewkits.grant/NoOpSavedStateDelegate.clear|clear(kotlin.String){}[0]
+    final fun restoreState(kotlin/String): kotlin/String? // dev.brewkits.grant/NoOpSavedStateDelegate.restoreState|restoreState(kotlin.String){}[0]
+    final fun saveState(kotlin/String, kotlin/String) // dev.brewkits.grant/NoOpSavedStateDelegate.saveState|saveState(kotlin.String;kotlin.String){}[0]
+}
+
+final class dev.brewkits.grant/RawPermission : dev.brewkits.grant/GrantPermission { // dev.brewkits.grant/RawPermission|null[0]
+    constructor <init>(kotlin/String, kotlin.collections/List<kotlin/String>, kotlin/String? = ...) // dev.brewkits.grant/RawPermission.<init>|<init>(kotlin.String;kotlin.collections.List<kotlin.String>;kotlin.String?){}[0]
+
+    final val androidPermissions // dev.brewkits.grant/RawPermission.androidPermissions|{}androidPermissions[0]
+        final fun <get-androidPermissions>(): kotlin.collections/List<kotlin/String> // dev.brewkits.grant/RawPermission.androidPermissions.<get-androidPermissions>|<get-androidPermissions>(){}[0]
+    final val identifier // dev.brewkits.grant/RawPermission.identifier|{}identifier[0]
+        final fun <get-identifier>(): kotlin/String // dev.brewkits.grant/RawPermission.identifier.<get-identifier>|<get-identifier>(){}[0]
+    final val iosUsageKey // dev.brewkits.grant/RawPermission.iosUsageKey|{}iosUsageKey[0]
+        final fun <get-iosUsageKey>(): kotlin/String? // dev.brewkits.grant/RawPermission.iosUsageKey.<get-iosUsageKey>|<get-iosUsageKey>(){}[0]
+
+    final fun component1(): kotlin/String // dev.brewkits.grant/RawPermission.component1|component1(){}[0]
+    final fun component2(): kotlin.collections/List<kotlin/String> // dev.brewkits.grant/RawPermission.component2|component2(){}[0]
+    final fun component3(): kotlin/String? // dev.brewkits.grant/RawPermission.component3|component3(){}[0]
+    final fun copy(kotlin/String = ..., kotlin.collections/List<kotlin/String> = ..., kotlin/String? = ...): dev.brewkits.grant/RawPermission // dev.brewkits.grant/RawPermission.copy|copy(kotlin.String;kotlin.collections.List<kotlin.String>;kotlin.String?){}[0]
+    final fun equals(kotlin/Any?): kotlin/Boolean // dev.brewkits.grant/RawPermission.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // dev.brewkits.grant/RawPermission.hashCode|hashCode(){}[0]
+    final fun toString(): kotlin/String // dev.brewkits.grant/RawPermission.toString|toString(){}[0]
+}
+
+final class dev.brewkits.grant/ReadyStatus { // dev.brewkits.grant/ReadyStatus|null[0]
+    constructor <init>(dev.brewkits.grant/GrantStatus, dev.brewkits.grant/ServiceStatus, kotlin/Boolean) // dev.brewkits.grant/ReadyStatus.<init>|<init>(dev.brewkits.grant.GrantStatus;dev.brewkits.grant.ServiceStatus;kotlin.Boolean){}[0]
+
+    final val grantStatus // dev.brewkits.grant/ReadyStatus.grantStatus|{}grantStatus[0]
+        final fun <get-grantStatus>(): dev.brewkits.grant/GrantStatus // dev.brewkits.grant/ReadyStatus.grantStatus.<get-grantStatus>|<get-grantStatus>(){}[0]
+    final val isReady // dev.brewkits.grant/ReadyStatus.isReady|{}isReady[0]
+        final fun <get-isReady>(): kotlin/Boolean // dev.brewkits.grant/ReadyStatus.isReady.<get-isReady>|<get-isReady>(){}[0]
+    final val message // dev.brewkits.grant/ReadyStatus.message|{}message[0]
+        final fun <get-message>(): kotlin/String // dev.brewkits.grant/ReadyStatus.message.<get-message>|<get-message>(){}[0]
+    final val serviceStatus // dev.brewkits.grant/ReadyStatus.serviceStatus|{}serviceStatus[0]
+        final fun <get-serviceStatus>(): dev.brewkits.grant/ServiceStatus // dev.brewkits.grant/ReadyStatus.serviceStatus.<get-serviceStatus>|<get-serviceStatus>(){}[0]
+
+    final fun component1(): dev.brewkits.grant/GrantStatus // dev.brewkits.grant/ReadyStatus.component1|component1(){}[0]
+    final fun component2(): dev.brewkits.grant/ServiceStatus // dev.brewkits.grant/ReadyStatus.component2|component2(){}[0]
+    final fun component3(): kotlin/Boolean // dev.brewkits.grant/ReadyStatus.component3|component3(){}[0]
+    final fun copy(dev.brewkits.grant/GrantStatus = ..., dev.brewkits.grant/ServiceStatus = ..., kotlin/Boolean = ...): dev.brewkits.grant/ReadyStatus // dev.brewkits.grant/ReadyStatus.copy|copy(dev.brewkits.grant.GrantStatus;dev.brewkits.grant.ServiceStatus;kotlin.Boolean){}[0]
+    final fun equals(kotlin/Any?): kotlin/Boolean // dev.brewkits.grant/ReadyStatus.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // dev.brewkits.grant/ReadyStatus.hashCode|hashCode(){}[0]
+    final fun toString(): kotlin/String // dev.brewkits.grant/ReadyStatus.toString|toString(){}[0]
+}
+
+sealed class dev.brewkits.grant/BluetoothReadyStatus { // dev.brewkits.grant/BluetoothReadyStatus|null[0]
+    final class BothRequired : dev.brewkits.grant/BluetoothReadyStatus { // dev.brewkits.grant/BluetoothReadyStatus.BothRequired|null[0]
+        constructor <init>(dev.brewkits.grant/GrantStatus) // dev.brewkits.grant/BluetoothReadyStatus.BothRequired.<init>|<init>(dev.brewkits.grant.GrantStatus){}[0]
+
+        final val grantStatus // dev.brewkits.grant/BluetoothReadyStatus.BothRequired.grantStatus|{}grantStatus[0]
+            final fun <get-grantStatus>(): dev.brewkits.grant/GrantStatus // dev.brewkits.grant/BluetoothReadyStatus.BothRequired.grantStatus.<get-grantStatus>|<get-grantStatus>(){}[0]
+
+        final fun component1(): dev.brewkits.grant/GrantStatus // dev.brewkits.grant/BluetoothReadyStatus.BothRequired.component1|component1(){}[0]
+        final fun copy(dev.brewkits.grant/GrantStatus = ...): dev.brewkits.grant/BluetoothReadyStatus.BothRequired // dev.brewkits.grant/BluetoothReadyStatus.BothRequired.copy|copy(dev.brewkits.grant.GrantStatus){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // dev.brewkits.grant/BluetoothReadyStatus.BothRequired.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // dev.brewkits.grant/BluetoothReadyStatus.BothRequired.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // dev.brewkits.grant/BluetoothReadyStatus.BothRequired.toString|toString(){}[0]
+    }
+
+    final class GrantDenied : dev.brewkits.grant/BluetoothReadyStatus { // dev.brewkits.grant/BluetoothReadyStatus.GrantDenied|null[0]
+        constructor <init>(dev.brewkits.grant/GrantStatus) // dev.brewkits.grant/BluetoothReadyStatus.GrantDenied.<init>|<init>(dev.brewkits.grant.GrantStatus){}[0]
+
+        final val grantStatus // dev.brewkits.grant/BluetoothReadyStatus.GrantDenied.grantStatus|{}grantStatus[0]
+            final fun <get-grantStatus>(): dev.brewkits.grant/GrantStatus // dev.brewkits.grant/BluetoothReadyStatus.GrantDenied.grantStatus.<get-grantStatus>|<get-grantStatus>(){}[0]
+
+        final fun component1(): dev.brewkits.grant/GrantStatus // dev.brewkits.grant/BluetoothReadyStatus.GrantDenied.component1|component1(){}[0]
+        final fun copy(dev.brewkits.grant/GrantStatus = ...): dev.brewkits.grant/BluetoothReadyStatus.GrantDenied // dev.brewkits.grant/BluetoothReadyStatus.GrantDenied.copy|copy(dev.brewkits.grant.GrantStatus){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // dev.brewkits.grant/BluetoothReadyStatus.GrantDenied.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // dev.brewkits.grant/BluetoothReadyStatus.GrantDenied.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // dev.brewkits.grant/BluetoothReadyStatus.GrantDenied.toString|toString(){}[0]
+    }
+
+    final object Ready : dev.brewkits.grant/BluetoothReadyStatus // dev.brewkits.grant/BluetoothReadyStatus.Ready|null[0]
+
+    final object ServiceDisabled : dev.brewkits.grant/BluetoothReadyStatus // dev.brewkits.grant/BluetoothReadyStatus.ServiceDisabled|null[0]
+
+    final object Unknown : dev.brewkits.grant/BluetoothReadyStatus // dev.brewkits.grant/BluetoothReadyStatus.Unknown|null[0]
+}
+
+sealed class dev.brewkits.grant/LocationReadyStatus { // dev.brewkits.grant/LocationReadyStatus|null[0]
+    final class BothRequired : dev.brewkits.grant/LocationReadyStatus { // dev.brewkits.grant/LocationReadyStatus.BothRequired|null[0]
+        constructor <init>(dev.brewkits.grant/GrantStatus) // dev.brewkits.grant/LocationReadyStatus.BothRequired.<init>|<init>(dev.brewkits.grant.GrantStatus){}[0]
+
+        final val grantStatus // dev.brewkits.grant/LocationReadyStatus.BothRequired.grantStatus|{}grantStatus[0]
+            final fun <get-grantStatus>(): dev.brewkits.grant/GrantStatus // dev.brewkits.grant/LocationReadyStatus.BothRequired.grantStatus.<get-grantStatus>|<get-grantStatus>(){}[0]
+
+        final fun component1(): dev.brewkits.grant/GrantStatus // dev.brewkits.grant/LocationReadyStatus.BothRequired.component1|component1(){}[0]
+        final fun copy(dev.brewkits.grant/GrantStatus = ...): dev.brewkits.grant/LocationReadyStatus.BothRequired // dev.brewkits.grant/LocationReadyStatus.BothRequired.copy|copy(dev.brewkits.grant.GrantStatus){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // dev.brewkits.grant/LocationReadyStatus.BothRequired.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // dev.brewkits.grant/LocationReadyStatus.BothRequired.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // dev.brewkits.grant/LocationReadyStatus.BothRequired.toString|toString(){}[0]
+    }
+
+    final class GrantDenied : dev.brewkits.grant/LocationReadyStatus { // dev.brewkits.grant/LocationReadyStatus.GrantDenied|null[0]
+        constructor <init>(dev.brewkits.grant/GrantStatus) // dev.brewkits.grant/LocationReadyStatus.GrantDenied.<init>|<init>(dev.brewkits.grant.GrantStatus){}[0]
+
+        final val grantStatus // dev.brewkits.grant/LocationReadyStatus.GrantDenied.grantStatus|{}grantStatus[0]
+            final fun <get-grantStatus>(): dev.brewkits.grant/GrantStatus // dev.brewkits.grant/LocationReadyStatus.GrantDenied.grantStatus.<get-grantStatus>|<get-grantStatus>(){}[0]
+
+        final fun component1(): dev.brewkits.grant/GrantStatus // dev.brewkits.grant/LocationReadyStatus.GrantDenied.component1|component1(){}[0]
+        final fun copy(dev.brewkits.grant/GrantStatus = ...): dev.brewkits.grant/LocationReadyStatus.GrantDenied // dev.brewkits.grant/LocationReadyStatus.GrantDenied.copy|copy(dev.brewkits.grant.GrantStatus){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // dev.brewkits.grant/LocationReadyStatus.GrantDenied.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // dev.brewkits.grant/LocationReadyStatus.GrantDenied.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // dev.brewkits.grant/LocationReadyStatus.GrantDenied.toString|toString(){}[0]
+    }
+
+    final object Ready : dev.brewkits.grant/LocationReadyStatus // dev.brewkits.grant/LocationReadyStatus.Ready|null[0]
+
+    final object ServiceDisabled : dev.brewkits.grant/LocationReadyStatus // dev.brewkits.grant/LocationReadyStatus.ServiceDisabled|null[0]
+
+    final object Unknown : dev.brewkits.grant/LocationReadyStatus // dev.brewkits.grant/LocationReadyStatus.Unknown|null[0]
+}
+
+final object dev.brewkits.grant.handlers/IosPermissionHandlerRegistry { // dev.brewkits.grant.handlers/IosPermissionHandlerRegistry|null[0]
+    final fun register(kotlin/String, dev.brewkits.grant.handlers/PermissionHandler) // dev.brewkits.grant.handlers/IosPermissionHandlerRegistry.register|register(kotlin.String;dev.brewkits.grant.handlers.PermissionHandler){}[0]
+}
+
+final object dev.brewkits.grant.utils/GrantLogger { // dev.brewkits.grant.utils/GrantLogger|null[0]
+    final var isEnabled // dev.brewkits.grant.utils/GrantLogger.isEnabled|{}isEnabled[0]
+        final fun <get-isEnabled>(): kotlin/Boolean // dev.brewkits.grant.utils/GrantLogger.isEnabled.<get-isEnabled>|<get-isEnabled>(){}[0]
+        final fun <set-isEnabled>(kotlin/Boolean) // dev.brewkits.grant.utils/GrantLogger.isEnabled.<set-isEnabled>|<set-isEnabled>(kotlin.Boolean){}[0]
+    final var logHandler // dev.brewkits.grant.utils/GrantLogger.logHandler|{}logHandler[0]
+        final fun <get-logHandler>(): kotlin/Function3<dev.brewkits.grant.utils/GrantLogger.LogLevel, kotlin/String, kotlin/String, kotlin/Unit>? // dev.brewkits.grant.utils/GrantLogger.logHandler.<get-logHandler>|<get-logHandler>(){}[0]
+        final fun <set-logHandler>(kotlin/Function3<dev.brewkits.grant.utils/GrantLogger.LogLevel, kotlin/String, kotlin/String, kotlin/Unit>?) // dev.brewkits.grant.utils/GrantLogger.logHandler.<set-logHandler>|<set-logHandler>(kotlin.Function3<dev.brewkits.grant.utils.GrantLogger.LogLevel,kotlin.String,kotlin.String,kotlin.Unit>?){}[0]
+
+    final fun d(kotlin/String, kotlin/String) // dev.brewkits.grant.utils/GrantLogger.d|d(kotlin.String;kotlin.String){}[0]
+    final fun e(kotlin/String, kotlin/String, kotlin/Throwable? = ...) // dev.brewkits.grant.utils/GrantLogger.e|e(kotlin.String;kotlin.String;kotlin.Throwable?){}[0]
+    final fun i(kotlin/String, kotlin/String) // dev.brewkits.grant.utils/GrantLogger.i|i(kotlin.String;kotlin.String){}[0]
+    final fun w(kotlin/String, kotlin/String) // dev.brewkits.grant.utils/GrantLogger.w|w(kotlin.String;kotlin.String){}[0]
+
+    final enum class LogLevel : kotlin/Enum<dev.brewkits.grant.utils/GrantLogger.LogLevel> { // dev.brewkits.grant.utils/GrantLogger.LogLevel|null[0]
+        enum entry DEBUG // dev.brewkits.grant.utils/GrantLogger.LogLevel.DEBUG|null[0]
+        enum entry ERROR // dev.brewkits.grant.utils/GrantLogger.LogLevel.ERROR|null[0]
+        enum entry INFO // dev.brewkits.grant.utils/GrantLogger.LogLevel.INFO|null[0]
+        enum entry WARNING // dev.brewkits.grant.utils/GrantLogger.LogLevel.WARNING|null[0]
+
+        final val entries // dev.brewkits.grant.utils/GrantLogger.LogLevel.entries|#static{}entries[0]
+            final fun <get-entries>(): kotlin.enums/EnumEntries<dev.brewkits.grant.utils/GrantLogger.LogLevel> // dev.brewkits.grant.utils/GrantLogger.LogLevel.entries.<get-entries>|<get-entries>#static(){}[0]
+
+        final fun valueOf(kotlin/String): dev.brewkits.grant.utils/GrantLogger.LogLevel // dev.brewkits.grant.utils/GrantLogger.LogLevel.valueOf|valueOf#static(kotlin.String){}[0]
+        final fun values(): kotlin/Array<dev.brewkits.grant.utils/GrantLogger.LogLevel> // dev.brewkits.grant.utils/GrantLogger.LogLevel.values|values#static(){}[0]
+    }
+}
+
+final object dev.brewkits.grant.utils/SimulatorDetector { // dev.brewkits.grant.utils/SimulatorDetector|null[0]
+    final val isSimulator // dev.brewkits.grant.utils/SimulatorDetector.isSimulator|{}isSimulator[0]
+        final fun <get-isSimulator>(): kotlin/Boolean // dev.brewkits.grant.utils/SimulatorDetector.isSimulator.<get-isSimulator>|<get-isSimulator>(){}[0]
+    final val simulatorType // dev.brewkits.grant.utils/SimulatorDetector.simulatorType|{}simulatorType[0]
+        final fun <get-simulatorType>(): kotlin/String // dev.brewkits.grant.utils/SimulatorDetector.simulatorType.<get-simulatorType>|<get-simulatorType>(){}[0]
+
+    final var mockSimulatorGranted // dev.brewkits.grant.utils/SimulatorDetector.mockSimulatorGranted|{}mockSimulatorGranted[0]
+        final fun <get-mockSimulatorGranted>(): kotlin/Boolean // dev.brewkits.grant.utils/SimulatorDetector.mockSimulatorGranted.<get-mockSimulatorGranted>|<get-mockSimulatorGranted>(){}[0]
+        final fun <set-mockSimulatorGranted>(kotlin/Boolean) // dev.brewkits.grant.utils/SimulatorDetector.mockSimulatorGranted.<set-mockSimulatorGranted>|<set-mockSimulatorGranted>(kotlin.Boolean){}[0]
+}
+
+final object dev.brewkits.grant/GrantFactory { // dev.brewkits.grant/GrantFactory|null[0]
+    final fun create(kotlin/Any? = ..., dev.brewkits.grant/GrantStore? = ...): dev.brewkits.grant/GrantManager // dev.brewkits.grant/GrantFactory.create|create(kotlin.Any?;dev.brewkits.grant.GrantStore?){}[0]
+}
+
+final object dev.brewkits.grant/ServiceFactory { // dev.brewkits.grant/ServiceFactory|null[0]
+    final fun createServiceManager(): dev.brewkits.grant/ServiceManager // dev.brewkits.grant/ServiceFactory.createServiceManager|createServiceManager(){}[0]
+}
+
+final fun (dev.brewkits.grant/GrantStore).dev.brewkits.grant/getStatus(dev.brewkits.grant/GrantPermission): dev.brewkits.grant/GrantStatus? // dev.brewkits.grant/getStatus|getStatus@dev.brewkits.grant.GrantStore(dev.brewkits.grant.GrantPermission){}[0]
+final fun (dev.brewkits.grant/GrantStore).dev.brewkits.grant/isRequestedBefore(dev.brewkits.grant/GrantPermission): kotlin/Boolean // dev.brewkits.grant/isRequestedBefore|isRequestedBefore@dev.brewkits.grant.GrantStore(dev.brewkits.grant.GrantPermission){}[0]
+final fun (dev.brewkits.grant/GrantStore).dev.brewkits.grant/setRequested(dev.brewkits.grant/GrantPermission) // dev.brewkits.grant/setRequested|setRequested@dev.brewkits.grant.GrantStore(dev.brewkits.grant.GrantPermission){}[0]
+final fun dev.brewkits.grant.utils/hasInfoPlistKey(kotlin/String, kotlin/String): kotlin/Boolean // dev.brewkits.grant.utils/hasInfoPlistKey|hasInfoPlistKey(kotlin.String;kotlin.String){}[0]
+final fun dev.brewkits.grant/createPlatformDelegate(kotlin/Any?, dev.brewkits.grant/GrantStore?): dev.brewkits.grant.impl/PlatformGrantDelegate // dev.brewkits.grant/createPlatformDelegate|createPlatformDelegate(kotlin.Any?;dev.brewkits.grant.GrantStore?){}[0]
+final fun dev.brewkits.grant/grantFlow(kotlin.coroutines/SuspendFunction1<dev.brewkits.grant/GrantFlowScope, kotlin/Unit>): dev.brewkits.grant/GrantFlow // dev.brewkits.grant/grantFlow|grantFlow(kotlin.coroutines.SuspendFunction1<dev.brewkits.grant.GrantFlowScope,kotlin.Unit>){}[0]
+final inline fun <#A: kotlin/Any?, #B: kotlin/Any?> dev.brewkits.grant.utils/mainContinuation2(noinline kotlin/Function2<#A, #B, kotlin/Unit>): kotlin/Function2<#A, #B, kotlin/Unit> // dev.brewkits.grant.utils/mainContinuation2|mainContinuation2(kotlin.Function2<0:0,0:1,kotlin.Unit>){0§<kotlin.Any?>;1§<kotlin.Any?>}[0]
+final inline fun <#A: kotlin/Any?> dev.brewkits.grant.utils/mainContinuation(noinline kotlin/Function1<#A, kotlin/Unit>): kotlin/Function1<#A, kotlin/Unit> // dev.brewkits.grant.utils/mainContinuation|mainContinuation(kotlin.Function1<0:0,kotlin.Unit>){0§<kotlin.Any?>}[0]

@@ -1,0 +1,5 @@
+public final class dev/brewkits/grant/motion/GrantMotion {
+	public static final field INSTANCE Ldev/brewkits/grant/motion/GrantMotion;
+	public final fun initialize ()V
+}
+

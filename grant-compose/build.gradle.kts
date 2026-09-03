@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kover)
     id("maven-publish")
+    alias(libs.plugins.dokka)
 }
 
 group = "dev.brewkits"
@@ -26,6 +27,12 @@ kotlin {
     }
 
     jvmToolchain(17)
+
+    // Public API surface lock (KGP 2.4 built-in ABI validation, klib included).
+    // Dumps live in api/ and are verified by CI. See grant-core for rationale.
+    @OptIn(org.jetbrains.kotlin.gradle.dsl.abi.ExperimentalAbiValidation::class)
+    abiValidation {
+    }
 
     // iosX64 dropped in 2.3.0: Compose Multiplatform 1.11 stopped publishing iosX64
     // artifacts, so the target can no longer resolve its compose dependencies. Breaking
