@@ -6,9 +6,14 @@
 //
 
 import SwiftUI
+import GrantDemoShared
 
 @main
 struct GrantDemoApp: App {
+    init() {
+        DemoLogging.shared.enableGrantLogging()
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()

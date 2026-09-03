@@ -1,10 +1,63 @@
 # Grant Library — Roadmap
 
-> Last updated: 2026-09-03 · Current stable: **v2.3.0** (live on Maven Central) · Next: **v2.4.0**, then **v2.5.0**
+> Last updated: 2026-09-04 · Current stable: **v2.3.0** (live on Maven Central) · Next: **v2.4.0**, then **v2.5.0**
 
 ---
 
 ## 🛠️ In Progress / Upcoming
+
+### v2.4.1 — Pre-publish device verification
+
+Found by actually running the demo app — iPhone 16 Pro Simulator and a physical Android 17
+device — through all three scenarios (sequential, parallel, denial→rationale→settings), not
+just unit tests.
+
+**1. Calendar plist-check false alarm** ✅ *fixed*
+- [x] `CalendarPermissionHandler` accepts either `NSCalendarsUsageDescription` (legacy) or
+  `NSCalendarsFullAccessUsageDescription` (iOS 17+), but built that OR out of two calls to
+  the shared `hasInfoPlistKey()` helper, which logs an error for *whichever one key* it was
+  asked about — so an app carrying only the legacy key (a **correct** configuration) saw
+  `❌ MISSING Info.plist key: 'NSCalendarsFullAccessUsageDescription' ... Returning
+  DENIED_ALWAYS as a safety fallback` on every check, despite the real result being
+  `NOT_DETERMINED`. Reproduced on the demo's own `Info.plist`.
+- [x] Fixed by pulling the decision logic into `evaluateCalendarPlistKeys(hasLegacy, hasFull)`,
+  a pure function that logs once, accurately, only when *neither* key is present. Regression
+  tests in `CalendarPlistLoggingTest` drive all four (hasLegacy, hasFull) combinations
+  directly — confirmed to fail against the original per-key-logs-unconditionally behavior
+  before the fix landed, by temporarily reproducing it.
+
+**2. `GrantLogger`'s console output is invisible on retail Android** — *documented, not a bug*
+- [x] `println`/`System.out` is routed to Logcat only on `userdebug`/`eng` Android system
+  images; a `user`-build device — verified on a physical Android 17 phone,
+  `ro.build.type=user`, `ro.debuggable=0`, which is what real end-user hardware runs —
+  never forwards it. `GrantLogger.isEnabled = true` alone is therefore invisible on exactly
+  the devices most integrators will eventually test on.
+- [x] Not a library defect: `GrantLogger.logHandler` bypasses `println` entirely and was
+  confirmed to work correctly on the same device once wired to `android.util.Log`. Documented
+  on `GrantLogger`'s KDoc; the demo's `DemoApplication` now installs a `Log.d`-backed handler
+  so its own Logcat output works out of the box on any device, not just emulators.
+
+**3. `GrantLogger`'s scope was misdocumented** ✅ *fixed*
+- [x] The top-level KDoc read as if `GrantLogger` traced every permission-flow step
+  (requested/granted/denied/rationale/settings). It does not — that is
+  `GrantEventListener`, a separate mechanism. `GrantLogger` only covers the library's own
+  internal diagnostics (missing plist keys, unregistered modules, Settings-navigation
+  failures). Corrected, with a cross-reference distinguishing the two.
+
+**4. `grant-core` was missing two of its own documented test categories** ✅ *fixed*
+- [x] CLAUDE.md's test taxonomy (`integration/ performance/ regression/ security/ system/
+  stress/`) is fully present in every opt-in module (`grant-contacts`, `grant-calendar`,
+  `grant-motion`, `grant-bluetooth`, `grant-location-always`) — but `grant-core`, the module
+  the convention exists for, had no `performance/` or `system/` folder at all.
+- [x] Added `GrantCoreSystemTest` (realistic end-to-end scenarios spanning `GrantHandler`,
+  `GrantGroupHandler`, `GrantAndServiceHandler`/`Checker`, and `RawPermission` together — the
+  combinations the smaller modules can't exercise since they only have `GrantHandler` on
+  their surface) and `GrantCorePerformanceTest` (the same scale checks the other modules'
+  `performance/` suites run — 1000-call loops, hundreds of independent handler instances —
+  extended to `GrantGroupHandler` and `GrantAndServiceHandler`). 13 new tests, all passing on
+  both Android and iOS Simulator.
+
+
 
 ### v2.4.0 — API Stability + Docs ✅ *merged to main in #66*
 *Focus: lock the public API surface down, publish real API docs, and stop advertising a Swift distribution that never worked.*
