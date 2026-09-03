@@ -25,16 +25,16 @@ package dev.brewkits.grant
  * val status = grantManager.request(customPermission)
  * ```
  */
-sealed interface GrantPermission {
+public sealed interface GrantPermission {
     /**
      * Unique identifier for this permission.
      */
-    val identifier: String
+    public val identifier: String
 
     /**
      * Whether this permission needs a specific transition from PARTIAL to background access.
      */
-    val requiresBackgroundUpgrade: Boolean get() = false
+    public val requiresBackgroundUpgrade: Boolean get() = false
 }
 
 /**
@@ -53,7 +53,7 @@ sealed interface GrantPermission {
  *                       If null, this permission will be treated as always granted on iOS
  *                       unless [identifier] was previously marked as requested in [GrantStore].
  */
-data class RawPermission(
+public data class RawPermission(
     override val identifier: String,
     val androidPermissions: List<String>,
     val iosUsageKey: String? = null

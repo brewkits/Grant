@@ -19,7 +19,7 @@ import platform.CoreLocation.CLAccuracyAuthorization
  * IosPermissionHandlerRegistry.register("DeliveryPurpose", LocationTemporaryFullAccuracyHandler("DeliveryPurpose"))
  * ```
  */
-class LocationTemporaryFullAccuracyHandler(
+public class LocationTemporaryFullAccuracyHandler(
     private val purposeKey: String
 ) : PermissionHandler {
 

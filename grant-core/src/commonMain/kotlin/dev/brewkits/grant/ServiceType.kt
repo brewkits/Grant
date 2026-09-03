@@ -3,7 +3,7 @@ package dev.brewkits.grant
 /**
  * The types of hardware or system services that can be monitored.
  */
-enum class ServiceType {
+public enum class ServiceType {
     /**
      * System location and GPS services.
      *

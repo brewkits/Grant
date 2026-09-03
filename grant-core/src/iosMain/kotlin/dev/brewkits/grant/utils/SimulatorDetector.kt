@@ -13,20 +13,20 @@ import platform.UIKit.UIDevice
  * For these permissions, we return mock status on simulator
  * to allow testing without blocking the entire flow.
  */
-object SimulatorDetector {
+public object SimulatorDetector {
 
     /**
      * Set this to false to disable mocking on Simulator.
      * Useful for testing DENIED logic on Simulator.
      */
-    var mockSimulatorGranted: Boolean = true
+    public var mockSimulatorGranted: Boolean = true
 
     /**
      * Check if running on iOS Simulator.
      *
      * Returns true if on simulator, false if on real device.
      */
-    val isSimulator: Boolean by lazy {
+    public val isSimulator: Boolean by lazy {
         // Check device model - simulator always contains "Simulator"
         val model = UIDevice.currentDevice.model
         model.contains("Simulator", ignoreCase = true) ||
@@ -48,6 +48,6 @@ object SimulatorDetector {
     /**
      * Get simulator type name for logging.
      */
-    val simulatorType: String
+    public val simulatorType: String
         get() = if (isSimulator) "iOS Simulator" else "Real Device"
 }

@@ -6,7 +6,7 @@ package dev.brewkits.grant
  * This enum standardizes platform-specific authorization states, enabling the
  * UI layer to handle all scenarios consistently.
  */
-enum class GrantStatus {
+public enum class GrantStatus {
     /**
      * The permission has been granted by the user.
      *

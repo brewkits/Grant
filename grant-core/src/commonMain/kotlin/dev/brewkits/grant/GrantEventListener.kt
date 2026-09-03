@@ -40,7 +40,7 @@ package dev.brewkits.grant
  * Implement only the callbacks you care about — every function has a default
  * no-op body so you are never forced to override all of them.
  */
-interface GrantEventListener {
+public interface GrantEventListener {
 
     /**
      * Called when a permission request flow is initiated (after the initial
@@ -51,7 +51,7 @@ interface GrantEventListener {
      *               start of the flow (e.g. [GrantStatus.NOT_DETERMINED] or
      *               [GrantStatus.DENIED]).
      */
-    fun onRequested(grant: GrantPermission, status: GrantStatus) = Unit
+    public fun onRequested(grant: GrantPermission, status: GrantStatus): Unit = Unit
 
     /**
      * Called when the permission is fully satisfied — the user granted access
@@ -60,7 +60,7 @@ interface GrantEventListener {
      * @param grant  The permission that was granted.
      * @param status [GrantStatus.GRANTED] or [GrantStatus.PARTIAL_GRANTED].
      */
-    fun onGranted(grant: GrantPermission, status: GrantStatus) = Unit
+    public fun onGranted(grant: GrantPermission, status: GrantStatus): Unit = Unit
 
     /**
      * Called when the flow ends without the user granting the permission.
@@ -72,7 +72,7 @@ interface GrantEventListener {
      * @param grant  The permission that was denied.
      * @param status [GrantStatus.DENIED] or [GrantStatus.DENIED_ALWAYS].
      */
-    fun onDenied(grant: GrantPermission, status: GrantStatus) = Unit
+    public fun onDenied(grant: GrantPermission, status: GrantStatus): Unit = Unit
 
     /**
      * Called when the rationale dialog is shown to the user.
@@ -82,7 +82,7 @@ interface GrantEventListener {
      *
      * @param grant The permission for which the rationale is displayed.
      */
-    fun onRationaleShown(grant: GrantPermission) = Unit
+    public fun onRationaleShown(grant: GrantPermission): Unit = Unit
 
     /**
      * Called when the settings guide dialog is shown to the user
@@ -90,7 +90,7 @@ interface GrantEventListener {
      *
      * @param grant The permission that requires a settings change.
      */
-    fun onSettingsGuideShown(grant: GrantPermission) = Unit
+    public fun onSettingsGuideShown(grant: GrantPermission): Unit = Unit
 
     /**
      * Called when the user confirms the settings guide and the library opens
@@ -98,5 +98,5 @@ interface GrantEventListener {
      *
      * @param grant The permission for which settings were opened.
      */
-    fun onSettingsOpened(grant: GrantPermission) = Unit
+    public fun onSettingsOpened(grant: GrantPermission): Unit = Unit
 }

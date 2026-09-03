@@ -7,7 +7,7 @@ package dev.brewkits.grant
  * version-specific complexities (e.g., Android 13/14 granular media access, 
  * Bluetooth API 31 changes).
  */
-enum class AppGrant : GrantPermission {
+public enum class AppGrant : GrantPermission {
     /**
      * Access to the camera hardware for photo or video capture.
      *

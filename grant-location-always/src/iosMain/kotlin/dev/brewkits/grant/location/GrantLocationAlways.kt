@@ -8,14 +8,14 @@ import dev.brewkits.grant.delegates.LocationAlwaysManagerDelegate
 /**
  * Entry point for initializing the Grant LocationAlways module.
  */
-actual object GrantLocationAlways {
+public actual object GrantLocationAlways {
     private var isInitialized = false
     private val delegate by lazy { LocationAlwaysManagerDelegate() }
 
     /**
      * Registers the LocationAlways permission handler for iOS.
      */
-    actual fun initialize() {
+    public actual fun initialize() {
         if (isInitialized) return
         isInitialized = true
         IosPermissionHandlerRegistry.register(AppGrant.LOCATION_ALWAYS.identifier, LocationAlwaysPermissionHandler(delegate))

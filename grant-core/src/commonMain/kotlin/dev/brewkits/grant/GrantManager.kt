@@ -15,7 +15,7 @@ package dev.brewkits.grant
  * @see DefaultGrantManager for the default implementation
  * @see GrantHandler for ViewModel usage patterns
  */
-interface GrantManager {
+public interface GrantManager {
     /**
      * Checks the current status of a permission WITHOUT showing any UI.
      *
@@ -46,7 +46,7 @@ interface GrantManager {
      * val status = grantManager.checkStatus(customPermission)
      * ```
      */
-    suspend fun checkStatus(grant: GrantPermission): GrantStatus
+    public suspend fun checkStatus(grant: GrantPermission): GrantStatus
 
     /**
      * Requests a permission from the user.
@@ -84,7 +84,7 @@ interface GrantManager {
      * val result = grantManager.request(customPermission)
      * ```
      */
-    suspend fun request(grant: GrantPermission): GrantStatus
+    public suspend fun request(grant: GrantPermission): GrantStatus
 
     /**
      * Request multiple grants from the system at once.
@@ -97,7 +97,7 @@ interface GrantManager {
      * @param grants List of grants to request
      * @return Map of each grant to its final status
      */
-    suspend fun request(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus>
+    public suspend fun request(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus>
 
     /**
      * Opens the app's settings page where user can manually enable grants.
@@ -116,11 +116,11 @@ interface GrantManager {
      * }
      * ```
      */
-    fun openSettings()
+    public fun openSettings()
 
     /**
      * Set the launcher for permission requests.
      * This must be called from the host activity or fragment.
      */
-    fun setLauncher(launcher: GrantLauncher)
+    public fun setLauncher(launcher: GrantLauncher)
 }

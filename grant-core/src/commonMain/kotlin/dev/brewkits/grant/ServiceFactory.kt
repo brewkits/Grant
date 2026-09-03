@@ -6,9 +6,9 @@ import dev.brewkits.grant.impl.PlatformServiceDelegate
 /**
  * A static factory for creating [ServiceManager] instances.
  */
-expect object ServiceFactory {
+public expect object ServiceFactory {
     /**
      * Creates and returns a production-ready [ServiceManager] instance.
      */
-    fun createServiceManager(): ServiceManager
+    public fun createServiceManager(): ServiceManager
 }

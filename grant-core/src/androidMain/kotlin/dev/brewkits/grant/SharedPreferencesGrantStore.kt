@@ -45,7 +45,7 @@ import dev.brewkits.grant.utils.withLock
  * `grantPlatformModule`). Apps that prefer the in-memory behavior can pass
  * [InMemoryGrantStore] explicitly.
  */
-class SharedPreferencesGrantStore(context: Context) : GrantStore {
+public class SharedPreferencesGrantStore(context: Context) : GrantStore {
 
     private val appContext = context.applicationContext
 

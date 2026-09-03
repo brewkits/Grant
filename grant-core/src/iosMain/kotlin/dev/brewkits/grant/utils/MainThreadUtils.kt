@@ -16,7 +16,7 @@ import platform.Foundation.NSThread
 // Using a structured scope would cause the resume to be silently dropped on cancellation,
 // leaving the continuation hanging indefinitely.
 @Suppress("GlobalCoroutineUsage")
-inline fun <T> mainContinuation(
+public inline fun <T> mainContinuation(
     noinline block: (T) -> Unit
 ): (T) -> Unit = { arg ->
     if (NSThread.isMainThread()) {
@@ -32,7 +32,7 @@ inline fun <T> mainContinuation(
  * Wraps a callback with two parameters to ensure it runs on the main thread.
  */
 @Suppress("GlobalCoroutineUsage")
-inline fun <T1, T2> mainContinuation2(
+public inline fun <T1, T2> mainContinuation2(
     noinline block: (T1, T2) -> Unit
 ): (T1, T2) -> Unit = { arg1, arg2 ->
     if (NSThread.isMainThread()) {

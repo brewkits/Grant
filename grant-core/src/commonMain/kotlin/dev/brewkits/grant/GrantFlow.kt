@@ -28,13 +28,13 @@ package dev.brewkits.grant
  * }
  * ```
  */
-class GrantFlow internal constructor(
+public class GrantFlow internal constructor(
     private val block: suspend GrantFlowScope.() -> Unit
 ) {
     /**
      * Executes the defined grant flow.
      */
-    suspend fun execute() {
+    public suspend fun execute() {
         val scope = GrantFlowScopeImpl()
         scope.block()
     }
@@ -44,7 +44,7 @@ class GrantFlow internal constructor(
  * Scope for the [grantFlow] builder, providing utility functions
  * for sequential permission handling.
  */
-interface GrantFlowScope
+public interface GrantFlowScope
 
 internal class GrantFlowScopeImpl : GrantFlowScope
 
@@ -54,6 +54,6 @@ internal class GrantFlowScopeImpl : GrantFlowScope
  * @param block The sequential logic to execute. Use [GrantHandler.requestSuspend] inside.
  * @return A [GrantFlow] instance ready to be executed.
  */
-fun grantFlow(block: suspend GrantFlowScope.() -> Unit): GrantFlow {
+public fun grantFlow(block: suspend GrantFlowScope.() -> Unit): GrantFlow {
     return GrantFlow(block)
 }

@@ -28,7 +28,7 @@ import kotlinx.coroutines.delay
     message = "FOR TESTING AND DEMO ONLY. DO NOT USE IN PRODUCTION. Use GrantFactory.create() instead.",
     level = DeprecationLevel.WARNING
 )
-class SimpleGrantManager : GrantManager {
+public class SimpleGrantManager : GrantManager {
 
     private val grantedGrants = mutableSetOf<AppGrant>()
     private val requestCount = mutableMapOf<AppGrant, Int>()
@@ -36,7 +36,7 @@ class SimpleGrantManager : GrantManager {
     /**
      * Simulation mode for testing different scenarios
      */
-    enum class SimulationMode {
+    public enum class SimulationMode {
         /**
          * Realistic flow: deny → deny → grant
          * This is the default mode for testing all dialogs
@@ -59,7 +59,7 @@ class SimpleGrantManager : GrantManager {
         ALWAYS_DENY_PERMANENTLY
     }
 
-    var simulationMode = SimulationMode.REALISTIC
+    public var simulationMode: SimulationMode = SimulationMode.REALISTIC
 
     override suspend fun checkStatus(grant: GrantPermission): GrantStatus {
         if (grant is RawPermission) {
@@ -158,7 +158,7 @@ class SimpleGrantManager : GrantManager {
     /**
      * Reset simulation state (useful for demo)
      */
-    fun reset() {
+    public fun reset() {
         grantedGrants.clear()
         requestCount.clear()
     }

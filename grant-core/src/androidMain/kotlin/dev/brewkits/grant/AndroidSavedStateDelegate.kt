@@ -43,7 +43,7 @@ import androidx.lifecycle.SavedStateHandle
  *
  * @param savedStateHandle The SavedStateHandle from ViewModel
  */
-class AndroidSavedStateDelegate(
+public class AndroidSavedStateDelegate(
     private val savedStateHandle: SavedStateHandle
 ) : SavedStateDelegate {
 

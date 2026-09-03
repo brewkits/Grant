@@ -14,7 +14,7 @@ import kotlinx.coroutines.sync.Mutex
 /**
  * The UI state produced by [GrantGroupHandler].
  */
-data class GrantGroupUiState(
+public data class GrantGroupUiState(
     /**
      * Whether a permission dialog should currently be visible.
      */
@@ -88,7 +88,7 @@ data class GrantGroupUiState(
  * }
  * ```
  */
-class GrantGroupHandler(
+public class GrantGroupHandler(
     private val grantManager: GrantManager,
     private val grants: List<GrantPermission>,
     private val scope: CoroutineScope,
@@ -104,14 +104,14 @@ class GrantGroupHandler(
     /**
      * Observable state for driving group-based permission UI.
      */
-    val state: StateFlow<GrantGroupUiState> = _state.asStateFlow()
+    public val state: StateFlow<GrantGroupUiState> = _state.asStateFlow()
 
     private val _statuses = MutableStateFlow<Map<GrantPermission, GrantStatus>>(emptyMap())
 
     /**
      * The latest native status for each managed permission in the group.
      */
-    val statuses: StateFlow<Map<GrantPermission, GrantStatus>> = _statuses.asStateFlow()
+    public val statuses: StateFlow<Map<GrantPermission, GrantStatus>> = _statuses.asStateFlow()
 
     @kotlin.concurrent.Volatile
     private var onAllGrantedCallback: (() -> Unit)? = null
@@ -134,7 +134,7 @@ class GrantGroupHandler(
     /**
      * Re-queries the OS for the status of all permissions in the group.
      */
-    fun refreshAllStatuses() {
+    public fun refreshAllStatuses() {
         scope.launch {
             val statusMap = coroutineScope {
                 grants.map { grant ->
@@ -173,7 +173,7 @@ class GrantGroupHandler(
      * @param settingsMessages Map of permission to its custom settings guide text.
      * @param onAllGranted Callback executed ONLY when all permissions are granted.
      */
-    fun request(
+    public fun request(
         rationaleMessages: Map<GrantPermission, String> = emptyMap(),
         settingsMessages: Map<GrantPermission, String> = emptyMap(),
         onAllGranted: () -> Unit
@@ -242,7 +242,7 @@ class GrantGroupHandler(
      * Confirms the rationale for the [GrantGroupUiState.currentGrant] and requests
      * that specific permission again.
      */
-    fun onRationaleConfirmed() {
+    public fun onRationaleConfirmed() {
         scope.launch {
             if (!requestMutex.tryLock()) return@launch
             try {
@@ -288,7 +288,7 @@ class GrantGroupHandler(
     /**
      * Confirms the settings guide and opens the app's settings page.
      */
-    fun onSettingsConfirmed() {
+    public fun onSettingsConfirmed() {
         if (!requestMutex.tryLock()) return
         try {
             resetState()
@@ -303,7 +303,7 @@ class GrantGroupHandler(
     /**
      * Dismisses the current dialog and cancels the group permission request flow.
      */
-    fun onDismiss() {
+    public fun onDismiss() {
         if (!requestMutex.tryLock()) return
         try {
             shownRationaleGrants.clear()

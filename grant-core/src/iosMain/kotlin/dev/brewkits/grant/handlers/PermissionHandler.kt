@@ -12,16 +12,16 @@ import dev.brewkits.grant.GrantStatus
  * See [APPLE_FRAMEWORK_LINKING_ISSUE.md](docs/ios/APPLE_FRAMEWORK_LINKING_ISSUE.md)
  * for the architectural rationale behind this design.
  */
-interface PermissionHandler {
+public interface PermissionHandler {
     /**
      * Returns the current authorization status for this permission.
      * Must be called on the main thread.
      */
-    fun checkStatus(): GrantStatus
+    public fun checkStatus(): GrantStatus
 
     /**
      * Requests authorization from the user.
      * Suspends until the system dialog is dismissed.
      */
-    suspend fun request(): GrantStatus
+    public suspend fun request(): GrantStatus
 }

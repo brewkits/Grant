@@ -3,11 +3,11 @@ package dev.brewkits.grant.bluetooth
 /**
  * Entry point for initializing the Grant Bluetooth module.
  */
-actual object GrantBluetooth {
+public actual object GrantBluetooth {
     /**
      * No-op on Android, as Android handles permissions via Manifest and Intents.
      */
-    actual fun initialize() {
+    public actual fun initialize() {
         // No-op
     }
 }

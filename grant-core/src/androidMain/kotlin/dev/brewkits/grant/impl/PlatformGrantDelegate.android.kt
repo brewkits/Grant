@@ -31,7 +31,7 @@ import dev.brewkits.grant.utils.ReentrantMutex
 
 import dev.brewkits.grant.GrantLauncher
 
-actual class PlatformGrantDelegate(
+public actual class PlatformGrantDelegate(
     private val context: Context,
     private val store: GrantStore
 ) {
@@ -40,7 +40,7 @@ actual class PlatformGrantDelegate(
     }
 
     private var launcher: GrantLauncher? = null
-    actual fun setLauncher(launcher: GrantLauncher) { this.launcher = launcher }
+    public actual fun setLauncher(launcher: GrantLauncher) { this.launcher = launcher }
     /**
      * Protects all map structures (mutexMapInternal, statusCacheMap).
      */
@@ -59,7 +59,7 @@ actual class PlatformGrantDelegate(
     // Short-lived status cache for all grants to prevent redundant OS calls
     private val statusCacheMap = ConcurrentHashMap<String, Pair<GrantStatus, Long>>()
 
-    companion object {
+    public companion object {
         private const val TAG = "AndroidGrantDelegate"
         private const val READ_MEDIA_VISUAL_USER_SELECTED = "android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
         // Android 17 (API 37) — string literal because compileSdk 36 predates the constant.
@@ -129,7 +129,7 @@ actual class PlatformGrantDelegate(
     private fun isApproximateLocationGranted(): Boolean =
         ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
-    actual suspend fun checkStatus(grant: GrantPermission): GrantStatus {
+    public actual suspend fun checkStatus(grant: GrantPermission): GrantStatus {
         val identifier = grant.identifier
         
         return getMutexFor(identifier).withLock {
@@ -247,13 +247,13 @@ actual class PlatformGrantDelegate(
         }
     }
 
-    actual suspend fun request(grant: GrantPermission): GrantStatus {
+    public actual suspend fun request(grant: GrantPermission): GrantStatus {
         return getMutexFor(grant.identifier).withLock {
             requestInternal(grant)
         }
     }
 
-    actual suspend fun request(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus> {
+    public actual suspend fun request(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus> {
         if (grants.isEmpty()) return emptyMap()
         if (grants.size == 1) return mapOf(grants.first() to request(grants.first()))
 
@@ -436,7 +436,7 @@ actual class PlatformGrantDelegate(
         }
     }
 
-    actual fun openSettings() {
+    public actual fun openSettings() {
         try {
             val intent = android.content.Intent(
                 android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,

@@ -50,7 +50,7 @@ private enum class ServiceDialogKind { None, Rationale, PermissionSettings, Serv
  * when the dialog kind actually changes.
  */
 @Composable
-fun GrantDialog(
+public fun GrantDialog(
     handler: GrantHandler,
     strings: GrantDialogStrings = LocalGrantDialogStrings.current,
 ) {
@@ -104,7 +104,7 @@ fun GrantDialog(
  * dialog branch unless the visible dialog kind actually changes.
  */
 @Composable
-fun GrantGroupDialog(
+public fun GrantGroupDialog(
     handler: GrantGroupHandler,
     strings: GrantDialogStrings = LocalGrantDialogStrings.current,
 ) {
@@ -157,7 +157,7 @@ fun GrantGroupDialog(
  * updates such as service availability ticks.
  */
 @Composable
-fun GrantAndServiceDialog(
+public fun GrantAndServiceDialog(
     handler: GrantAndServiceHandler,
     strings: GrantDialogStrings = LocalGrantDialogStrings.current,
 ) {
@@ -215,7 +215,7 @@ fun GrantAndServiceDialog(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GrantRationaleDialog(
+public fun GrantRationaleDialog(
     message: String,
     title: String = "Permission Required",
     confirmText: String = "Continue",
@@ -271,7 +271,7 @@ fun GrantRationaleDialog(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GrantSettingsDialog(
+public fun GrantSettingsDialog(
     message: String,
     title: String = "Permission Denied",
     confirmText: String = "Open Settings",

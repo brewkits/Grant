@@ -9,7 +9,7 @@ import dev.brewkits.grant.AppGrant
  *
  * Helps developers catch missing manifest declarations at runtime.
  */
-object ManifestValidator {
+public object ManifestValidator {
     /**
      * Check if a specific permission is declared in AndroidManifest.xml
      *
@@ -17,7 +17,7 @@ object ManifestValidator {
      * @param permission Permission string (e.g., "android.permission.CAMERA")
      * @return true if permission is declared in manifest
      */
-    fun isPermissionDeclared(context: Context, permission: String): Boolean {
+    public fun isPermissionDeclared(context: Context, permission: String): Boolean {
         // Bypass for Unit Tests (Robolectric or generic tests)
         // In test environments, we assume permissions are declared to avoid
         // complex ShadowPackageManager setup in every test case.
@@ -45,7 +45,7 @@ object ManifestValidator {
      * @param grant The grant to validate
      * @return ValidationResult indicating if valid or which permissions are missing
      */
-    fun validateGrant(context: Context, grant: AppGrant): ValidationResult {
+    public fun validateGrant(context: Context, grant: AppGrant): ValidationResult {
         // Instantiate ephemeral delegate to access platform-specific manifest mapping
         val delegate = dev.brewkits.grant.impl.PlatformGrantDelegate(context, dev.brewkits.grant.InMemoryGrantStore())
         val requiredPermissions = with(delegate) { grant.toAndroidGrants() }
@@ -65,16 +65,16 @@ object ManifestValidator {
 /**
  * Result of manifest validation check
  */
-sealed class ValidationResult {
+public sealed class ValidationResult {
     /**
      * All required permissions are declared in manifest
      */
-    object Valid : ValidationResult()
+    public object Valid : ValidationResult()
 
     /**
      * Some required permissions are missing from manifest
      *
      * @param permissions List of missing permission strings
      */
-    data class MissingPermissions(val permissions: List<String>) : ValidationResult()
+    public data class MissingPermissions(val permissions: List<String>) : ValidationResult()
 }

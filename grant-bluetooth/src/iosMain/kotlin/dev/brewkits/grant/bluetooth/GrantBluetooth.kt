@@ -9,14 +9,14 @@ import dev.brewkits.grant.delegates.BluetoothManagerDelegate
 /**
  * Entry point for initializing the Grant Bluetooth module.
  */
-actual object GrantBluetooth {
+public actual object GrantBluetooth {
     private var isInitialized = false
     private val delegate by lazy { BluetoothManagerDelegate() }
 
     /**
      * Registers the Bluetooth permission handler for iOS.
      */
-    actual fun initialize() {
+    public actual fun initialize() {
         if (isInitialized) return
         isInitialized = true
         IosPermissionHandlerRegistry.register(AppGrant.BLUETOOTH.identifier, BluetoothPermissionHandler(delegate))

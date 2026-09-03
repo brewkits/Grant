@@ -16,7 +16,7 @@ import dev.brewkits.grant.GrantLauncher
  * permission dialog returns — the registered [ActivityResultLauncher] callback routes
  * the result back to it.
  */
-class AndroidGrantLauncher private constructor() : GrantLauncher {
+public class AndroidGrantLauncher private constructor() : GrantLauncher {
 
     @Volatile private var pendingCallback: ((Map<String, Boolean>) -> Unit)? = null
     private lateinit var launcher: ActivityResultLauncher<Array<String>>
@@ -26,13 +26,13 @@ class AndroidGrantLauncher private constructor() : GrantLauncher {
         launcher.launch(permissions.toTypedArray())
     }
 
-    companion object {
+    public companion object {
         /**
          * Creates an [AndroidGrantLauncher] from an Activity.
          *
          * Call this during `onCreate` or as a property initializer, before the Activity is STARTED.
          */
-        fun from(activity: ComponentActivity): AndroidGrantLauncher {
+        public fun from(activity: ComponentActivity): AndroidGrantLauncher {
             val grantLauncher = AndroidGrantLauncher()
             grantLauncher.launcher = activity.registerForActivityResult(
                 ActivityResultContracts.RequestMultiplePermissions()
@@ -48,7 +48,7 @@ class AndroidGrantLauncher private constructor() : GrantLauncher {
          *
          * Call this during `onCreate` or as a property initializer, before the Fragment is STARTED.
          */
-        fun from(fragment: Fragment): AndroidGrantLauncher {
+        public fun from(fragment: Fragment): AndroidGrantLauncher {
             val grantLauncher = AndroidGrantLauncher()
             grantLauncher.launcher = fragment.registerForActivityResult(
                 ActivityResultContracts.RequestMultiplePermissions()

@@ -47,6 +47,21 @@
 - [x] The widely reported "unified Privacy Management declaration" in OS 27 is an **MDM/enterprise feature** configured by IT administrators for managed apps, not a developer API. It does not change Grant's design, and `GrantGroupHandler` is not superseded by it.
 - [x] Consumer coverage of "granular photo editing access" in iOS 27 could **not** be corroborated at the PhotoKit/`PHAccessLevel` level. Left unverified rather than planned around; revisit when Apple's own documentation lands.
 
+### v2.4.1 — API and runtime guarantees ✅
+
+**4. Validated under R8** ✅
+- [x] `demo` release now builds with `isMinifyEnabled = true` and `-allowaccessmodification`; `ci.yml` runs `:demo:assembleRelease` so it stays validated. R8 had **never** been run against Grant before this.
+- [x] Confirmed **no consumer ProGuard rules are needed**, with evidence rather than assumption: `GrantRequestActivity` and `GrantInitializer` keep their names (manifest-declared, so R8 keeps them), while `AppGrant`/`GrantHandler`/`GrantStatus` are renamed but present.
+- [x] The finding that mattered: **enum constant name strings survive in the DEX**. `SharedPreferencesGrantStore` persists request history keyed on `AppGrant.name`, so R8 rewriting those strings would have silently broken history across builds. Checked in the release DEX, not inferred from the mapping file.
+- [x] `demo/proguard-rules.pro` is deliberately free of Grant-specific keeps — a speculative keep file would disable optimisation for every consumer and hide exactly the breakage this build exists to detect.
+
+**5. `explicitApi()` on all eight modules** ✅
+- [x] Roughly 340 declarations gained explicit visibility, plus nine explicit return types (`GrantEventListener`'s no-op defaults, a `when`-expression extension, an `openSettings()` override, a mutable property, and the Koin `Module` values).
+- [x] **The ABI dumps did not change by a single line.** That is the proof the churn was mechanical and no public surface moved — the reason the ABI gate was worth landing first.
+
+**6. Privacy position pinned** ✅
+- [x] `GrantLogger` defaults to `isEnabled = false` with no handler installed, so a library sitting in front of contacts, calendar and location writes nothing the host app did not ask for. Now covered by `LoggerPrivacyDefaultTest`, including that a disabled logger emits nothing even when a handler is attached.
+
 ## 📋 Backlog / Considering
 
 *Not committed to a version yet — pulled into a milestone when a consumer actually asks.*

@@ -3,7 +3,7 @@ package dev.brewkits.grant
 /**
  * The operational state of a system service.
  */
-enum class ServiceStatus {
+public enum class ServiceStatus {
     /**
      * The service is active and available for use.
      */

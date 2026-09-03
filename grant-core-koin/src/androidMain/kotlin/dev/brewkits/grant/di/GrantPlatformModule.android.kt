@@ -3,6 +3,7 @@ package dev.brewkits.grant.di
 import android.content.Context
 import dev.brewkits.grant.SharedPreferencesGrantStore
 import dev.brewkits.grant.impl.PlatformGrantDelegate
+import org.koin.core.module.Module
 import org.koin.dsl.module
 
 /**
@@ -14,7 +15,7 @@ import org.koin.dsl.module
  * **Requirements**:
  * - Android Context must be provided by the app's DI setup
  */
-actual val grantPlatformModule = module {
+public actual val grantPlatformModule: Module = module {
     single {
         val context = get<Context>()
         PlatformGrantDelegate(

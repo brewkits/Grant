@@ -30,7 +30,7 @@ import org.koin.dsl.module
  * }
  * ```
  */
-val grantModule = module {
+public val grantModule: Module = module {
     // Grant Manager
     single<GrantManager> {
         DefaultGrantManager(
@@ -59,4 +59,4 @@ val grantModule = module {
  * - Android: Context, PlatformGrantDelegate
  * - iOS: PlatformGrantDelegate
  */
-expect val grantPlatformModule: Module
+public expect val grantPlatformModule: Module
