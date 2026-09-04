@@ -296,6 +296,11 @@ public actual class PlatformGrantDelegate(
 
         AppGrant.MOTION               -> getOptionalHandler(grant, "dev.brewkits:grant-motion", "GrantMotion.initialize()")
 
+        // AppTrackingTransparency is isolated for the same reason Contacts/EventKit/CoreMotion
+        // are: linking it makes Apple require NSUserTrackingUsageDescription in every consuming
+        // app, including ones that never track (Issues #38, #45).
+        AppGrant.APP_TRACKING         -> getOptionalHandler(grant, "dev.brewkits:grant-tracking", "GrantTracking.initialize()")
+
         AppGrant.BLUETOOTH,
         AppGrant.BLUETOOTH_ADVERTISE  -> getOptionalHandler(grant, "dev.brewkits:grant-bluetooth", "GrantBluetooth.initialize()")
 

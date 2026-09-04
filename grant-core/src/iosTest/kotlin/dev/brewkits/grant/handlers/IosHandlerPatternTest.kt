@@ -112,10 +112,15 @@ private object IosHandlerDispatchValidator {
 
         AppGrant.MOTION               -> stubHandler("MOTION")
 
+        AppGrant.APP_TRACKING         -> stubHandler("APP_TRACKING")
+
         AppGrant.BLUETOOTH,
         AppGrant.BLUETOOTH_ADVERTISE  -> stubHandler("BLUETOOTH")
 
-        AppGrant.SCHEDULE_EXACT_ALARM,
+        // Its own handler since #74 — GRANTED only when the app does not declare
+        // NSAlarmKitUsageDescription; see ExactAlarmHandler.
+        AppGrant.SCHEDULE_EXACT_ALARM -> stubHandler("EXACT_ALARM")
+
         AppGrant.NEARBY_WIFI_DEVICES,
         AppGrant.LOCAL_NETWORK        -> stubHandler("ALWAYS_GRANTED")
     }

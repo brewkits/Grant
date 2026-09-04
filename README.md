@@ -50,7 +50,7 @@ fun CameraScreen(viewModel: CameraViewModel) {
 - **iOS crash guard** — validates `Info.plist` keys before requesting, turning the classic `SIGABRT` production crash into a clear error.
 - **Android process-death recovery** — a request in flight survives system-initiated process death via `SavedStateHandle`, with no timeouts.
 - **Deadlock-free by construction** — reentrant locking plus a `withTimeout` test policy that converts silent deadlocks into failing tests.
-- **20 built-in permissions** — Camera, Gallery (incl. Android 14 partial access and a save-only mode that never prompts), Location (incl. "Approximate"-only), Bluetooth, Local Network (Android 17), and more — plus `RawPermission` for anything the library doesn't ship yet.
+- **21 built-in permissions** — Camera, Gallery (incl. Android 14 partial access and a save-only mode that never prompts), Location (incl. "Approximate"-only), Bluetooth, Local Network (Android 17), App Tracking Transparency (iOS), and more — plus `RawPermission` for anything the library doesn't ship yet.
 - **Permission groups as one unit** — `GrantGroupHandler` requests several permissions in a single batch, drives one `StateFlow` for the whole group, and fires `onAllGranted` only when every one is satisfied.
 - **Funnel analytics** — attach an optional `GrantEventListener` to any handler and observe every stage: requested, granted, denied, rationale shown, settings guide shown, settings opened.
 - **Service-state checks** — one call answers both "is the permission granted?" and "is GPS/Bluetooth actually on?".
@@ -256,7 +256,7 @@ ceremony, not speed.
 
 ## Supported permissions
 
-20 built-in permissions across Camera, Microphone, Gallery (read and save-only), Storage, Location, Notifications, Bluetooth, Contacts, Calendar, Motion, Exact Alarms, Nearby Wi-Fi, and Local Network — anything else via `RawPermission`.
+21 built-in permissions across Camera, Microphone, Gallery (read and save-only), Storage, Location, Notifications, Bluetooth, Contacts, Calendar, Motion, Exact Alarms, Nearby Wi-Fi, Local Network, and App Tracking Transparency — anything else via `RawPermission`.
 
 <details>
 <summary><strong>Full permission matrix</strong></summary>

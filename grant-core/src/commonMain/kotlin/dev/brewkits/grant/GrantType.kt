@@ -198,7 +198,30 @@ public enum class AppGrant : GrantPermission {
      *   local-network authorization; the OS prompts automatically on the first LAN access
      *   when `NSLocalNetworkUsageDescription` is present in Info.plist.
      */
-    LOCAL_NETWORK;
+    LOCAL_NETWORK,
+
+    /**
+     * Permission to track the user across apps and websites owned by other companies —
+     * advertising attribution, cross-app analytics, ad measurement.
+     *
+     * - **iOS**: App Tracking Transparency (`ATTrackingManager`), requiring
+     *   `NSUserTrackingUsageDescription`. **Needs the opt-in `dev.brewkits:grant-tracking`
+     *   module** and a `GrantTracking.initialize()` call: linking
+     *   `AppTrackingTransparency.framework` makes Apple demand that usage-description key,
+     *   so `grant-core` must not link it for apps that do not track. Same isolation reason as
+     *   `grant-contacts`/`grant-calendar`/`grant-motion` (Issues #38, #45).
+     * - **Android**: No-op (always GRANTED). Android gates the advertising ID with
+     *   `com.google.android.gms.permission.AD_ID`, which is an *install-time* permission —
+     *   auto-granted, with no runtime prompt to show. Reporting GRANTED is honest here: the
+     *   OS genuinely does not gate this at runtime. Users opt out through system settings,
+     *   which surfaces as a zeroed advertising ID rather than a permission denial.
+     *
+     * **Timing matters on iOS.** The system only shows the prompt while the app is
+     * foreground-*active*; requesting during launch or from the background returns the current
+     * status with no prompt shown, and the ask is silently spent. Request it from a screen the
+     * user is actually looking at.
+     */
+    APP_TRACKING;
 
     /**
      * Unique identifier for this permission.

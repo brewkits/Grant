@@ -719,6 +719,13 @@ public actual class PlatformGrantDelegate(
             // "targets 36, runs on 17" is the norm for roughly a year after each release.
             //
             // Either condition failing → empty list → checkStatus reports GRANTED (no-op).
+            // Android has no runtime permission for cross-app tracking. The advertising ID is
+            // gated by com.google.android.gms.permission.AD_ID, which is install-time (normal)
+            // — auto-granted, with no dialog to show. An empty list makes checkStatus report
+            // GRANTED without prompting, which is honest: the OS does not gate this at runtime.
+            // Users opt out in system settings, and that surfaces as a zeroed advertising ID,
+            // not as a permission denial Grant could observe.
+            AppGrant.APP_TRACKING -> emptyList()
             AppGrant.LOCAL_NETWORK ->
                 if (Build.VERSION.SDK_INT >= 37 && targetSdkVersion >= 37) listOf(ACCESS_LOCAL_NETWORK)
                 else emptyList()
