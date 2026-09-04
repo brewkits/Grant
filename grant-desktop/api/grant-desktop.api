@@ -1,0 +1,5 @@
+public final class dev/brewkits/grant/desktop/GrantDesktop {
+	public static final field INSTANCE Ldev/brewkits/grant/desktop/GrantDesktop;
+	public final fun initialize ()V
+}
+

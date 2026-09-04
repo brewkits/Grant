@@ -58,6 +58,18 @@ kotlin {
         browser()
     }
 
+    // Desktop bridge target for Tier 2 (macOS via Compose Desktop) — see ROADMAP.md v2.6.0.
+    // This is deliberately a MINIMAL actual: jvmMain's PlatformGrantDelegate reports every
+    // permission unsupported (DENIED_ALWAYS + log) unless a real handler has been registered
+    // into DesktopPermissionHandlerRegistry. It is the `grant-desktop` module (JNA + a
+    // Kotlin/Native macOS dylib bridging AVFoundation/CoreLocation/Contacts/EventKit — not
+    // hand-rolled objc_msgSend, which cannot safely receive Objective-C completion-handler
+    // blocks) that registers real handlers when added, the same opt-in-module pattern
+    // grant-contacts/grant-calendar/grant-motion already use for iOS. A consumer that adds
+    // only grant-core and calls jvm() gets the honest-unsupported delegate, never a fabricated
+    // GRANTED for a permission this module alone cannot back.
+    jvm()
+
     listOf(
         iosX64(),
         iosArm64(),
