@@ -15,51 +15,33 @@ import kotlin.coroutines.coroutineContext
  */
 internal class ReentrantMutex {
     private val mutex = Mutex()
-    private val lock = PlatformLock()
-    private var ownerContext: CoroutineContext? = null
-    private var count = 0
+
+    /**
+     * Whether the underlying mutex is held right now.
+     *
+     * Used only to decide whether a mutex is safe to *discard* when pruning a bounded
+     * per-identifier map — replacing a held mutex would hand two coroutines separate
+     * instances and silently destroy mutual exclusion. It is intentionally not used to
+     * decide whether to lock: that would be a check-then-act race.
+     */
+    val isLocked: Boolean get() = mutex.isLocked
 
     private val key = object : CoroutineContext.Key<MutexElement> {}
 
     private inner class MutexElement : AbstractCoroutineContextElement(key)
 
     suspend fun <T> withLock(block: suspend () -> T): T {
-        val currentContext = coroutineContext
-        
-        val isOwner = lock.withLock {
-            // Check if this mutex is already in the coroutine context
-            if (currentContext[key] != null) {
-                count++
-                true
-            } else {
-                false
-            }
+        // Re-entrancy is decided purely by whether this mutex's marker is present in the
+        // calling coroutine's context. An earlier version also maintained `ownerContext` and
+        // a `count`; neither was ever read to make a decision, and the nested/outer `finally`
+        // blocks could drive `count` negative. Dead state inside a synchronisation primitive
+        // is the worst place for it, so both are gone rather than "fixed".
+        if (coroutineContext[key] != null) {
+            return block()
         }
-        
-        if (isOwner) {
-            return try {
-                block()
-            } finally {
-                lock.withLock { count-- }
-            }
-        }
-        
-        // Use a new context that carries the mutex ownership
-        return kotlinx.coroutines.withContext(currentContext + MutexElement()) {
-            mutex.withLock {
-                lock.withLock {
-                    ownerContext = coroutineContext
-                    count = 1
-                }
-                try {
-                    block()
-                } finally {
-                    lock.withLock {
-                        ownerContext = null
-                        count = 0
-                    }
-                }
-            }
+
+        return kotlinx.coroutines.withContext(coroutineContext + MutexElement()) {
+            mutex.withLock { block() }
         }
     }
 }
