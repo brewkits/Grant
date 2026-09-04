@@ -128,11 +128,27 @@ class IosGrantDelegateTest {
         assertValidStatus(AppGrant.BLUETOOTH_ADVERTISE)
     }
 
+    /**
+     * GRANTED here is conditional, not unconditional — this test bundle declares no
+     * `NSAlarmKitUsageDescription`, which is the case for the overwhelming majority of apps and
+     * the one this pins: scheduling a local notification needs no separate iOS permission, so
+     * GRANTED is the honest answer and must not regress.
+     *
+     * An app that *does* declare that key uses AlarmKit, which iOS 26 gates behind user
+     * authorization; `ExactAlarmHandler` reports DENIED_ALWAYS there rather than a status Grant
+     * cannot back (AlarmKit is Swift-only, so Kotlin/Native cannot query it). That branch is
+     * deliberately not covered here: it depends on the *host bundle's* Info.plist, which a unit
+     * test running inside the test bundle cannot vary. It is exercised by declaring the key in
+     * a real app, and the code path is a single `objectForInfoDictionaryKey` read.
+     */
     @Test
-    fun `checkStatus SCHEDULE_EXACT_ALARM returns GRANTED on iOS`() = kotlinx.coroutines.test.runTest {
-        // iOS has no concept of exact alarm permission — always GRANTED
+    fun `checkStatus SCHEDULE_EXACT_ALARM returns GRANTED when the app does not use AlarmKit`() = kotlinx.coroutines.test.runTest {
         val status = delegate.checkStatus(AppGrant.SCHEDULE_EXACT_ALARM)
-        assertEquals(GrantStatus.GRANTED, status, "SCHEDULE_EXACT_ALARM must always be GRANTED on iOS")
+        assertEquals(
+            GrantStatus.GRANTED,
+            status,
+            "without NSAlarmKitUsageDescription there is nothing on iOS to gate scheduling",
+        )
     }
 
 
