@@ -131,3 +131,14 @@ tasks.named<org.cyclonedx.gradle.CycloneDxTask>("cyclonedxBom") {
     setIncludeConfigs(listOf("releaseRuntimeClasspath"))
     notCompatibleWithConfigurationCache("CycloneDX 1.4 resolves configurations at execution time")
 }
+
+// No kover `verify { minBound(...) }` here, deliberately.
+//
+// Measured 2026-09-04: kover reports 1/1 lines = 100% for this module, and that number is
+// meaningless. The only class it instruments is the Android `Grant*` entry point, whose
+// `initialize()` is a documented no-op; the actual logic — the iOS handler that maps the
+// platform's authorization status — is Kotlin/Native, which kover does not measure at all.
+//
+// A floor would therefore pass at 100% forever while the code that matters stays unmeasured.
+// The real safety net for this module is its iosTest suite, which exercises the handler on a
+// simulator.

@@ -31,8 +31,55 @@ import dev.brewkits.grant.GrantAndServiceHandler
 import dev.brewkits.grant.GrantGroupHandler
 import dev.brewkits.grant.GrantHandler
 
-private enum class DialogKind { None, Rationale, Settings }
-private enum class ServiceDialogKind { None, Rationale, PermissionSettings, ServiceSettings }
+internal enum class DialogKind { None, Rationale, Settings }
+internal enum class ServiceDialogKind { None, Rationale, PermissionSettings, ServiceSettings }
+
+/**
+ * Which dialog a [GrantHandler]/[GrantGroupHandler] state should show.
+ *
+ * Extracted from the `derivedStateOf` blocks below so it can be tested. It takes the three
+ * flags rather than a state object because `GrantUiState` and `GrantGroupUiState` are separate
+ * data classes with no shared supertype — passing booleans is what lets one function serve
+ * both, and keeps it free of any Compose dependency.
+ *
+ * **The ordering is the point, not the mapping.** `showRationale` is checked before
+ * `showSettingsGuide`: a state carrying both must show the rationale, because rationale is the
+ * recoverable step and the settings guide is the terminal one. Getting that backwards sends a
+ * user who could still be persuaded straight to a Settings screen — the failure shape behind
+ * Issue #55 and Issue #41. Nothing verified this ordering before; `GrantDialogKindTest` does.
+ */
+internal fun resolveDialogKind(
+    isVisible: Boolean,
+    showRationale: Boolean,
+    showSettingsGuide: Boolean,
+): DialogKind = when {
+    !isVisible -> DialogKind.None
+    showRationale -> DialogKind.Rationale
+    showSettingsGuide -> DialogKind.Settings
+    else -> DialogKind.None
+}
+
+/**
+ * The [GrantAndServiceHandler] equivalent of [resolveDialogKind], with the extra distinction
+ * between a *permission* settings screen and a *service* one (e.g. GPS switched off).
+ *
+ * Same ordering rule, extended: rationale first, then permission settings, then service
+ * settings. Permission precedes service because a missing permission blocks the feature
+ * outright, while a disabled service is recoverable without any grant — showing the service
+ * prompt first would ask the user to fix the lesser problem.
+ */
+internal fun resolveServiceDialogKind(
+    isVisible: Boolean,
+    showRationale: Boolean,
+    showPermissionSettings: Boolean,
+    showServiceSettings: Boolean,
+): ServiceDialogKind = when {
+    !isVisible -> ServiceDialogKind.None
+    showRationale -> ServiceDialogKind.Rationale
+    showPermissionSettings -> ServiceDialogKind.PermissionSettings
+    showServiceSettings -> ServiceDialogKind.ServiceSettings
+    else -> ServiceDialogKind.None
+}
 
 /**
  * A comprehensive Dialog Handler optimized for performance and accessibility.
@@ -61,12 +108,7 @@ public fun GrantDialog(
     val state by handler.collectAsStateWithLifecycle()
     val dialogKind by remember {
         derivedStateOf {
-            when {
-                !state.isVisible -> DialogKind.None
-                state.showRationale -> DialogKind.Rationale
-                state.showSettingsGuide -> DialogKind.Settings
-                else -> DialogKind.None
-            }
+            resolveDialogKind(state.isVisible, state.showRationale, state.showSettingsGuide)
         }
     }
 
@@ -115,12 +157,7 @@ public fun GrantGroupDialog(
     val state by handler.collectAsStateWithLifecycle()
     val dialogKind by remember {
         derivedStateOf {
-            when {
-                !state.isVisible -> DialogKind.None
-                state.showRationale -> DialogKind.Rationale
-                state.showSettingsGuide -> DialogKind.Settings
-                else -> DialogKind.None
-            }
+            resolveDialogKind(state.isVisible, state.showRationale, state.showSettingsGuide)
         }
     }
 
@@ -168,13 +205,12 @@ public fun GrantAndServiceDialog(
     val state by handler.collectAsStateWithLifecycle()
     val dialogKind by remember {
         derivedStateOf {
-            when {
-                !state.isVisible -> ServiceDialogKind.None
-                state.showRationale -> ServiceDialogKind.Rationale
-                state.showPermissionSettings -> ServiceDialogKind.PermissionSettings
-                state.showServiceSettings -> ServiceDialogKind.ServiceSettings
-                else -> ServiceDialogKind.None
-            }
+            resolveServiceDialogKind(
+                state.isVisible,
+                state.showRationale,
+                state.showPermissionSettings,
+                state.showServiceSettings,
+            )
         }
     }
 
