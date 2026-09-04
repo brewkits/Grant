@@ -66,19 +66,19 @@ Grant is published to Maven Central. Add the core module, plus only the optional
 kotlin {
     sourceSets {
         commonMain.dependencies {
-            implementation("dev.brewkits:grant-core:2.3.0")
+            implementation("dev.brewkits:grant-core:2.4.0")
 
             // Optional
-            implementation("dev.brewkits:grant-compose:2.3.0")          // Compose dialogs (Material 3)
-            implementation("dev.brewkits:grant-core-koin:2.3.0")        // Koin DI integration
+            implementation("dev.brewkits:grant-compose:2.4.0")          // Compose dialogs (Material 3)
+            implementation("dev.brewkits:grant-core-koin:2.4.0")        // Koin DI integration
 
             // Optional per-permission modules. Omitting a module means its iOS
             // framework is never linked — no phantom NSUsageDescription keys.
-            implementation("dev.brewkits:grant-contacts:2.3.0")         // Contacts (iOS CNContactStore)
-            implementation("dev.brewkits:grant-calendar:2.3.0")         // Calendar (iOS EventKit)
-            implementation("dev.brewkits:grant-motion:2.3.0")           // Motion (iOS CoreMotion)
-            implementation("dev.brewkits:grant-bluetooth:2.3.0")        // Bluetooth (iOS CoreBluetooth)
-            implementation("dev.brewkits:grant-location-always:2.3.0")  // Background "always" location (iOS)
+            implementation("dev.brewkits:grant-contacts:2.4.0")         // Contacts (iOS CNContactStore)
+            implementation("dev.brewkits:grant-calendar:2.4.0")         // Calendar (iOS EventKit)
+            implementation("dev.brewkits:grant-motion:2.4.0")           // Motion (iOS CoreMotion)
+            implementation("dev.brewkits:grant-bluetooth:2.4.0")        // Bluetooth (iOS CoreBluetooth)
+            implementation("dev.brewkits:grant-location-always:2.4.0")  // Background "always" location (iOS)
         }
     }
 }
@@ -304,7 +304,7 @@ ceremony, not speed.
 | [Quick start](docs/getting-started/quick-start.md) | Request your first permission in five minutes |
 | [Architecture](docs/grant-core/ARCHITECTURE.md) | Concurrency, state machines, and the mutex flow |
 | [iOS setup](docs/platform-specific/ios/info-plist.md) | `Info.plist` configuration — read before shipping |
-| [Migration guide](docs/MIGRATION_GUIDE.md) | Upgrading to 2.3.0 (and from v1.x → 2.x) |
+| [Migration guide](docs/MIGRATION_GUIDE.md) | Upgrading to 2.4.0 (and from v1.x → 2.x) |
 | [Service checking](docs/grant-core/SERVICES.md) | Combining permission and hardware service checks |
 | [Support policy](SUPPORT.md) | Versioning, supported versions, platform support, and what Grant will not do |
 | [Manual injection](docs/MANUAL_INJECTION.md) | Using Grant without a DI framework |

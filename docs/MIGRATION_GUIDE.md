@@ -26,6 +26,9 @@ This guide helps you migrate from previous versions of Grant or other permission
 
 ## 🚀 Upgrading from Grant 2.3.0 to 2.4.0
 
+> **2.4.0 is not on Maven Central yet.** It is built and tested but unreleased; the coordinates
+> below will resolve once it ships. Until then, 2.3.0 remains the latest published version.
+
 ### Overview
 
 **Nothing you have to change.** 2.4.0 is additive: every existing `AppGrant`, method and
@@ -98,6 +101,12 @@ after five minutes reporting the unchanged status.
 
 Grant cannot bridge processes on your behalf — that needs IPC your app owns — so as of 2.4.0 it
 **detects and logs** this instead of failing silently.
+
+> **Verified on a device, with a caveat worth knowing.** A probe in a secondary process did not
+> resolve, and the advisory fired. But the control — the same request from the *main* process —
+> also did not resolve, with the dialog shown and Allow tapped. So the fallback's completion
+> path has a defect of its own that is **not** limited to multi-process apps; it is tracked
+> separately. `setLauncher()` avoids both paths and is the recommendation either way.
 
 **The fix is one line, per process:**
 
