@@ -102,11 +102,16 @@ after five minutes reporting the unchanged status.
 Grant cannot bridge processes on your behalf — that needs IPC your app owns — so as of 2.4.0 it
 **detects and logs** this instead of failing silently.
 
-> **Verified on a device, with a caveat worth knowing.** A probe in a secondary process did not
-> resolve, and the advisory fired. But the control — the same request from the *main* process —
-> also did not resolve, with the dialog shown and Allow tapped. So the fallback's completion
-> path has a defect of its own that is **not** limited to multi-process apps; it is tracked
-> separately. `setLauncher()` avoids both paths and is the recommendation either way.
+> **Measured on a real Android 17 device.** The same request, tapping Allow the same way,
+> differing only in which process it ran from:
+>
+> | Process | Permission actually granted | What the caller saw |
+> |---|---|---|
+> | main | yes | `GRANTED` after 2.8s |
+> | secondary | yes | **nothing — still waiting after 120s** |
+>
+> The user says yes, the permission is granted, and your code in the secondary process never
+> finds out.
 
 **The fix is one line, per process:**
 
