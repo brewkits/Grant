@@ -104,13 +104,67 @@ public enum class AppGrant : GrantPermission {
     SCHEDULE_EXACT_ALARM,
 
     /**
-     * Bluetooth scanning, connecting, and central mode operations.
+     * Bluetooth scanning **and** connecting together — central-mode operation where the app
+     * both discovers devices and talks to them.
      *
-     * - **Android**: `BLUETOOTH_SCAN` + `BLUETOOTH_CONNECT` (API 31+) or 
-     *   `ACCESS_FINE_LOCATION` (API < 31).
-     * - **iOS**: `NSBluetoothAlwaysUsageDescription`.
+     * **Prefer [BLUETOOTH_SCAN] or [BLUETOOTH_CONNECT] when only one is needed.** This value
+     * requests both Android permissions at once, which over-asks for a scan-only or
+     * connect-only app. It matters most for connect-only apps: the `BLUETOOTH_SCAN` this also
+     * requests is treated by Android as location-capable unless `neverForLocation` is
+     * declared, so a POS or car-key app using this takes on a location implication it never
+     * needed. This value stays for apps that genuinely do both, and for source compatibility.
+     *
+     * - **Android**: `BLUETOOTH_SCAN` + `BLUETOOTH_CONNECT` (API 31+) or
+     *   `ACCESS_FINE_LOCATION` (API < 31, where scanning required it).
+     * - **iOS**: `NSBluetoothAlwaysUsageDescription` — one authorization covers scan, connect
+     *   and advertise, so all three values behave identically there.
      */
     BLUETOOTH,
+
+    /**
+     * Bluetooth **scanning only** — discovering nearby devices and beacons, without
+     * connecting to them.
+     *
+     * Prefer this over [BLUETOOTH] when your app only scans: [BLUETOOTH] requests SCAN *and*
+     * CONNECT together, so using it for a scan-only feature asks for connect access the app
+     * never exercises.
+     *
+     * - **Android**: `BLUETOOTH_SCAN` (API 31+). Below API 31 there is no separate scan
+     *   permission and scanning genuinely required `ACCESS_FINE_LOCATION`, so that is what
+     *   this maps to there.
+     * - **iOS**: `NSBluetoothAlwaysUsageDescription` — iOS has a single Bluetooth
+     *   authorization covering scan, connect and advertise alike, so this behaves exactly
+     *   like [BLUETOOTH] there. The split is an Android-only distinction.
+     *
+     * ### `neverForLocation`
+     * Android treats `BLUETOOTH_SCAN` as capable of deriving location **unless** the app
+     * declares otherwise:
+     * ```xml
+     * <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+     *     android:usesPermissionFlags="neverForLocation" />
+     * ```
+     * Add that flag if your app does not derive physical location from scan results — it
+     * narrows what reviewers and users see the app asking for. Grant logs a warning when the
+     * flag is absent; see `ManifestValidator`.
+     */
+    BLUETOOTH_SCAN,
+
+    /**
+     * Bluetooth **connecting only** — talking to already-paired devices such as a POS
+     * terminal, a car key, a scale or a wearable.
+     *
+     * Prefer this over [BLUETOOTH] when your app never scans. That matters more than it
+     * looks: [BLUETOOTH] also requests `BLUETOOTH_SCAN`, which Android treats as
+     * location-capable by default, so a connect-only app using [BLUETOOTH] takes on a
+     * location implication it does not need.
+     *
+     * - **Android**: `BLUETOOTH_CONNECT` (API 31+). Below API 31, connecting to an
+     *   already-paired device needed no runtime permission at all (`BLUETOOTH` /
+     *   `BLUETOOTH_ADMIN` are install-time), so this is a no-op reporting `GRANTED` there.
+     * - **iOS**: `NSBluetoothAlwaysUsageDescription` — same single authorization as
+     *   [BLUETOOTH]; the split is Android-only.
+     */
+    BLUETOOTH_CONNECT,
 
     /**
      * Bluetooth peripheral mode for advertising the device.

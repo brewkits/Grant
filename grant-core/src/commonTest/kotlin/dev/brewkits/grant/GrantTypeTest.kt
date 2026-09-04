@@ -9,7 +9,7 @@ class GrantTypeTest {
     @Test
     fun testAllGrantTypesExist() {
         val grants = AppGrant.entries
-        assertEquals(21, grants.size, "Expected 21 grant types")
+        assertEquals(23, grants.size, "Expected 23 grant types")
     }
 
     @Test
@@ -27,6 +27,8 @@ class GrantTypeTest {
         assertTrue(grants.contains(AppGrant.SCHEDULE_EXACT_ALARM), "SCHEDULE_EXACT_ALARM grant should exist")
         assertTrue(grants.contains(AppGrant.BLUETOOTH), "BLUETOOTH grant should exist")
         assertTrue(grants.contains(AppGrant.BLUETOOTH_ADVERTISE), "BLUETOOTH_ADVERTISE grant should exist")
+        assertTrue(grants.contains(AppGrant.BLUETOOTH_SCAN), "BLUETOOTH_SCAN grant should exist")
+        assertTrue(grants.contains(AppGrant.BLUETOOTH_CONNECT), "BLUETOOTH_CONNECT grant should exist")
         assertTrue(grants.contains(AppGrant.MICROPHONE), "MICROPHONE grant should exist")
         assertTrue(grants.contains(AppGrant.APP_TRACKING), "APP_TRACKING grant should exist")
         assertTrue(grants.contains(AppGrant.CONTACTS), "CONTACTS grant should exist")
@@ -72,6 +74,23 @@ class GrantTypeTest {
      * grants rather than being appended — and updating this test is the whole cost of
      * doing so. Do not move an entry to avoid touching this list.
      */
+    /**
+     * Pins declaration order. Ordinals shift whenever a value is inserted mid-enum, and that
+     * is a real (if narrow) compatibility event: a consumer compiled against an older
+     * grant-core keeps the old integers inlined, so mixing versions across a binary boundary —
+     * or persisting an ordinal, which nothing in Grant does but a consumer might — silently
+     * maps to the wrong permission.
+     *
+     * Grant itself is safe by construction: `identifier` is `name`, and
+     * `SharedPreferencesGrantStore` keys request history on `grant.name`, never on the
+     * ordinal. Verified by grep before making this change.
+     *
+     * 2.4.0 inserted BLUETOOTH_SCAN and BLUETOOTH_CONNECT after BLUETOOTH, shifting the eight
+     * values below them by two. They are placed next to BLUETOOTH deliberately rather than
+     * appended: this enum reads as grouped-by-domain, and a Bluetooth value stranded at the
+     * end would be worse for every future reader than a one-time, documented shift. Recorded
+     * in MIGRATION_GUIDE.md.
+     */
     @Test
     fun testGrantEnumOrdinals() {
         assertEquals(0, AppGrant.CAMERA.ordinal)
@@ -85,15 +104,18 @@ class GrantTypeTest {
         assertEquals(8, AppGrant.NOTIFICATION.ordinal)
         assertEquals(9, AppGrant.SCHEDULE_EXACT_ALARM.ordinal)
         assertEquals(10, AppGrant.BLUETOOTH.ordinal)
-        assertEquals(11, AppGrant.BLUETOOTH_ADVERTISE.ordinal)
-        assertEquals(12, AppGrant.MICROPHONE.ordinal)
-        assertEquals(13, AppGrant.CONTACTS.ordinal)
-        assertEquals(14, AppGrant.READ_CONTACTS.ordinal)
-        assertEquals(15, AppGrant.MOTION.ordinal)
-        assertEquals(16, AppGrant.CALENDAR.ordinal)
-        assertEquals(17, AppGrant.READ_CALENDAR.ordinal)
-        assertEquals(18, AppGrant.NEARBY_WIFI_DEVICES.ordinal)
-        assertEquals(19, AppGrant.LOCAL_NETWORK.ordinal)
+        assertEquals(11, AppGrant.BLUETOOTH_SCAN.ordinal)
+        assertEquals(12, AppGrant.BLUETOOTH_CONNECT.ordinal)
+        assertEquals(13, AppGrant.BLUETOOTH_ADVERTISE.ordinal)
+        assertEquals(14, AppGrant.MICROPHONE.ordinal)
+        assertEquals(15, AppGrant.CONTACTS.ordinal)
+        assertEquals(16, AppGrant.READ_CONTACTS.ordinal)
+        assertEquals(17, AppGrant.MOTION.ordinal)
+        assertEquals(18, AppGrant.CALENDAR.ordinal)
+        assertEquals(19, AppGrant.READ_CALENDAR.ordinal)
+        assertEquals(20, AppGrant.NEARBY_WIFI_DEVICES.ordinal)
+        assertEquals(21, AppGrant.LOCAL_NETWORK.ordinal)
+        assertEquals(22, AppGrant.APP_TRACKING.ordinal)
     }
 
     @Test

@@ -54,6 +54,8 @@ open enum class dev.brewkits.grant/AppGrant : dev.brewkits.grant/GrantPermission
     enum entry APP_TRACKING // dev.brewkits.grant/AppGrant.APP_TRACKING|null[0]
     enum entry BLUETOOTH // dev.brewkits.grant/AppGrant.BLUETOOTH|null[0]
     enum entry BLUETOOTH_ADVERTISE // dev.brewkits.grant/AppGrant.BLUETOOTH_ADVERTISE|null[0]
+    enum entry BLUETOOTH_CONNECT // dev.brewkits.grant/AppGrant.BLUETOOTH_CONNECT|null[0]
+    enum entry BLUETOOTH_SCAN // dev.brewkits.grant/AppGrant.BLUETOOTH_SCAN|null[0]
     enum entry CALENDAR // dev.brewkits.grant/AppGrant.CALENDAR|null[0]
     enum entry CAMERA // dev.brewkits.grant/AppGrant.CAMERA|null[0]
     enum entry CONTACTS // dev.brewkits.grant/AppGrant.CONTACTS|null[0]

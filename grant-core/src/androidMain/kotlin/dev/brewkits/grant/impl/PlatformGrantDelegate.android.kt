@@ -124,6 +124,12 @@ public actual class PlatformGrantDelegate(
          */
         private const val MAX_TRACKED_IDENTIFIERS = 64
 
+        /** One-shot guard for the neverForLocation advisory; see warnIfBluetoothScanLacksNeverForLocation. */
+        private val neverForLocationWarned = java.util.concurrent.atomic.AtomicBoolean(false)
+
+        /** One-shot guard for the multi-process advisory; see warnIfNotMainProcess. */
+        private val multiProcessWarned = java.util.concurrent.atomic.AtomicBoolean(false)
+
         // Tracks which Application instances already have the lifecycle callback below
         // registered, so creating multiple PlatformGrantDelegate instances (e.g. in tests,
         // or if an app constructs its own GrantManager more than once) never double-registers.
@@ -379,6 +385,8 @@ public actual class PlatformGrantDelegate(
             return currentStatus
         }
 
+        warnIfBluetoothScanLacksNeverForLocation(androidPermissions)
+
         if (grant is AppGrant) store.setRequested(grant)
         else if (grant is RawPermission) store.markRawPermissionRequested(grant.identifier)
 
@@ -522,7 +530,70 @@ public actual class PlatformGrantDelegate(
      * to an Activity/Fragment lifecycle. Suspends until the dialog resolves; the caller re-reads
      * the real status via [checkStatus] afterwards. (Issue #53)
      */
+    /**
+     * Warns once when `request()` runs in a process other than the app's main one.
+     *
+     * **Why this matters, and why it is a warning rather than a fix:** every piece of state
+     * that bridges a request to its result is `static`, and static means *per process*:
+     * [GrantRequestActivity]'s `pendingResults` and `guardOwner`, [PlatformConfig.activity],
+     * and the lifecycle-callback registration guard. The library manifest declares no
+     * `android:process`, so `GrantRequestActivity` always launches in the **main** process.
+     *
+     * A request issued from a secondary process (`:miniapp`, `:webview`, `:push` — the normal
+     * shape of a super-app) therefore puts its `CompletableDeferred` in *that* process's map,
+     * while the Activity completes a lookup in the *main* process's map, which is empty. The
+     * dialog appears and the user answers, but the caller's `withTimeout` runs its full five
+     * minutes and then returns the old status, with nothing logged. A silent no-op — the exact
+     * failure class this library exists to prevent, visible only in multi-process apps.
+     *
+     * Grant cannot fix that from inside: bridging processes needs IPC the consuming app has to
+     * own. What it can do is stop the failure being silent, and name the one-line workaround —
+     * `setLauncher()` binds an `ActivityResultLauncher` from the calling process's own
+     * Activity, which never touches this static state.
+     *
+     * Only the [GrantRequestActivity] fallback path is affected, so this is checked there
+     * rather than on every request.
+     */
+    private fun warnIfNotMainProcess() {
+        if (!multiProcessWarned.compareAndSet(false, true)) return
+
+        val processName = currentProcessName() ?: return  // unknown: never warn on a guess
+        if (processName == context.packageName) return
+
+        GrantLogger.w(
+            TAG,
+            "request() is running in process '$processName', but GrantRequestActivity always " +
+                "launches in the main process ('${context.packageName}') — the library manifest " +
+                "declares no android:process. The pending-result map bridging the two is static, " +
+                "so it is per-process: this request will time out after " +
+                "${SYSTEM_DIALOG_TIMEOUT_MS / 60_000} minutes and report the unchanged status " +
+                "even if the user grants the permission. Call " +
+                "GrantManager.setLauncher(...) from this process with an ActivityResultLauncher " +
+                "bound to its own Activity; that path does not use the static bridge.",
+        )
+    }
+
+    /**
+     * The current process name, or `null` when it cannot be established.
+     *
+     * `Application.getProcessName()` is API 28+; below that there is no public API, and the
+     * usual workarounds (reading /proc, reflecting into ActivityThread, scanning
+     * `getRunningAppProcesses`) are either unreliable or restricted. Returning `null` there
+     * means the advisory is simply not emitted on API 26-27 — better than warning on a guess.
+     */
+    private fun currentProcessName(): String? =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            try {
+                Application.getProcessName()
+            } catch (e: Exception) {
+                null
+            }
+        } else {
+            null
+        }
+
     private suspend fun requestViaActivity(androidPermissions: List<String>) {
+        warnIfNotMainProcess()
         val requestId = GrantRequestActivity.requestGrants(context, androidPermissions)
         val deferred = GrantRequestActivity.getResultDeferred(requestId)
         if (deferred == null) {
@@ -565,6 +636,38 @@ public actual class PlatformGrantDelegate(
      * exists for exactly that. Blocking here to await a Settings round trip would mean guessing
      * when the user is finished; the resume signal the host already has is the honest one.
      */
+    /**
+     * Warns once when the app requests `BLUETOOTH_SCAN` without declaring
+     * `android:usesPermissionFlags="neverForLocation"`.
+     *
+     * Android treats a plain `BLUETOOTH_SCAN` as location-capable, because scan results reveal
+     * nearby devices. An app that does not derive location from them is expected to opt out,
+     * and most developers only discover this during a Play review or a privacy audit — long
+     * after the permission was wired in.
+     *
+     * A warning rather than a status change: the app is not broken, and the flag is a
+     * declaration only the app itself can make in its own manifest. Logged at most once per
+     * process so a repeated request does not turn into log noise.
+     */
+    private fun warnIfBluetoothScanLacksNeverForLocation(androidPermissions: List<String>) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
+        if (Manifest.permission.BLUETOOTH_SCAN !in androidPermissions) return
+        if (!neverForLocationWarned.compareAndSet(false, true)) return
+
+        // null means "cannot establish" (flags unavailable, or a test environment that does
+        // not model them) — never warn on a guess.
+        if (dev.brewkits.grant.util.ManifestValidator.isBluetoothScanNeverForLocation(context) == false) {
+            GrantLogger.w(
+                TAG,
+                "BLUETOOTH_SCAN is declared without android:usesPermissionFlags=\"neverForLocation\". " +
+                    "Android therefore treats this app as able to derive physical location from " +
+                    "scan results. If it does not, add that flag to the <uses-permission> entry " +
+                    "to drop the location implication. If your app only connects to already-paired " +
+                    "devices, AppGrant.BLUETOOTH_CONNECT avoids requesting BLUETOOTH_SCAN entirely.",
+            )
+        }
+    }
+
     private fun requestExactAlarmAccess(currentStatus: GrantStatus): GrantStatus {
         store.setRequested(AppGrant.SCHEDULE_EXACT_ALARM)
         statusCacheMap.remove(AppGrant.SCHEDULE_EXACT_ALARM.identifier)
@@ -694,6 +797,17 @@ public actual class PlatformGrantDelegate(
             AppGrant.NOTIFICATION -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) listOf(Manifest.permission.POST_NOTIFICATIONS) else emptyList()
             AppGrant.SCHEDULE_EXACT_ALARM -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) listOf(Manifest.permission.SCHEDULE_EXACT_ALARM) else emptyList()
             AppGrant.BLUETOOTH -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) listOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT) else listOf(Manifest.permission.ACCESS_FINE_LOCATION)
+            // Scanning is the half that genuinely needed ACCESS_FINE_LOCATION before API 31 —
+            // the platform could infer position from nearby-device results, which is exactly
+            // why API 31 introduced BLUETOOTH_SCAN with its neverForLocation opt-out.
+            AppGrant.BLUETOOTH_SCAN -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) listOf(Manifest.permission.BLUETOOTH_SCAN) else listOf(Manifest.permission.ACCESS_FINE_LOCATION)
+            // Connecting to an ALREADY-PAIRED device needed no runtime permission before API
+            // 31: BLUETOOTH and BLUETOOTH_ADMIN are install-time. An empty list makes
+            // checkStatus report GRANTED without a prompt, which is the honest answer — the OS
+            // does not gate this there. Requesting ACCESS_FINE_LOCATION instead (as AppGrant
+            // .BLUETOOTH still must, because it also covers scanning) would ask a connect-only
+            // app for location it never needs.
+            AppGrant.BLUETOOTH_CONNECT -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) listOf(Manifest.permission.BLUETOOTH_CONNECT) else emptyList()
             AppGrant.BLUETOOTH_ADVERTISE -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) listOf(Manifest.permission.BLUETOOTH_ADVERTISE) else emptyList()
             AppGrant.MICROPHONE -> listOf(Manifest.permission.RECORD_AUDIO)
             AppGrant.CONTACTS -> listOf(Manifest.permission.READ_CONTACTS, Manifest.permission.WRITE_CONTACTS)

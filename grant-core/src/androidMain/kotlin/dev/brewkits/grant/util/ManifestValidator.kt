@@ -39,6 +39,63 @@ public object ManifestValidator {
     }
 
     /**
+     * Whether `BLUETOOTH_SCAN` is declared with `android:usesPermissionFlags="neverForLocation"`.
+     *
+     * Android treats a plain `BLUETOOTH_SCAN` as capable of deriving physical location — scan
+     * results reveal which devices are nearby — so an app that does not derive location is
+     * expected to opt out:
+     * ```xml
+     * <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+     *     android:usesPermissionFlags="neverForLocation" />
+     * ```
+     * Without the flag, the app carries a location implication reviewers and users can see,
+     * for a capability it may never use.
+     *
+     * Read from [android.content.pm.PackageInfo.requestedPermissionsFlags], which is public
+     * API. `REQUESTED_PERMISSION_NEVER_FOR_LOCATION` is spelled as its literal `0x10000`
+     * because the constant is not in this project's `compileSdk` — the same convention already
+     * used for `ACCESS_LOCAL_NETWORK` and `READ_MEDIA_VISUAL_USER_SELECTED`.
+     *
+     * Returns `null` when the answer cannot be established — the permission is not declared at
+     * all, the arrays are absent, or the lookup failed. `null` means "unknown", deliberately
+     * distinct from `false` ("declared, and the flag is missing"), so a caller never warns on
+     * a guess.
+     */
+    internal fun isBluetoothScanNeverForLocation(context: Context): Boolean? {
+        // Same test-environment bypass as isPermissionDeclared: Robolectric's package manager
+        // does not model permission flags, so any answer here would be an artefact.
+        if (context.packageName == "dev.brewkits.grant.test" ||
+            context.javaClass.name.contains("Shadow") ||
+            System.getProperty("robolectric.enabled") == "true"
+        ) {
+            return null
+        }
+
+        return try {
+            val packageInfo = context.packageManager.getPackageInfo(
+                context.packageName,
+                PackageManager.GET_PERMISSIONS,
+            )
+            val names = packageInfo.requestedPermissions ?: return null
+            val flags = packageInfo.requestedPermissionsFlags ?: return null
+            val index = names.indexOf(BLUETOOTH_SCAN_PERMISSION)
+            if (index < 0 || index >= flags.size) return null
+            (flags[index] and REQUESTED_PERMISSION_NEVER_FOR_LOCATION) != 0
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private const val BLUETOOTH_SCAN_PERMISSION = "android.permission.BLUETOOTH_SCAN"
+
+    /**
+     * `PackageInfo.REQUESTED_PERMISSION_NEVER_FOR_LOCATION`, as a literal because the constant
+     * postdates this project's compileSdk. Verified against the API 35, 36 and 37 platform
+     * jars, where it is `0x10000`.
+     */
+    private const val REQUESTED_PERMISSION_NEVER_FOR_LOCATION = 0x10000
+
+    /**
      * Validate that all required permissions for a grant are declared in manifest
      *
      * @param context Android context

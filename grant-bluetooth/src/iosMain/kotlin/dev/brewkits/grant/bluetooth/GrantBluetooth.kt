@@ -19,7 +19,13 @@ public actual object GrantBluetooth {
     public actual fun initialize() {
         if (isInitialized) return
         isInitialized = true
-        IosPermissionHandlerRegistry.register(AppGrant.BLUETOOTH.identifier, BluetoothPermissionHandler(delegate))
-        IosPermissionHandlerRegistry.register(AppGrant.BLUETOOTH_ADVERTISE.identifier, BluetoothPermissionHandler(delegate))
+        // One handler instance for all four: iOS exposes a single Bluetooth authorization
+        // (CBManager.authorization()) covering scan, connect and advertise. The
+        // scan/connect split exists only on Android, from API 31 onward.
+        val handler = BluetoothPermissionHandler(delegate)
+        IosPermissionHandlerRegistry.register(AppGrant.BLUETOOTH.identifier, handler)
+        IosPermissionHandlerRegistry.register(AppGrant.BLUETOOTH_SCAN.identifier, handler)
+        IosPermissionHandlerRegistry.register(AppGrant.BLUETOOTH_CONNECT.identifier, handler)
+        IosPermissionHandlerRegistry.register(AppGrant.BLUETOOTH_ADVERTISE.identifier, handler)
     }
 }

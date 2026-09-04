@@ -301,7 +301,13 @@ public actual class PlatformGrantDelegate(
         // app, including ones that never track (Issues #38, #45).
         AppGrant.APP_TRACKING         -> getOptionalHandler(grant, "dev.brewkits:grant-tracking", "GrantTracking.initialize()")
 
+        // iOS has ONE Bluetooth authorization covering scan, connect and advertise alike, so
+        // all four values share a handler. The scan/connect split is an Android-only
+        // distinction (API 31 separated them); mirroring it here would invent a difference
+        // the platform does not have.
         AppGrant.BLUETOOTH,
+        AppGrant.BLUETOOTH_SCAN,
+        AppGrant.BLUETOOTH_CONNECT,
         AppGrant.BLUETOOTH_ADVERTISE  -> getOptionalHandler(grant, "dev.brewkits:grant-bluetooth", "GrantBluetooth.initialize()")
 
         // Registry first, so an app that bridges AlarmKit itself wins over the fallback below.
