@@ -346,6 +346,25 @@ public actual class PlatformGrantDelegate(
         var currentStatus = checkStatus(grant)
         if (currentStatus == GrantStatus.GRANTED) return currentStatus
 
+        // SCHEDULE_EXACT_ALARM is NOT a runtime permission — its protectionLevel is
+        // `signature|privileged|appop`, so requestPermissions() can never grant it and shows no
+        // dialog at all. Verified on a real Android 17 device:
+        //   pm grant <pkg> android.permission.SCHEDULE_EXACT_ALARM
+        //   -> SecurityException: ... is not a changeable permission type
+        // (the same command for CAMERA succeeds).
+        //
+        // Before this branch existed, request() fell through to requestPermissions(), nothing
+        // happened, store.setRequested() marked it asked, and the next checkStatus() escalated
+        // it to DENIED_ALWAYS -- sending the user to a Settings page that does not contain the
+        // toggle. That is the exact "dead click" this library exists to prevent (Issue #55),
+        // reproduced inside Grant's own enum.
+        //
+        // The platform's actual request flow for special app access is the dedicated Settings
+        // screen, so that is what "requesting" means here.
+        if (grant == AppGrant.SCHEDULE_EXACT_ALARM && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            return requestExactAlarmAccess(currentStatus)
+        }
+
         val allPossiblePermissions = when (grant) {
             is RawPermission -> grant.androidPermissions
             is AppGrant -> grant.toAndroidGrants()
@@ -535,6 +554,42 @@ public actual class PlatformGrantDelegate(
         }
     }
 
+    /**
+     * Sends the user to the "Alarms & reminders" special-access screen, which is the platform's
+     * actual request flow for [AppGrant.SCHEDULE_EXACT_ALARM] — see the call site in
+     * [requestInternal] for why `requestPermissions()` cannot work for it.
+     *
+     * Returns [currentStatus] unchanged: the user is now in Settings and nothing has been
+     * decided yet. This mirrors [openSettings], and like it the host is expected to re-read the
+     * status when the app resumes — `GrantHandler.onReturnFromSettings()` (or `refreshStatus()`)
+     * exists for exactly that. Blocking here to await a Settings round trip would mean guessing
+     * when the user is finished; the resume signal the host already has is the honest one.
+     */
+    private fun requestExactAlarmAccess(currentStatus: GrantStatus): GrantStatus {
+        store.setRequested(AppGrant.SCHEDULE_EXACT_ALARM)
+        statusCacheMap.remove(AppGrant.SCHEDULE_EXACT_ALARM.identifier)
+
+        return try {
+            val intent = android.content.Intent(
+                android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+                android.net.Uri.fromParts("package", context.packageName, null)
+            ).apply { addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK) }
+            context.startActivity(intent)
+            GrantLogger.i(
+                TAG,
+                "Opened the exact-alarm settings screen. Re-read the status when your app " +
+                    "resumes (GrantHandler.onReturnFromSettings()); this call cannot observe " +
+                    "the user's choice itself.",
+            )
+            currentStatus
+        } catch (e: Exception) {
+            // Some builds (and most work profiles) do not expose the screen at all. Reporting
+            // the unchanged status and logging beats pretending the request happened.
+            GrantLogger.e(TAG, "Could not open the exact-alarm settings screen", e)
+            currentStatus
+        }
+    }
+
     public actual fun openSettings() {
         try {
             val intent = android.content.Intent(
@@ -543,7 +598,7 @@ public actual class PlatformGrantDelegate(
             ).apply { addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK) }
             context.startActivity(intent)
         } catch (e: Exception) {
-            GrantLogger.e("AndroidGrant", "Failed to open settings", e)
+            GrantLogger.e(TAG, "Failed to open settings", e)
         }
     }
 
@@ -552,8 +607,15 @@ public actual class PlatformGrantDelegate(
             AppGrant.SCHEDULE_EXACT_ALARM -> {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? android.app.AlarmManager
+                    // DENIED, deliberately not DENIED_ALWAYS. Special app access has no
+                    // permanent-denial state: the toggle stays available in Settings forever and
+                    // Grant can re-open that exact screen on every request (see
+                    // requestExactAlarmAccess). DENIED_ALWAYS would instead drive GrantHandler
+                    // down the settings-guide path, whose openSettings() lands on the app-details
+                    // page -- which does not contain this toggle. DENIED drives the rationale
+                    // path, and re-requesting reopens the correct screen.
                     if (alarmManager != null && alarmManager.canScheduleExactAlarms()) GrantStatus.GRANTED
-                    else if (store.isRequestedBefore(grant)) GrantStatus.DENIED_ALWAYS else GrantStatus.NOT_DETERMINED
+                    else if (store.isRequestedBefore(grant)) GrantStatus.DENIED else GrantStatus.NOT_DETERMINED
                 } else GrantStatus.GRANTED
             }
             AppGrant.NOTIFICATION -> {

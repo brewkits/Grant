@@ -51,14 +51,28 @@ class AndroidDeniedAlwaysTest {
         assertEquals(GrantStatus.DENIED_ALWAYS, status)
     }
 
+    /**
+     * Expectation deliberately changed from DENIED_ALWAYS to DENIED.
+     *
+     * SCHEDULE_EXACT_ALARM is special app access, not a runtime permission — its
+     * protectionLevel is `signature|privileged|appop` (verified on a real Android 17 device:
+     * `pm grant` rejects it with "not a changeable permission type"). There is therefore no
+     * permanent-denial state: the toggle stays available in Settings forever, and every
+     * request() can reopen that exact screen.
+     *
+     * Reporting DENIED_ALWAYS drove GrantHandler down the settings-guide path, whose
+     * openSettings() lands on the app-details page — which does not contain this toggle, so
+     * the user hit a dead end. DENIED drives the rationale path instead, and re-requesting
+     * reopens the correct screen. This test previously pinned the broken behaviour.
+     */
     @Test
     @Config(sdk = [Build.VERSION_CODES.S])
-    fun `test SCHEDULE_EXACT_ALARM DENIED_ALWAYS logic`() = runBlocking {
+    fun `test SCHEDULE_EXACT_ALARM reports DENIED not DENIED_ALWAYS`() = runBlocking {
         store.setRequested(AppGrant.SCHEDULE_EXACT_ALARM)
-        
+
         val status = delegate.checkStatus(AppGrant.SCHEDULE_EXACT_ALARM)
-        // Default Robolectric behavior for AlarmManager returns false for canScheduleExactAlarms()
-        assertEquals(GrantStatus.DENIED_ALWAYS, status)
+        // Robolectric's AlarmManager shadow returns false for canScheduleExactAlarms().
+        assertEquals(GrantStatus.DENIED, status)
     }
 
     @Test

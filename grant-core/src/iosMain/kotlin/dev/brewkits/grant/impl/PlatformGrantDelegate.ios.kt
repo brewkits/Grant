@@ -51,7 +51,8 @@ private const val TAG = "iOSGrantDelegate"
  * - Calendar            — EventKit
  * - Motion              — CoreMotion
  * - Bluetooth           — CoreBluetooth (via BluetoothManagerDelegate)
- * - Schedule Exact Alarm — always GRANTED on iOS
+ * - Schedule Exact Alarm — GRANTED unless the app declares NSAlarmKitUsageDescription;
+ *   see ExactAlarmHandler for why AlarmKit (iOS 26+) cannot be answered from here
  *
  * **Thread Safety:**
  * - [mutexMap] is protected by [mapsMutex]
@@ -298,7 +299,9 @@ public actual class PlatformGrantDelegate(
         AppGrant.BLUETOOTH,
         AppGrant.BLUETOOTH_ADVERTISE  -> getOptionalHandler(grant, "dev.brewkits:grant-bluetooth", "GrantBluetooth.initialize()")
 
-        AppGrant.SCHEDULE_EXACT_ALARM,
+        // Registry first, so an app that bridges AlarmKit itself wins over the fallback below.
+        AppGrant.SCHEDULE_EXACT_ALARM -> IosPermissionHandlerRegistry.get(grant.identifier) ?: ExactAlarmHandler
+
         AppGrant.NEARBY_WIFI_DEVICES,
         // iOS has no API to query or explicitly request local-network authorization — the
         // OS prompts on the first LAN access when NSLocalNetworkUsageDescription is present.
@@ -328,11 +331,66 @@ public actual class PlatformGrantDelegate(
 
 /**
  * A no-op handler for permissions that iOS always grants without a dialog
- * (e.g., [AppGrant.SCHEDULE_EXACT_ALARM]).
+ * (e.g., [AppGrant.NEARBY_WIFI_DEVICES]).
  */
 private object AlwaysGrantedHandler : PermissionHandler {
     override fun checkStatus(): GrantStatus = GrantStatus.GRANTED
     override suspend fun request(): GrantStatus = GrantStatus.GRANTED
+}
+
+/** `Info.plist` key an app declares when it uses AlarmKit (iOS 26+). */
+private const val ALARMKIT_USAGE_KEY = "NSAlarmKitUsageDescription"
+
+/**
+ * Handles [AppGrant.SCHEDULE_EXACT_ALARM] on iOS, where the honest answer depends on whether
+ * the app uses AlarmKit.
+ *
+ * **Until iOS 25** nothing on iOS gated scheduling: a local notification via
+ * `UNUserNotificationCenter` needs only the notification permission Grant already models, so
+ * reporting GRANTED here was correct and remains correct for those apps.
+ *
+ * **iOS 26 introduced AlarmKit**, which *is* consent-gated — the SDK exposes
+ * `requestAuthorization`, `authorizationState` and `AlarmAuthorizationState`, and the runtime
+ * defines [ALARMKIT_USAGE_KEY]. For an app using it, an unconditional GRANTED is a fabricated
+ * status: the user may never have authorized alarms. That is the failure mode this library
+ * exists to prevent, so it is not shipped here either.
+ *
+ * **Grant cannot query AlarmKit itself.** Verified against the iOS 26.5 SDK: AlarmKit's
+ * `Headers/AlarmKit.h` is an umbrella header carrying only version symbols — the whole API
+ * lives in `.swiftinterface`, so there is no Objective-C surface for Kotlin/Native cinterop to
+ * bind. Claiming support would be presence without function.
+ *
+ * So the plist key is used as the signal for "this app uses AlarmKit":
+ * - key absent (the overwhelming majority) → GRANTED, unchanged behaviour
+ * - key present → DENIED_ALWAYS with a log pointing at the escape hatch, matching the
+ *   convention the web and JVM delegates already follow for permissions the platform cannot
+ *   back. An app that needs a real answer registers its own Swift-bridged handler through
+ *   [IosPermissionHandlerRegistry], which takes precedence over this one.
+ */
+private object ExactAlarmHandler : PermissionHandler {
+
+    private fun resolve(): GrantStatus {
+        // Read the bundle directly rather than through hasInfoPlistKey(): that helper logs an
+        // ERROR when a key is absent, which is right where a key is required, but here absence
+        // is the normal, correct case for almost every app.
+        val usesAlarmKit = NSBundle.mainBundle.objectForInfoDictionaryKey(ALARMKIT_USAGE_KEY) != null
+        if (!usesAlarmKit) return GrantStatus.GRANTED
+
+        GrantLogger.w(
+            TAG,
+            "$ALARMKIT_USAGE_KEY is declared, so this app uses AlarmKit — which iOS 26 gates " +
+                "behind user authorization. Grant cannot read that state: AlarmKit is a " +
+                "Swift-only framework with no Objective-C surface for Kotlin/Native. Reporting " +
+                "DENIED_ALWAYS rather than a GRANTED this platform cannot back. To get a real " +
+                "answer, implement PermissionHandler over AlarmKit in your iOS code and " +
+                "register it via IosPermissionHandlerRegistry.register(" +
+                "AppGrant.SCHEDULE_EXACT_ALARM.identifier, yourHandler).",
+        )
+        return GrantStatus.DENIED_ALWAYS
+    }
+
+    override fun checkStatus(): GrantStatus = resolve()
+    override suspend fun request(): GrantStatus = resolve()
 }
 
 /**
