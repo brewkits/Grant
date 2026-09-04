@@ -1,0 +1,495 @@
+public class dev/brewkits/grant/AppGrant : java/lang/Enum, dev/brewkits/grant/GrantPermission {
+	public static final field BLUETOOTH Ldev/brewkits/grant/AppGrant;
+	public static final field BLUETOOTH_ADVERTISE Ldev/brewkits/grant/AppGrant;
+	public static final field CALENDAR Ldev/brewkits/grant/AppGrant;
+	public static final field CAMERA Ldev/brewkits/grant/AppGrant;
+	public static final field CONTACTS Ldev/brewkits/grant/AppGrant;
+	public static final field GALLERY Ldev/brewkits/grant/AppGrant;
+	public static final field GALLERY_ADD_ONLY Ldev/brewkits/grant/AppGrant;
+	public static final field GALLERY_IMAGES_ONLY Ldev/brewkits/grant/AppGrant;
+	public static final field GALLERY_VIDEO_ONLY Ldev/brewkits/grant/AppGrant;
+	public static final field LOCAL_NETWORK Ldev/brewkits/grant/AppGrant;
+	public static final field LOCATION Ldev/brewkits/grant/AppGrant;
+	public static final field LOCATION_ALWAYS Ldev/brewkits/grant/AppGrant;
+	public static final field MICROPHONE Ldev/brewkits/grant/AppGrant;
+	public static final field MOTION Ldev/brewkits/grant/AppGrant;
+	public static final field NEARBY_WIFI_DEVICES Ldev/brewkits/grant/AppGrant;
+	public static final field NOTIFICATION Ldev/brewkits/grant/AppGrant;
+	public static final field READ_CALENDAR Ldev/brewkits/grant/AppGrant;
+	public static final field READ_CONTACTS Ldev/brewkits/grant/AppGrant;
+	public static final field SCHEDULE_EXACT_ALARM Ldev/brewkits/grant/AppGrant;
+	public static final field STORAGE Ldev/brewkits/grant/AppGrant;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public fun getIdentifier ()Ljava/lang/String;
+	public fun getRequiresBackgroundUpgrade ()Z
+	public static fun valueOf (Ljava/lang/String;)Ldev/brewkits/grant/AppGrant;
+	public static fun values ()[Ldev/brewkits/grant/AppGrant;
+}
+
+public abstract class dev/brewkits/grant/BluetoothReadyStatus {
+}
+
+public final class dev/brewkits/grant/BluetoothReadyStatus$BothRequired : dev/brewkits/grant/BluetoothReadyStatus {
+	public fun <init> (Ldev/brewkits/grant/GrantStatus;)V
+	public final fun component1 ()Ldev/brewkits/grant/GrantStatus;
+	public final fun copy (Ldev/brewkits/grant/GrantStatus;)Ldev/brewkits/grant/BluetoothReadyStatus$BothRequired;
+	public static synthetic fun copy$default (Ldev/brewkits/grant/BluetoothReadyStatus$BothRequired;Ldev/brewkits/grant/GrantStatus;ILjava/lang/Object;)Ldev/brewkits/grant/BluetoothReadyStatus$BothRequired;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getGrantStatus ()Ldev/brewkits/grant/GrantStatus;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/brewkits/grant/BluetoothReadyStatus$GrantDenied : dev/brewkits/grant/BluetoothReadyStatus {
+	public fun <init> (Ldev/brewkits/grant/GrantStatus;)V
+	public final fun component1 ()Ldev/brewkits/grant/GrantStatus;
+	public final fun copy (Ldev/brewkits/grant/GrantStatus;)Ldev/brewkits/grant/BluetoothReadyStatus$GrantDenied;
+	public static synthetic fun copy$default (Ldev/brewkits/grant/BluetoothReadyStatus$GrantDenied;Ldev/brewkits/grant/GrantStatus;ILjava/lang/Object;)Ldev/brewkits/grant/BluetoothReadyStatus$GrantDenied;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getGrantStatus ()Ldev/brewkits/grant/GrantStatus;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/brewkits/grant/BluetoothReadyStatus$Ready : dev/brewkits/grant/BluetoothReadyStatus {
+	public static final field INSTANCE Ldev/brewkits/grant/BluetoothReadyStatus$Ready;
+}
+
+public final class dev/brewkits/grant/BluetoothReadyStatus$ServiceDisabled : dev/brewkits/grant/BluetoothReadyStatus {
+	public static final field INSTANCE Ldev/brewkits/grant/BluetoothReadyStatus$ServiceDisabled;
+}
+
+public final class dev/brewkits/grant/BluetoothReadyStatus$Unknown : dev/brewkits/grant/BluetoothReadyStatus {
+	public static final field INSTANCE Ldev/brewkits/grant/BluetoothReadyStatus$Unknown;
+}
+
+public final class dev/brewkits/grant/GrantAndServiceChecker {
+	public fun <init> (Ldev/brewkits/grant/GrantManager;Ldev/brewkits/grant/ServiceManager;)V
+	public final fun checkBluetoothReady (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun checkLocationReady (Ldev/brewkits/grant/AppGrant;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun checkLocationReady$default (Ldev/brewkits/grant/GrantAndServiceChecker;Ldev/brewkits/grant/AppGrant;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun checkReady (Ldev/brewkits/grant/AppGrant;Ldev/brewkits/grant/ServiceType;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun isReady (Ldev/brewkits/grant/AppGrant;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class dev/brewkits/grant/GrantAndServiceHandler {
+	public fun <init> (Ldev/brewkits/grant/GrantManager;Ldev/brewkits/grant/ServiceManager;Ldev/brewkits/grant/GrantPermission;Ldev/brewkits/grant/ServiceType;Lkotlinx/coroutines/CoroutineScope;Ldev/brewkits/grant/SavedStateDelegate;Ldev/brewkits/grant/GrantEventListener;)V
+	public synthetic fun <init> (Ldev/brewkits/grant/GrantManager;Ldev/brewkits/grant/ServiceManager;Ldev/brewkits/grant/GrantPermission;Ldev/brewkits/grant/ServiceType;Lkotlinx/coroutines/CoroutineScope;Ldev/brewkits/grant/SavedStateDelegate;Ldev/brewkits/grant/GrantEventListener;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getState ()Lkotlinx/coroutines/flow/StateFlow;
+	public final fun onDismiss ()V
+	public final fun onPermissionSettingsConfirmed ()V
+	public final fun onRationaleConfirmed ()V
+	public final fun onServiceSettingsConfirmed ()V
+	public final fun refreshStatus ()V
+	public final fun request (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lkotlin/jvm/functions/Function0;)V
+	public static synthetic fun request$default (Ldev/brewkits/grant/GrantAndServiceHandler;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lkotlin/jvm/functions/Function0;ILjava/lang/Object;)V
+}
+
+public final class dev/brewkits/grant/GrantAndServiceUiState {
+	public fun <init> ()V
+	public fun <init> (ZZZZLjava/lang/String;Ljava/lang/String;Ljava/lang/String;Z)V
+	public synthetic fun <init> (ZZZZLjava/lang/String;Ljava/lang/String;Ljava/lang/String;ZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Z
+	public final fun component2 ()Z
+	public final fun component3 ()Z
+	public final fun component4 ()Z
+	public final fun component5 ()Ljava/lang/String;
+	public final fun component6 ()Ljava/lang/String;
+	public final fun component7 ()Ljava/lang/String;
+	public final fun component8 ()Z
+	public final fun copy (ZZZZLjava/lang/String;Ljava/lang/String;Ljava/lang/String;Z)Ldev/brewkits/grant/GrantAndServiceUiState;
+	public static synthetic fun copy$default (Ldev/brewkits/grant/GrantAndServiceUiState;ZZZZLjava/lang/String;Ljava/lang/String;Ljava/lang/String;ZILjava/lang/Object;)Ldev/brewkits/grant/GrantAndServiceUiState;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getPermissionSettingsMessage ()Ljava/lang/String;
+	public final fun getRationaleMessage ()Ljava/lang/String;
+	public final fun getServiceSettingsMessage ()Ljava/lang/String;
+	public final fun getShowPermissionSettings ()Z
+	public final fun getShowRationale ()Z
+	public final fun getShowServiceSettings ()Z
+	public fun hashCode ()I
+	public final fun isReady ()Z
+	public final fun isVisible ()Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class dev/brewkits/grant/GrantEventListener {
+	public fun onDenied (Ldev/brewkits/grant/GrantPermission;Ldev/brewkits/grant/GrantStatus;)V
+	public fun onGranted (Ldev/brewkits/grant/GrantPermission;Ldev/brewkits/grant/GrantStatus;)V
+	public fun onRationaleShown (Ldev/brewkits/grant/GrantPermission;)V
+	public fun onRequested (Ldev/brewkits/grant/GrantPermission;Ldev/brewkits/grant/GrantStatus;)V
+	public fun onSettingsGuideShown (Ldev/brewkits/grant/GrantPermission;)V
+	public fun onSettingsOpened (Ldev/brewkits/grant/GrantPermission;)V
+}
+
+public final class dev/brewkits/grant/GrantEventListener$DefaultImpls {
+	public static fun onDenied (Ldev/brewkits/grant/GrantEventListener;Ldev/brewkits/grant/GrantPermission;Ldev/brewkits/grant/GrantStatus;)V
+	public static fun onGranted (Ldev/brewkits/grant/GrantEventListener;Ldev/brewkits/grant/GrantPermission;Ldev/brewkits/grant/GrantStatus;)V
+	public static fun onRationaleShown (Ldev/brewkits/grant/GrantEventListener;Ldev/brewkits/grant/GrantPermission;)V
+	public static fun onRequested (Ldev/brewkits/grant/GrantEventListener;Ldev/brewkits/grant/GrantPermission;Ldev/brewkits/grant/GrantStatus;)V
+	public static fun onSettingsGuideShown (Ldev/brewkits/grant/GrantEventListener;Ldev/brewkits/grant/GrantPermission;)V
+	public static fun onSettingsOpened (Ldev/brewkits/grant/GrantEventListener;Ldev/brewkits/grant/GrantPermission;)V
+}
+
+public final class dev/brewkits/grant/GrantFactory {
+	public static final field INSTANCE Ldev/brewkits/grant/GrantFactory;
+	public final fun create (Ljava/lang/Object;Ldev/brewkits/grant/GrantStore;)Ldev/brewkits/grant/GrantManager;
+	public static synthetic fun create$default (Ldev/brewkits/grant/GrantFactory;Ljava/lang/Object;Ldev/brewkits/grant/GrantStore;ILjava/lang/Object;)Ldev/brewkits/grant/GrantManager;
+}
+
+public final class dev/brewkits/grant/GrantFactory_jvmKt {
+	public static final fun createPlatformDelegate (Ljava/lang/Object;Ldev/brewkits/grant/GrantStore;)Ldev/brewkits/grant/impl/PlatformGrantDelegate;
+}
+
+public final class dev/brewkits/grant/GrantFlow {
+	public final fun execute (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class dev/brewkits/grant/GrantFlowKt {
+	public static final fun grantFlow (Lkotlin/jvm/functions/Function2;)Ldev/brewkits/grant/GrantFlow;
+}
+
+public abstract interface class dev/brewkits/grant/GrantFlowScope {
+}
+
+public final class dev/brewkits/grant/GrantGroupHandler {
+	public fun <init> (Ldev/brewkits/grant/GrantManager;Ljava/util/List;Lkotlinx/coroutines/CoroutineScope;Ldev/brewkits/grant/GrantEventListener;)V
+	public synthetic fun <init> (Ldev/brewkits/grant/GrantManager;Ljava/util/List;Lkotlinx/coroutines/CoroutineScope;Ldev/brewkits/grant/GrantEventListener;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getState ()Lkotlinx/coroutines/flow/StateFlow;
+	public final fun getStatuses ()Lkotlinx/coroutines/flow/StateFlow;
+	public final fun onDismiss ()V
+	public final fun onRationaleConfirmed ()V
+	public final fun onSettingsConfirmed ()V
+	public final fun refreshAllStatuses ()V
+	public final fun request (Ljava/util/Map;Ljava/util/Map;Lkotlin/jvm/functions/Function0;)V
+	public static synthetic fun request$default (Ldev/brewkits/grant/GrantGroupHandler;Ljava/util/Map;Ljava/util/Map;Lkotlin/jvm/functions/Function0;ILjava/lang/Object;)V
+}
+
+public final class dev/brewkits/grant/GrantGroupUiState {
+	public fun <init> ()V
+	public fun <init> (ZLdev/brewkits/grant/GrantPermission;ZZLjava/lang/String;Ljava/lang/String;Ljava/util/Set;I)V
+	public synthetic fun <init> (ZLdev/brewkits/grant/GrantPermission;ZZLjava/lang/String;Ljava/lang/String;Ljava/util/Set;IILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Z
+	public final fun component2 ()Ldev/brewkits/grant/GrantPermission;
+	public final fun component3 ()Z
+	public final fun component4 ()Z
+	public final fun component5 ()Ljava/lang/String;
+	public final fun component6 ()Ljava/lang/String;
+	public final fun component7 ()Ljava/util/Set;
+	public final fun component8 ()I
+	public final fun copy (ZLdev/brewkits/grant/GrantPermission;ZZLjava/lang/String;Ljava/lang/String;Ljava/util/Set;I)Ldev/brewkits/grant/GrantGroupUiState;
+	public static synthetic fun copy$default (Ldev/brewkits/grant/GrantGroupUiState;ZLdev/brewkits/grant/GrantPermission;ZZLjava/lang/String;Ljava/lang/String;Ljava/util/Set;IILjava/lang/Object;)Ldev/brewkits/grant/GrantGroupUiState;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCurrentGrant ()Ldev/brewkits/grant/GrantPermission;
+	public final fun getGrantedGrants ()Ljava/util/Set;
+	public final fun getRationaleMessage ()Ljava/lang/String;
+	public final fun getSettingsMessage ()Ljava/lang/String;
+	public final fun getShowRationale ()Z
+	public final fun getShowSettingsGuide ()Z
+	public final fun getTotalGrants ()I
+	public fun hashCode ()I
+	public final fun isVisible ()Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/brewkits/grant/GrantHandler {
+	public fun <init> (Ldev/brewkits/grant/GrantManager;Ldev/brewkits/grant/GrantPermission;Lkotlinx/coroutines/CoroutineScope;Ldev/brewkits/grant/SavedStateDelegate;Ldev/brewkits/grant/GrantEventListener;)V
+	public synthetic fun <init> (Ldev/brewkits/grant/GrantManager;Ldev/brewkits/grant/GrantPermission;Lkotlinx/coroutines/CoroutineScope;Ldev/brewkits/grant/SavedStateDelegate;Ldev/brewkits/grant/GrantEventListener;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getState ()Lkotlinx/coroutines/flow/StateFlow;
+	public final fun getStatus ()Lkotlinx/coroutines/flow/StateFlow;
+	public final fun onDismiss ()V
+	public final fun onRationaleConfirmed ()V
+	public final fun onReturnFromSettings ()V
+	public final fun onSettingsConfirmed ()V
+	public final fun refreshStatus ()V
+	public final fun request (Ljava/lang/String;Ljava/lang/String;Lkotlin/jvm/functions/Function1;)V
+	public static synthetic fun request$default (Ldev/brewkits/grant/GrantHandler;Ljava/lang/String;Ljava/lang/String;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)V
+	public final fun requestFlow (Ljava/lang/String;Ljava/lang/String;)Lkotlinx/coroutines/flow/Flow;
+	public static synthetic fun requestFlow$default (Ldev/brewkits/grant/GrantHandler;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lkotlinx/coroutines/flow/Flow;
+	public final fun requestSuspend (Ljava/lang/String;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun requestSuspend$default (Ldev/brewkits/grant/GrantHandler;Ljava/lang/String;Ljava/lang/String;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun requestWithCustomUi (Ljava/lang/String;Ljava/lang/String;Lkotlin/jvm/functions/Function3;Lkotlin/jvm/functions/Function3;Lkotlin/jvm/functions/Function1;)V
+	public static synthetic fun requestWithCustomUi$default (Ldev/brewkits/grant/GrantHandler;Ljava/lang/String;Ljava/lang/String;Lkotlin/jvm/functions/Function3;Lkotlin/jvm/functions/Function3;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)V
+}
+
+public abstract interface class dev/brewkits/grant/GrantLauncher {
+	public abstract fun launch (Ljava/util/List;Lkotlin/jvm/functions/Function1;)V
+}
+
+public abstract interface class dev/brewkits/grant/GrantManager {
+	public abstract fun checkStatus (Ldev/brewkits/grant/GrantPermission;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun openSettings ()V
+	public abstract fun request (Ldev/brewkits/grant/GrantPermission;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun request (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun setLauncher (Ldev/brewkits/grant/GrantLauncher;)V
+}
+
+public abstract interface class dev/brewkits/grant/GrantPermission {
+	public abstract fun getIdentifier ()Ljava/lang/String;
+	public fun getRequiresBackgroundUpgrade ()Z
+}
+
+public final class dev/brewkits/grant/GrantPermission$DefaultImpls {
+	public static fun getRequiresBackgroundUpgrade (Ldev/brewkits/grant/GrantPermission;)Z
+}
+
+public final class dev/brewkits/grant/GrantStatus : java/lang/Enum {
+	public static final field BUSY Ldev/brewkits/grant/GrantStatus;
+	public static final field DENIED Ldev/brewkits/grant/GrantStatus;
+	public static final field DENIED_ALWAYS Ldev/brewkits/grant/GrantStatus;
+	public static final field GRANTED Ldev/brewkits/grant/GrantStatus;
+	public static final field NOT_DETERMINED Ldev/brewkits/grant/GrantStatus;
+	public static final field PARTIAL_GRANTED Ldev/brewkits/grant/GrantStatus;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/brewkits/grant/GrantStatus;
+	public static fun values ()[Ldev/brewkits/grant/GrantStatus;
+}
+
+public abstract interface class dev/brewkits/grant/GrantStore {
+	public abstract fun clear ()V
+	public abstract fun clear (Ldev/brewkits/grant/AppGrant;)V
+	public abstract fun getStatus (Ldev/brewkits/grant/AppGrant;)Ldev/brewkits/grant/GrantStatus;
+	public abstract fun isRawPermissionRequested (Ljava/lang/String;)Z
+	public abstract fun isRequestedBefore (Ldev/brewkits/grant/AppGrant;)Z
+	public abstract fun markRawPermissionRequested (Ljava/lang/String;)V
+	public abstract fun setRequested (Ldev/brewkits/grant/AppGrant;)V
+	public abstract fun setStatus (Ldev/brewkits/grant/AppGrant;Ldev/brewkits/grant/GrantStatus;)V
+}
+
+public final class dev/brewkits/grant/GrantStoreKt {
+	public static final fun getStatus (Ldev/brewkits/grant/GrantStore;Ldev/brewkits/grant/GrantPermission;)Ldev/brewkits/grant/GrantStatus;
+	public static final fun isRequestedBefore (Ldev/brewkits/grant/GrantStore;Ldev/brewkits/grant/GrantPermission;)Z
+	public static final fun setRequested (Ldev/brewkits/grant/GrantStore;Ldev/brewkits/grant/GrantPermission;)V
+}
+
+public final class dev/brewkits/grant/GrantUiState {
+	public fun <init> ()V
+	public fun <init> (ZZZLjava/lang/String;Ljava/lang/String;)V
+	public synthetic fun <init> (ZZZLjava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Z
+	public final fun component2 ()Z
+	public final fun component3 ()Z
+	public final fun component4 ()Ljava/lang/String;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun copy (ZZZLjava/lang/String;Ljava/lang/String;)Ldev/brewkits/grant/GrantUiState;
+	public static synthetic fun copy$default (Ldev/brewkits/grant/GrantUiState;ZZZLjava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Ldev/brewkits/grant/GrantUiState;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getRationaleMessage ()Ljava/lang/String;
+	public final fun getSettingsMessage ()Ljava/lang/String;
+	public final fun getShowRationale ()Z
+	public final fun getShowSettingsGuide ()Z
+	public fun hashCode ()I
+	public final fun isVisible ()Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/brewkits/grant/InMemoryGrantStore : dev/brewkits/grant/GrantStore {
+	public fun <init> ()V
+	public fun clear ()V
+	public fun clear (Ldev/brewkits/grant/AppGrant;)V
+	public fun getStatus (Ldev/brewkits/grant/AppGrant;)Ldev/brewkits/grant/GrantStatus;
+	public fun isRawPermissionRequested (Ljava/lang/String;)Z
+	public fun isRequestedBefore (Ldev/brewkits/grant/AppGrant;)Z
+	public fun markRawPermissionRequested (Ljava/lang/String;)V
+	public fun setRequested (Ldev/brewkits/grant/AppGrant;)V
+	public fun setStatus (Ldev/brewkits/grant/AppGrant;Ldev/brewkits/grant/GrantStatus;)V
+}
+
+public abstract class dev/brewkits/grant/LocationReadyStatus {
+}
+
+public final class dev/brewkits/grant/LocationReadyStatus$BothRequired : dev/brewkits/grant/LocationReadyStatus {
+	public fun <init> (Ldev/brewkits/grant/GrantStatus;)V
+	public final fun component1 ()Ldev/brewkits/grant/GrantStatus;
+	public final fun copy (Ldev/brewkits/grant/GrantStatus;)Ldev/brewkits/grant/LocationReadyStatus$BothRequired;
+	public static synthetic fun copy$default (Ldev/brewkits/grant/LocationReadyStatus$BothRequired;Ldev/brewkits/grant/GrantStatus;ILjava/lang/Object;)Ldev/brewkits/grant/LocationReadyStatus$BothRequired;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getGrantStatus ()Ldev/brewkits/grant/GrantStatus;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/brewkits/grant/LocationReadyStatus$GrantDenied : dev/brewkits/grant/LocationReadyStatus {
+	public fun <init> (Ldev/brewkits/grant/GrantStatus;)V
+	public final fun component1 ()Ldev/brewkits/grant/GrantStatus;
+	public final fun copy (Ldev/brewkits/grant/GrantStatus;)Ldev/brewkits/grant/LocationReadyStatus$GrantDenied;
+	public static synthetic fun copy$default (Ldev/brewkits/grant/LocationReadyStatus$GrantDenied;Ldev/brewkits/grant/GrantStatus;ILjava/lang/Object;)Ldev/brewkits/grant/LocationReadyStatus$GrantDenied;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getGrantStatus ()Ldev/brewkits/grant/GrantStatus;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/brewkits/grant/LocationReadyStatus$Ready : dev/brewkits/grant/LocationReadyStatus {
+	public static final field INSTANCE Ldev/brewkits/grant/LocationReadyStatus$Ready;
+}
+
+public final class dev/brewkits/grant/LocationReadyStatus$ServiceDisabled : dev/brewkits/grant/LocationReadyStatus {
+	public static final field INSTANCE Ldev/brewkits/grant/LocationReadyStatus$ServiceDisabled;
+}
+
+public final class dev/brewkits/grant/LocationReadyStatus$Unknown : dev/brewkits/grant/LocationReadyStatus {
+	public static final field INSTANCE Ldev/brewkits/grant/LocationReadyStatus$Unknown;
+}
+
+public final class dev/brewkits/grant/NoOpSavedStateDelegate : dev/brewkits/grant/SavedStateDelegate {
+	public fun <init> ()V
+	public fun clear (Ljava/lang/String;)V
+	public fun restoreState (Ljava/lang/String;)Ljava/lang/String;
+	public fun saveState (Ljava/lang/String;Ljava/lang/String;)V
+}
+
+public final class dev/brewkits/grant/RawPermission : dev/brewkits/grant/GrantPermission {
+	public fun <init> (Ljava/lang/String;Ljava/util/List;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/util/List;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/util/List;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/util/List;Ljava/lang/String;)Ldev/brewkits/grant/RawPermission;
+	public static synthetic fun copy$default (Ldev/brewkits/grant/RawPermission;Ljava/lang/String;Ljava/util/List;Ljava/lang/String;ILjava/lang/Object;)Ldev/brewkits/grant/RawPermission;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAndroidPermissions ()Ljava/util/List;
+	public fun getIdentifier ()Ljava/lang/String;
+	public final fun getIosUsageKey ()Ljava/lang/String;
+	public fun getRequiresBackgroundUpgrade ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/brewkits/grant/ReadyStatus {
+	public fun <init> (Ldev/brewkits/grant/GrantStatus;Ldev/brewkits/grant/ServiceStatus;Z)V
+	public final fun component1 ()Ldev/brewkits/grant/GrantStatus;
+	public final fun component2 ()Ldev/brewkits/grant/ServiceStatus;
+	public final fun component3 ()Z
+	public final fun copy (Ldev/brewkits/grant/GrantStatus;Ldev/brewkits/grant/ServiceStatus;Z)Ldev/brewkits/grant/ReadyStatus;
+	public static synthetic fun copy$default (Ldev/brewkits/grant/ReadyStatus;Ldev/brewkits/grant/GrantStatus;Ldev/brewkits/grant/ServiceStatus;ZILjava/lang/Object;)Ldev/brewkits/grant/ReadyStatus;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getGrantStatus ()Ldev/brewkits/grant/GrantStatus;
+	public final fun getMessage ()Ljava/lang/String;
+	public final fun getServiceStatus ()Ldev/brewkits/grant/ServiceStatus;
+	public fun hashCode ()I
+	public final fun isReady ()Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class dev/brewkits/grant/SavedStateDelegate {
+	public abstract fun clear (Ljava/lang/String;)V
+	public abstract fun restoreState (Ljava/lang/String;)Ljava/lang/String;
+	public abstract fun saveState (Ljava/lang/String;Ljava/lang/String;)V
+}
+
+public final class dev/brewkits/grant/ServiceFactory {
+	public static final field INSTANCE Ldev/brewkits/grant/ServiceFactory;
+	public final fun createServiceManager ()Ldev/brewkits/grant/ServiceManager;
+}
+
+public abstract interface class dev/brewkits/grant/ServiceManager {
+	public abstract fun checkServiceStatus (Ldev/brewkits/grant/ServiceType;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun isServiceEnabled (Ldev/brewkits/grant/ServiceType;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun openServiceSettings (Ldev/brewkits/grant/ServiceType;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class dev/brewkits/grant/ServiceManager$DefaultImpls {
+	public static fun isServiceEnabled (Ldev/brewkits/grant/ServiceManager;Ldev/brewkits/grant/ServiceType;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class dev/brewkits/grant/ServiceStatus : java/lang/Enum {
+	public static final field DISABLED Ldev/brewkits/grant/ServiceStatus;
+	public static final field ENABLED Ldev/brewkits/grant/ServiceStatus;
+	public static final field NOT_AVAILABLE Ldev/brewkits/grant/ServiceStatus;
+	public static final field UNKNOWN Ldev/brewkits/grant/ServiceStatus;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/brewkits/grant/ServiceStatus;
+	public static fun values ()[Ldev/brewkits/grant/ServiceStatus;
+}
+
+public final class dev/brewkits/grant/ServiceType : java/lang/Enum {
+	public static final field BLUETOOTH Ldev/brewkits/grant/ServiceType;
+	public static final field CAMERA_HARDWARE Ldev/brewkits/grant/ServiceType;
+	public static final field HEALTH Ldev/brewkits/grant/ServiceType;
+	public static final field LOCATION_GPS Ldev/brewkits/grant/ServiceType;
+	public static final field NFC Ldev/brewkits/grant/ServiceType;
+	public static final field WIFI Ldev/brewkits/grant/ServiceType;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/brewkits/grant/ServiceType;
+	public static fun values ()[Ldev/brewkits/grant/ServiceType;
+}
+
+public abstract interface class dev/brewkits/grant/handlers/DesktopPermissionHandler {
+	public abstract fun checkStatus ()Ldev/brewkits/grant/GrantStatus;
+	public abstract fun request (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class dev/brewkits/grant/handlers/DesktopPermissionHandlerRegistry {
+	public static final field INSTANCE Ldev/brewkits/grant/handlers/DesktopPermissionHandlerRegistry;
+	public final fun register (Ljava/lang/String;Ldev/brewkits/grant/handlers/DesktopPermissionHandler;)V
+}
+
+public final class dev/brewkits/grant/impl/DefaultGrantManager : dev/brewkits/grant/GrantManager {
+	public fun <init> (Ldev/brewkits/grant/impl/PlatformGrantDelegate;)V
+	public fun checkStatus (Ldev/brewkits/grant/GrantPermission;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun openSettings ()V
+	public fun request (Ldev/brewkits/grant/GrantPermission;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun request (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun setLauncher (Ldev/brewkits/grant/GrantLauncher;)V
+}
+
+public final class dev/brewkits/grant/impl/MyServiceManager : dev/brewkits/grant/ServiceManager {
+	public fun checkServiceStatus (Ldev/brewkits/grant/ServiceType;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun isServiceEnabled (Ldev/brewkits/grant/ServiceType;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun openServiceSettings (Ldev/brewkits/grant/ServiceType;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class dev/brewkits/grant/impl/PlatformGrantDelegate {
+	public fun <init> (Ldev/brewkits/grant/GrantStore;)V
+	public final fun checkStatus (Ldev/brewkits/grant/GrantPermission;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun openSettings ()V
+	public final fun request (Ldev/brewkits/grant/GrantPermission;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun request (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun setLauncher (Ldev/brewkits/grant/GrantLauncher;)V
+}
+
+public final class dev/brewkits/grant/impl/SimpleGrantManager : dev/brewkits/grant/GrantManager {
+	public fun <init> ()V
+	public fun checkStatus (Ldev/brewkits/grant/GrantPermission;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun getSimulationMode ()Ldev/brewkits/grant/impl/SimpleGrantManager$SimulationMode;
+	public fun openSettings ()V
+	public fun request (Ldev/brewkits/grant/GrantPermission;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun request (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun reset ()V
+	public fun setLauncher (Ldev/brewkits/grant/GrantLauncher;)V
+	public final fun setSimulationMode (Ldev/brewkits/grant/impl/SimpleGrantManager$SimulationMode;)V
+}
+
+public final class dev/brewkits/grant/impl/SimpleGrantManager$SimulationMode : java/lang/Enum {
+	public static final field ALWAYS_DENY Ldev/brewkits/grant/impl/SimpleGrantManager$SimulationMode;
+	public static final field ALWAYS_DENY_PERMANENTLY Ldev/brewkits/grant/impl/SimpleGrantManager$SimulationMode;
+	public static final field AUTO_GRANT Ldev/brewkits/grant/impl/SimpleGrantManager$SimulationMode;
+	public static final field REALISTIC Ldev/brewkits/grant/impl/SimpleGrantManager$SimulationMode;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/brewkits/grant/impl/SimpleGrantManager$SimulationMode;
+	public static fun values ()[Ldev/brewkits/grant/impl/SimpleGrantManager$SimulationMode;
+}
+
+public final class dev/brewkits/grant/utils/GrantLogger {
+	public static final field INSTANCE Ldev/brewkits/grant/utils/GrantLogger;
+	public final fun d (Ljava/lang/String;Ljava/lang/String;)V
+	public final fun e (Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)V
+	public static synthetic fun e$default (Ldev/brewkits/grant/utils/GrantLogger;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;ILjava/lang/Object;)V
+	public final fun getLogHandler ()Lkotlin/jvm/functions/Function3;
+	public final fun i (Ljava/lang/String;Ljava/lang/String;)V
+	public final fun isEnabled ()Z
+	public final fun setEnabled (Z)V
+	public final fun setLogHandler (Lkotlin/jvm/functions/Function3;)V
+	public final fun w (Ljava/lang/String;Ljava/lang/String;)V
+}
+
+public final class dev/brewkits/grant/utils/GrantLogger$LogLevel : java/lang/Enum {
+	public static final field DEBUG Ldev/brewkits/grant/utils/GrantLogger$LogLevel;
+	public static final field ERROR Ldev/brewkits/grant/utils/GrantLogger$LogLevel;
+	public static final field INFO Ldev/brewkits/grant/utils/GrantLogger$LogLevel;
+	public static final field WARNING Ldev/brewkits/grant/utils/GrantLogger$LogLevel;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/brewkits/grant/utils/GrantLogger$LogLevel;
+	public static fun values ()[Ldev/brewkits/grant/utils/GrantLogger$LogLevel;
+}
+
