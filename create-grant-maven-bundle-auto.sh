@@ -26,6 +26,7 @@ MODULES=(
     grant-motion
     grant-bluetooth
     grant-location-always
+    grant-tracking
 )
 
 echo "=========================================="

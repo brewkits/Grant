@@ -30,6 +30,7 @@ dependencies {
     dokka(project(":grant-motion"))
     dokka(project(":grant-bluetooth"))
     dokka(project(":grant-location-always"))
+    dokka(project(":grant-tracking"))
     dokka(project(":grant-desktop"))
 }
 

@@ -170,6 +170,26 @@ just unit tests.
 
 **Explicitly out of scope, with reasons** (so it isn't re-litigated by assumption): Linux desktop (no reliable cross-environment signal), watchOS/tvOS (different problem shape, stays in Backlog below), standalone Kotlin/Native `macosArm64`/`macosX64` klib target (can't be consumed by a Compose Desktop app — this is what `grant-desktop`'s `.dylib`-over-JNA approach sidesteps).
 
+### v2.7.0 — Newest-OS permission coverage
+
+*Origin: an audit of coverage against the newest OS releases, grounded in a connected Android 17 (API 37) device (`pm list permissions -d`, `pm grant`) and the iOS 26.5 SDK/runtime rather than recall. It produced three defect fixes (shipped in #70 and #74) and one genuine gap, below.*
+
+**1. App Tracking Transparency** ✅ *shipped as `grant-tracking`*
+- [x] `AppGrant.APP_TRACKING` (21st permission), backed on iOS by `ATTrackingManager` in a **new opt-in module**. The module boundary is forced, not stylistic: linking `AppTrackingTransparency.framework` makes Apple require `NSUserTrackingUsageDescription` in *every* app that links it, so `grant-core` must not — the same isolation reason as `grant-contacts`/`grant-calendar`/`grant-motion` (Issues #38, #45).
+- [x] Feasibility verified before writing code, the same check that ruled AlarmKit out: `AppTrackingTransparency.framework/Headers/ATTrackingManager.h` is a real Objective-C header exposing `trackingAuthorizationStatus`, `requestTrackingAuthorizationWithCompletionHandler:` and the 0–3 status enum, so Kotlin/Native cinterop can bind it.
+- [x] `restricted` and `denied` both map to `DENIED_ALWAYS` but are logged distinctly, because the remedy differs: `denied` is recoverable in *this app's* settings, `restricted` is a device-wide switch or MDM profile that the app's own settings page cannot change — sending the user there would be a dead end.
+- [x] `request()` warns when the app is not foreground-**active**. iOS shows the ATT prompt only in that state; called during launch or from the background it returns the current status with no prompt, and the one ask an install gets is spent. Grant cannot defer the call without guessing a good moment, so it warns rather than silently burning the ask.
+- [x] Android is a documented no-op reporting GRANTED — honest, not a stub: cross-app tracking is gated there by `com.google.android.gms.permission.AD_ID`, an *install-time* permission with no runtime prompt to show. Users opt out in system settings, which surfaces as a zeroed advertising ID rather than a permission denial Grant could observe.
+- [ ] **Not yet verified on a device.** The status mapping and the foreground-active rule are unit-untestable — `trackingAuthorizationStatus` reads real TCC state a test cannot set, and the prompt needs a human. Must be exercised on a real device before this module is advertised as verified.
+
+**2. Health Connect (Android)** — *not started*
+- [ ] ~200 `android.permission.health.*` permissions exist on API 37. They deliberately do **not** go through `requestPermissions()`: they need `PermissionController.createRequestPermissionResultContract()` plus a rationale activity declared with the `androidx.health.connect.action.SHOW_PERMISSIONS_RATIONALE` intent filter. A `RawPermission` would therefore fail silently, which is why this is a real gap rather than something consumers can already work around.
+- [ ] It also does not fit the `AppGrant` model — modelling 200 enum values would be wrong. Needs its own permission type and its own module; design first, code after.
+
+**Deliberately left to `RawPermission`** (all confirmed `dangerous` on API 37, so `checkStatus`/`request` already work on Android today): `READ_MEDIA_AUDIO`, `ACCESS_MEDIA_LOCATION`, `GET_ACCOUNTS`, `BODY_SENSORS`(+`_BACKGROUND`), `RANGING`, `UWB_RANGING`, and the SMS / phone / call-log families. Worth noting in docs that `ACCESS_MEDIA_LOCATION` is the companion to gallery reads (GPS in EXIF) and is **not** auto-granted with `READ_MEDIA_IMAGES`.
+
+**Note on the `RawPermission` escape hatch — it is not symmetric.** On Android it is complete: `checkStatus()` and `request()` both work for any dangerous permission. On iOS `request()` **cannot** work — there is no generic request API, so it logs and returns `NOT_DETERMINED`; the only real route is implementing `PermissionHandler` and registering it via `IosPermissionHandlerRegistry`. So "missing permission X" is a documentation matter on Android and a real gap on iOS.
+
 ## 📋 Backlog / Considering
 
 *Not committed to a version yet — pulled into a milestone when a consumer actually asks.*

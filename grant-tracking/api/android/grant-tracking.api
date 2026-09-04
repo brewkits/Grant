@@ -1,0 +1,5 @@
+public final class dev/brewkits/grant/tracking/GrantTracking {
+	public static final field INSTANCE Ldev/brewkits/grant/tracking/GrantTracking;
+	public final fun initialize ()V
+}
+

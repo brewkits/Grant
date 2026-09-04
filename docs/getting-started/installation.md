@@ -48,6 +48,7 @@ kotlin {
             implementation("dev.brewkits:grant-motion:2.3.0")          // Optional: Motion (iOS CoreMotion)
             implementation("dev.brewkits:grant-bluetooth:2.3.0")       // Optional: Bluetooth (iOS CoreBluetooth)
             implementation("dev.brewkits:grant-location-always:2.3.0") // Optional: background "always" location (iOS requestAlwaysAuthorization)
+            implementation("dev.brewkits:grant-tracking:2.3.0")        // Optional: App Tracking Transparency (iOS ATTrackingManager)
         }
     }
 }
@@ -65,6 +66,7 @@ kotlin {
 | `grant-motion` | Your app uses motion / activity recognition (links iOS `CoreMotion.framework`). |
 | `grant-bluetooth` | Your app uses Bluetooth (links iOS `CoreBluetooth.framework`). |
 | `grant-location-always` | Your app needs background ("always") location (links iOS `requestAlwaysAuthorization`). |
+| `grant-tracking` | Your app asks for cross-app tracking consent — ad attribution or measurement (links iOS `AppTrackingTransparency`, which makes Apple require `NSUserTrackingUsageDescription`). No-op on Android, which has no runtime permission for this. |
 
 > **Why the optional split?** On iOS, Apple's static scanner flags any linked
 > framework and requires the matching `NSUsageDescription` key. By keeping these
@@ -107,6 +109,7 @@ See [GRANTS.md](../grant-core/GRANTS.md) for the full permission → manifest ma
    GrantMotion.shared.initialize()          // if you added grant-motion
    GrantBluetooth.shared.initialize()       // if you added grant-bluetooth
    GrantLocationAlways.shared.initialize()  // if you added grant-location-always
+   GrantTracking.shared.initialize()        // if you added grant-tracking
    ```
 
    `grant-core` permissions (Camera, foreground Location, Gallery, Microphone,
