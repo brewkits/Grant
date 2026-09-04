@@ -87,11 +87,19 @@ internal class CalendarPermissionHandler : PermissionHandler {
 // ────────────────────────────────────────────────────────────────────────────
 
 /**
- * Either `NSCalendarsUsageDescription` (legacy) or `NSCalendarsFullAccessUsageDescription`
- * (iOS 17+) is sufficient — an app that ships only the legacy key is correctly configured
- * and must not be treated as missing one.
+ * Any one of `NSCalendarsUsageDescription` (legacy),
+ * `NSCalendarsFullAccessUsageDescription` or `NSCalendarsWriteOnlyAccessUsageDescription`
+ * (both iOS 17+) is sufficient — an app that ships only one of them is correctly configured
+ * and must not be treated as missing the others.
  *
- * Checks both keys silently (unlike [dev.brewkits.grant.utils.hasInfoPlistKey], which logs
+ * The write-only key matters and was missing until now: iOS 17 split calendar access into
+ * full and write-only, and an app that only adds events is *encouraged* to declare just the
+ * write-only key. Rejecting that configuration reported DENIED_ALWAYS before EventKit was
+ * ever consulted, for an app that was correctly set up. (The status mapping below already
+ * handled the runtime side — `EKAuthorizationStatusWriteOnly` → PARTIAL_GRANTED — so only
+ * this gate was wrong.) Confirmed against the iOS 26.5 runtime, which defines all three keys.
+ *
+ * Checks the keys silently (unlike [dev.brewkits.grant.utils.hasInfoPlistKey], which logs
  * an error for the one key it was asked about) and logs a single, accurate error only when
  * *neither* is present — the actual failure condition. Logging per-key here would report
  * "MISSING NSCalendarsFullAccessUsageDescription... returning DENIED_ALWAYS" even when the
@@ -101,23 +109,30 @@ internal class CalendarPermissionHandler : PermissionHandler {
 private fun hasAnyCalendarPlistKey(): Boolean {
     val hasLegacy = NSBundle.mainBundle.objectForInfoDictionaryKey("NSCalendarsUsageDescription") != null
     val hasFull = NSBundle.mainBundle.objectForInfoDictionaryKey("NSCalendarsFullAccessUsageDescription") != null
-    return evaluateCalendarPlistKeys(hasLegacy, hasFull)
+    val hasWriteOnly =
+        NSBundle.mainBundle.objectForInfoDictionaryKey("NSCalendarsWriteOnlyAccessUsageDescription") != null
+    return evaluateCalendarPlistKeys(hasLegacy, hasFull, hasWriteOnly)
 }
 
 /**
  * The decision logic on its own, independent of [NSBundle] — pulled out so a test can drive
- * every (hasLegacy, hasFull) combination directly instead of depending on what the test
+ * every (hasLegacy, hasFull, hasWriteOnly) combination directly instead of depending on what the test
  * bundle's real `Info.plist` happens to contain. `internal` rather than `private` so
  * [dev.brewkits.grant.handlers.CalendarPlistLoggingTest] can reach it.
  */
-internal fun evaluateCalendarPlistKeys(hasLegacy: Boolean, hasFull: Boolean): Boolean {
-    if (!hasLegacy && !hasFull) {
+internal fun evaluateCalendarPlistKeys(
+    hasLegacy: Boolean,
+    hasFull: Boolean,
+    hasWriteOnly: Boolean = false,
+): Boolean {
+    if (!hasLegacy && !hasFull && !hasWriteOnly) {
         GrantLogger.e(
             TAG,
-            "MISSING Info.plist key: need either 'NSCalendarsUsageDescription' or " +
-                "'NSCalendarsFullAccessUsageDescription'. Add one with a usage description " +
-                "to prevent crashes. Returning DENIED_ALWAYS as a safety fallback.",
+            "MISSING Info.plist key: need one of 'NSCalendarsUsageDescription', " +
+                "'NSCalendarsFullAccessUsageDescription' or " +
+                "'NSCalendarsWriteOnlyAccessUsageDescription'. Add one with a usage " +
+                "description to prevent crashes. Returning DENIED_ALWAYS as a safety fallback.",
         )
     }
-    return hasLegacy || hasFull
+    return hasLegacy || hasFull || hasWriteOnly
 }

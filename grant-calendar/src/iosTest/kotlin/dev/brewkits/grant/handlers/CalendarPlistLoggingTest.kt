@@ -49,6 +49,33 @@ class CalendarPlistLoggingTest {
         GrantLogger.logHandler = originalHandler
     }
 
+    /**
+     * iOS 17 split calendar access into full and write-only, and an app that only *adds*
+     * events is encouraged to declare just `NSCalendarsWriteOnlyAccessUsageDescription`.
+     * Before this key was accepted, that correctly-configured app was reported DENIED_ALWAYS
+     * before EventKit was ever consulted. Confirmed against the iOS 26.5 runtime, which
+     * defines all three calendar keys.
+     */
+    @Test
+    fun `write-only key alone is sufficient and does not log MISSING`() {
+        val result = evaluateCalendarPlistKeys(hasLegacy = false, hasFull = false, hasWriteOnly = true)
+        assertTrue(result, "the iOS 17+ write-only key alone must be sufficient")
+        assertTrue(messages.isEmpty(), "must not log when the write-only key covers it, got $messages")
+    }
+
+    @Test
+    fun `no key at all still logs exactly one accurate MISSING naming all three keys`() {
+        val result = evaluateCalendarPlistKeys(hasLegacy = false, hasFull = false, hasWriteOnly = false)
+        assertEquals(false, result, "no calendar key means the app is genuinely misconfigured")
+        assertEquals(1, messages.size, "exactly one log line for the one real failure, got $messages")
+        val message = messages.single()
+        assertTrue(
+            message.contains("NSCalendarsWriteOnlyAccessUsageDescription"),
+            "the guidance must name the write-only key too, or a developer told to add a key " +
+                "may add a wider-scope one than they need; got: $message",
+        )
+    }
+
     @Test
     fun `legacy key only does not log MISSING`() {
         val result = evaluateCalendarPlistKeys(hasLegacy = true, hasFull = false)
