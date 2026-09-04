@@ -1,6 +1,7 @@
 package dev.brewkits.grant
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import dev.brewkits.grant.utils.GrantLogger
 import dev.brewkits.grant.utils.withLock
@@ -49,11 +50,47 @@ public class SharedPreferencesGrantStore(context: Context) : GrantStore {
 
     private val appContext = context.applicationContext
 
-    private val prefs = appContext
-        .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    /**
+     * Deliberately `by lazy`, and the install check runs inside it.
+     *
+     * Constructing this store used to do two blocking things eagerly:
+     * `getSharedPreferences()` (a disk read and XML parse) and, via
+     * [discardHistoryFromOtherInstalls], `PackageManager.getPackageInfo()` — a binder round
+     * trip to `system_server`. Both ran on whichever thread built the object, which in
+     * practice is the main thread: `GrantFactory.create(applicationContext)` is normally
+     * called from `Application.onCreate()` or a ViewModel, and the Koin `single { }` is
+     * resolved by the first screen that asks for it. At a 120 fps frame budget of ~8 ms, a
+     * binder call alone can blow the frame, and `StrictMode.detectDiskReads()` flags it.
+     *
+     * Deferring to first *use* keeps object construction free. It does not make the work
+     * disappear, so [warmUp] exists to pay it on a background thread before the UI
+     * needs an answer; apps with a strict frame budget should call it.
+     */
+    private val prefs: SharedPreferences by lazy {
+        appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .also { discardHistoryFromOtherInstalls(it) }
+    }
 
-    init {
-        discardHistoryFromOtherInstalls()
+    /**
+     * Forces this store's disk read and `PackageManager` lookup to happen now, on the calling
+     * thread, so the first real read does not pay for them.
+     *
+     * **Blocking — call it from a background thread**, e.g. from `Application.onCreate()`:
+     * ```kotlin
+     * applicationScope.launch(Dispatchers.IO) { store.warmUp() }
+     * ```
+     *
+     * Deliberately blocking and dispatcher-free rather than taking a `CoroutineScope`: that
+     * would put `kotlinx.coroutines` types into this module's public ABI, and coroutines is an
+     * `implementation` dependency here. The caller already knows which scope and dispatcher it
+     * wants; this only needs to be *called* from the right one.
+     *
+     * Optional. Skipping it is correct — the cost simply lands on whichever thread first
+     * touches the store, which for an app with a tight frame budget (camera preview, games)
+     * may be a frame that cannot afford it.
+     */
+    public fun warmUp() {
+        prefs
     }
 
     /**
@@ -73,7 +110,7 @@ public class SharedPreferencesGrantStore(context: Context) : GrantStore {
      * [android.content.SharedPreferences.contains] rather than a default value, because 0
      * is a legitimate `firstInstallTime` in some environments (Robolectric reports it).
      */
-    private fun discardHistoryFromOtherInstalls() {
+    private fun discardHistoryFromOtherInstalls(prefs: SharedPreferences) {
         val currentIdentity = currentInstallIdentity() ?: return
 
         if (prefs.contains(KEY_INSTALL_IDENTITY) &&
@@ -112,6 +149,14 @@ public class SharedPreferencesGrantStore(context: Context) : GrantStore {
 
     // Status is session state only — the OS is the source of truth for the live status,
     // so it is intentionally not persisted alongside the request history.
+    //
+    // NOT a performance cache, and not a duplicate of PlatformGrantDelegate's TTL-based
+    // statusCacheMap despite the similar name. This one has exactly one reader: the branch in
+    // checkStatus() that runs when there is no Activity available to consult
+    // shouldShowRequestPermissionRationale(). There, "the last status we actually observed" is
+    // the only signal left for telling DENIED from DENIED_ALWAYS. It has no TTL on purpose —
+    // a stale answer beats no answer in that branch, and the OS is re-consulted as soon as an
+    // Activity exists again.
     private val statusCache = mutableMapOf<AppGrant, GrantStatus>()
     private val lock = dev.brewkits.grant.utils.PlatformLock()
 

@@ -398,6 +398,12 @@ public class GrantHandler(
                 val newStatus = grantManager.request(grant)
                 _status.value = newStatus
                 handleStatus(newStatus, UiStrategy.StateBased(currentRationaleMsg, currentSettingsMsg), isFirstRequest = true)
+            } catch (e: CancellationException) {
+                // Cancellation is not a failure: it means the caller's scope (typically
+                // viewModelScope) is going away. Swallowing it here would let this coroutine
+                // report success and would break structured concurrency for the parent. The
+                // matching guard already exists on request(); it was missing here.
+                throw e
             } catch (e: Exception) {
                 clearCallbacks()
             } finally {

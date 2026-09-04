@@ -22,6 +22,8 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withTimeout
 import java.util.Collections
 import java.util.WeakHashMap
@@ -39,25 +41,64 @@ public actual class PlatformGrantDelegate(
         trackForegroundActivity(context)
     }
 
+    @Volatile
     private var launcher: GrantLauncher? = null
     public actual fun setLauncher(launcher: GrantLauncher) { this.launcher = launcher }
+
     /**
-     * Protects all map structures (mutexMapInternal, statusCacheMap).
+     * One mutex per permission identifier, so requests for different permissions never
+     * serialise against each other.
+     *
+     * `computeIfAbsent` rather than a surrounding `Mutex`: the invariant that matters is
+     * "exactly one [ReentrantMutex] per identifier", and that is precisely what
+     * [ConcurrentHashMap.computeIfAbsent] guarantees atomically. The previous code wrapped
+     * this — and every [statusCacheMap] read and write — in a single global `mapsMutex`,
+     * which serialised *all* permission checks against one another on the hot path while
+     * adding nothing the concurrent map did not already provide.
      */
-    private val mapsMutex = Mutex()
     private val mutexMapInternal = ConcurrentHashMap<String, ReentrantMutex>()
 
-    private suspend fun getMutexFor(identifier: String): ReentrantMutex {
-        return mapsMutex.withLock {
-            mutexMapInternal.getOrPut(identifier) { ReentrantMutex() }
-        }
-    }
+    private fun getMutexFor(identifier: String): ReentrantMutex =
+        mutexMapInternal.computeIfAbsent(identifier) { ReentrantMutex() }
 
     // Notification status cache with timestamp (Android 12 and below)
+    @Volatile
     private var notificationStatusCache: Pair<GrantStatus, Long>? = null
 
-    // Short-lived status cache for all grants to prevent redundant OS calls
-    private val statusCacheMap = ConcurrentHashMap<String, Pair<GrantStatus, Long>>()
+    /**
+     * Short-lived status cache, bounded by [MAX_TRACKED_IDENTIFIERS].
+     *
+     * The bound exists because [RawPermission.identifier] is an arbitrary app-supplied string:
+     * an app that mints identifiers dynamically would otherwise grow this map — and
+     * [mutexMapInternal] with it — without limit for the lifetime of the process. Access-order
+     * `LinkedHashMap` + `removeEldestEntry` evicts the least recently used identifier instead.
+     * Eviction is safe here because an entry is only a cached *value*; losing it costs one
+     * extra OS call, never correctness. [mutexMapInternal] is deliberately NOT evicted the same
+     * way — dropping a mutex another coroutine currently holds would break mutual exclusion —
+     * see [pruneMutexesIfNeeded].
+     */
+    private val statusCacheMap: MutableMap<String, Pair<GrantStatus, Long>> =
+        Collections.synchronizedMap(
+            object : LinkedHashMap<String, Pair<GrantStatus, Long>>(16, 0.75f, true) {
+                override fun removeEldestEntry(
+                    eldest: MutableMap.MutableEntry<String, Pair<GrantStatus, Long>>,
+                ): Boolean = size > MAX_TRACKED_IDENTIFIERS
+            }
+        )
+
+    /**
+     * Drops mutexes for identifiers no longer being tracked, but only ones that are currently
+     * unlocked — a held mutex must never be replaced, or two coroutines would each get their
+     * own instance and mutual exclusion would silently disappear.
+     *
+     * Called opportunistically after a status write rather than on a timer: the map only grows
+     * when new identifiers appear, so that is the only moment pruning can be needed.
+     */
+    private fun pruneMutexesIfNeeded() {
+        if (mutexMapInternal.size <= MAX_TRACKED_IDENTIFIERS) return
+        val live = statusCacheMap.keys.toSet()
+        mutexMapInternal.entries.removeIf { (id, mutex) -> id !in live && !mutex.isLocked }
+    }
 
     public companion object {
         private const val TAG = "AndroidGrantDelegate"
@@ -75,6 +116,13 @@ public actual class PlatformGrantDelegate(
 
         private const val NOTIFICATION_CACHE_TTL_MS = 200L
         private const val SYSTEM_DIALOG_TIMEOUT_MS = 300_000L // 5 minutes (matches activity cleanup)
+
+        /**
+         * Upper bound on tracked permission identifiers. Comfortably above the 20 [AppGrant]
+         * values plus any realistic set of app-defined [RawPermission]s, so a normal app never
+         * evicts; it exists to cap an app that mints identifiers dynamically.
+         */
+        private const val MAX_TRACKED_IDENTIFIERS = 64
 
         // Tracks which Application instances already have the lifecycle callback below
         // registered, so creating multiple PlatformGrantDelegate instances (e.g. in tests,
@@ -131,121 +179,143 @@ public actual class PlatformGrantDelegate(
 
     public actual suspend fun checkStatus(grant: GrantPermission): GrantStatus {
         val identifier = grant.identifier
-        
+
         return getMutexFor(identifier).withLock {
-            // Protect statusCacheMap reads through mapsMutex
-            val cached = mapsMutex.withLock {
-                statusCacheMap[identifier]?.let { (cachedStatus, timestamp) ->
-                    if (SystemClock.elapsedRealtime() - timestamp < STATUS_CACHE_TTL_MS) {
-                        cachedStatus
-                    } else null
-                }
+            val cached = statusCacheMap[identifier]?.let { (cachedStatus, timestamp) ->
+                if (SystemClock.elapsedRealtime() - timestamp < STATUS_CACHE_TTL_MS) cachedStatus else null
             }
             if (cached != null) return@withLock cached
 
-            val status = if (grant is RawPermission) {
-                val androidPermissions = grant.androidPermissions
-                val allGranted = androidPermissions.all { 
-                    ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED 
-                }
-                if (allGranted) GrantStatus.GRANTED
-                else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && ContextCompat.checkSelfPermission(context, READ_MEDIA_VISUAL_USER_SELECTED) == PackageManager.PERMISSION_GRANTED) {
-                    GrantStatus.PARTIAL_GRANTED
-                } else {
-                    // shouldShowRequestPermissionRationale() is OS-persisted and survives process
-                    // death, unlike store.isRawPermissionRequested(). Check it first so a soft
-                    // denial is still detected after an app restart (Issue #55).
-                    val activeActivity = PlatformConfig.activity ?: (context as? android.app.Activity)
-                    val anyCanShowRationale = activeActivity != null &&
-                        androidPermissions.any { activeActivity.shouldShowRequestPermissionRationale(it) }
-                    when {
-                        anyCanShowRationale -> GrantStatus.DENIED
-                        store.isRawPermissionRequested(grant.identifier) -> {
-                            // Fallback to DENIED to allow rationale display if activity context is missing.
-                            if (activeActivity == null) GrantStatus.DENIED else GrantStatus.DENIED_ALWAYS
-                        }
-                        else -> GrantStatus.NOT_DETERMINED
-                    }
-                }
-            } else {
-                val appGrant = grant as AppGrant
-                val overrideStatus = getGrantStatusOverride(appGrant)
-                if (overrideStatus != null) {
-                    overrideStatus
-                } else if (appGrant == AppGrant.LOCATION_ALWAYS && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    val hasForeground = listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION).all {
-                        ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
-                    }
-                    val hasBackground = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
-
-                    // shouldShowRequestPermissionRationale() is OS-persisted and survives process
-                    // death, unlike store.isRequestedBefore(). Check it first so a soft denial is
-                    // still detected after an app restart (Issue #55).
-                    val activeActivity = PlatformConfig.activity ?: (context as? android.app.Activity)
-                    val canShowRationale = activeActivity?.shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_BACKGROUND_LOCATION) == true
-
-                    when {
-                        hasBackground -> GrantStatus.GRANTED
-                        hasForeground -> GrantStatus.PARTIAL_GRANTED
-                        canShowRationale -> GrantStatus.DENIED
-                        store.isRequestedBefore(appGrant) -> if (activeActivity == null) GrantStatus.DENIED else GrantStatus.DENIED_ALWAYS
-                        else -> GrantStatus.NOT_DETERMINED
-                    }
-                } else {
-                    val androidGrants = appGrant.toAndroidGrants()
-                    if (androidGrants.isEmpty()) GrantStatus.GRANTED
-                    else {
-                        // Full access is judged on the REQUIRED permissions only — see
-                        // toRequiredAndroidGrants(). Counting READ_MEDIA_VISUAL_USER_SELECTED here
-                        // misclassified a fully-granted gallery (IMAGES + VIDEO granted, USER_SELECTED
-                        // not) as denied → DENIED_ALWAYS (Issue: Lam gallery P0, 2026-07-09).
-                        val requiredGrants = appGrant.toRequiredAndroidGrants()
-                        val allGranted = requiredGrants.isNotEmpty() && requiredGrants.all {
-                            ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
-                        }
-                        if (allGranted) GrantStatus.GRANTED
-                        else if ((appGrant == AppGrant.GALLERY || appGrant == AppGrant.GALLERY_IMAGES_ONLY || appGrant == AppGrant.GALLERY_VIDEO_ONLY) && isPartialGalleryAccessGranted()) {
-                            GrantStatus.PARTIAL_GRANTED
-                        } else if (appGrant == AppGrant.LOCATION && isApproximateLocationGranted()) {
-                            // 2.3.0: the user picked "Approximate" in the OS dialog — COARSE is
-                            // granted, FINE is not. The app HAS usable (coarse) location, but the
-                            // all-granted check above fails and the request-history fallback used
-                            // to escalate this to DENIED_ALWAYS. Same defect class as the gallery
-                            // USER_SELECTED misclassification. Android 17's dialog makes the
-                            // Precise/Approximate choice more prominent, so this state is common.
-                            GrantStatus.PARTIAL_GRANTED
-                        } else {
-                            // shouldShowRequestPermissionRationale() is the OS source of truth for the
-                            // live DENIED vs DENIED_ALWAYS distinction. Consult it FIRST so an in-session
-                            // second denial is seen as permanent immediately, not masked by a stale
-                            // stored DENIED (Issue #55 follow-up). Mirrors the RawPermission/LOCATION_ALWAYS branches.
-                            val activeActivity = PlatformConfig.activity ?: (context as? android.app.Activity)
-                            val anyCanShowRationale = activeActivity != null &&
-                                androidGrants.any { activeActivity.shouldShowRequestPermissionRationale(it) }
-                            when {
-                                anyCanShowRationale -> GrantStatus.DENIED
-                                store.isRequestedBefore(appGrant) ->
-                                    // Requested before and no rationale → permanently denied. With no
-                                    // Activity to confirm, fall back to the last stored status (or DENIED,
-                                    // which keeps the rationale path open).
-                                    if (activeActivity == null) store.getStatus(appGrant) ?: GrantStatus.DENIED
-                                    else GrantStatus.DENIED_ALWAYS
-                                // Never requested → getStatus() is always null here (setStatus only ever
-                                // follows setRequested), so this is simply NOT_DETERMINED.
-                                else -> GrantStatus.NOT_DETERMINED
-                            }
-                        }
-                    }
-                }
+            val status = when {
+                grant is RawPermission -> resolveRawPermission(grant)
+                grant is AppGrant -> resolveAppGrant(grant)
+                // GrantPermission is sealed, so this is unreachable; reporting NOT_DETERMINED
+                // rather than throwing keeps an unknown future subtype from crashing a caller.
+                else -> GrantStatus.NOT_DETERMINED
             }
 
-            // Protect statusCacheMap writes through mapsMutex
-            mapsMutex.withLock {
-                statusCacheMap[identifier] = status to SystemClock.elapsedRealtime()
-            }
+            statusCacheMap[identifier] = status to SystemClock.elapsedRealtime()
+            pruneMutexesIfNeeded()
             status
         }
     }
+
+    /**
+     * The Activity to consult for `shouldShowRequestPermissionRationale()`, or `null` when the
+     * app has none in the foreground.
+     *
+     * [PlatformConfig.activity] is kept current by the lifecycle callback registered in
+     * [trackForegroundActivity]; the cast is the fallback for an app that passed an Activity
+     * as the delegate's own context.
+     */
+    private fun activeActivity(): Activity? =
+        PlatformConfig.activity ?: (context as? Activity)
+
+    /**
+     * Classifies a permission that is not currently granted into DENIED / DENIED_ALWAYS /
+     * NOT_DETERMINED.
+     *
+     * This ordering is the heart of Issue #55 and its follow-up, and was duplicated three
+     * times before being extracted here — once per permission shape, with the copies drifting
+     * apart in exactly the way that made the original bug hard to see.
+     *
+     * `shouldShowRequestPermissionRationale()` is consulted **first** because it is the OS's
+     * own live signal and survives process death, unlike the request history in [store]. A
+     * second in-session denial therefore reads as permanent immediately, instead of being
+     * masked by a stale stored DENIED.
+     *
+     * @param noActivityFallback what to report when the permission was requested before but no
+     *   Activity is available to confirm permanence. Defaults to DENIED, which keeps the
+     *   rationale path open rather than sending the user to Settings on a guess.
+     */
+    private fun classifyDenial(
+        permissions: List<String>,
+        wasRequestedBefore: Boolean,
+        noActivityFallback: () -> GrantStatus = { GrantStatus.DENIED },
+    ): GrantStatus {
+        val activity = activeActivity()
+        val canShowRationale = activity != null &&
+            permissions.any { activity.shouldShowRequestPermissionRationale(it) }
+        return when {
+            canShowRationale -> GrantStatus.DENIED
+            wasRequestedBefore -> if (activity == null) noActivityFallback() else GrantStatus.DENIED_ALWAYS
+            else -> GrantStatus.NOT_DETERMINED
+        }
+    }
+
+    private fun resolveRawPermission(grant: RawPermission): GrantStatus {
+        val permissions = grant.androidPermissions
+        if (permissions.all { isGranted(it) }) return GrantStatus.GRANTED
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
+            isGranted(READ_MEDIA_VISUAL_USER_SELECTED)
+        ) {
+            return GrantStatus.PARTIAL_GRANTED
+        }
+
+        return classifyDenial(permissions, store.isRawPermissionRequested(grant.identifier))
+    }
+
+    private fun resolveAppGrant(appGrant: AppGrant): GrantStatus {
+        getGrantStatusOverride(appGrant)?.let { return it }
+
+        if (appGrant == AppGrant.LOCATION_ALWAYS && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            return resolveLocationAlways(appGrant)
+        }
+
+        val androidGrants = appGrant.toAndroidGrants()
+        // No mapped permission on this API level means nothing to ask for — e.g. GALLERY_ADD_ONLY
+        // needs no permission at all under scoped storage on API 29+.
+        if (androidGrants.isEmpty()) return GrantStatus.GRANTED
+
+        // Full access is judged on the REQUIRED permissions only — see toRequiredAndroidGrants().
+        // Counting READ_MEDIA_VISUAL_USER_SELECTED here misclassified a fully-granted gallery
+        // (IMAGES + VIDEO granted, USER_SELECTED not) as denied -> DENIED_ALWAYS
+        // (Issue: Lam gallery P0, 2026-07-09).
+        val requiredGrants = appGrant.toRequiredAndroidGrants()
+        if (requiredGrants.isNotEmpty() && requiredGrants.all { isGranted(it) }) return GrantStatus.GRANTED
+
+        if (appGrant.isGalleryRead() && isPartialGalleryAccessGranted()) return GrantStatus.PARTIAL_GRANTED
+
+        // 2.3.0: the user picked "Approximate" in the OS dialog — COARSE is granted, FINE is not.
+        // The app HAS usable (coarse) location, but the all-granted check above fails and the
+        // request-history fallback used to escalate this to DENIED_ALWAYS. Same defect class as
+        // the gallery USER_SELECTED misclassification. Android 17's dialog makes the
+        // Precise/Approximate choice more prominent, so this state is common.
+        if (appGrant == AppGrant.LOCATION && isApproximateLocationGranted()) return GrantStatus.PARTIAL_GRANTED
+
+        return classifyDenial(
+            permissions = androidGrants,
+            wasRequestedBefore = store.isRequestedBefore(appGrant),
+            // Requested before and no rationale -> permanently denied. With no Activity to
+            // confirm, fall back to the last status actually observed. (Never requested implies
+            // getStatus() is null, since setStatus only ever follows setRequested.)
+            noActivityFallback = { store.getStatus(appGrant) ?: GrantStatus.DENIED },
+        )
+    }
+
+    private fun resolveLocationAlways(appGrant: AppGrant): GrantStatus {
+        val hasForeground = listOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+        ).all { isGranted(it) }
+        val hasBackground = isGranted(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+
+        return when {
+            hasBackground -> GrantStatus.GRANTED
+            hasForeground -> GrantStatus.PARTIAL_GRANTED
+            else -> classifyDenial(
+                permissions = listOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION),
+                wasRequestedBefore = store.isRequestedBefore(appGrant),
+            )
+        }
+    }
+
+    private fun isGranted(permission: String): Boolean =
+        ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+
+    private fun AppGrant.isGalleryRead(): Boolean =
+        this == AppGrant.GALLERY || this == AppGrant.GALLERY_IMAGES_ONLY || this == AppGrant.GALLERY_VIDEO_ONLY
 
     public actual suspend fun request(grant: GrantPermission): GrantStatus {
         return getMutexFor(grant.identifier).withLock {
@@ -271,7 +341,7 @@ public actual class PlatformGrantDelegate(
     }
 
     private suspend fun requestInternal(grant: GrantPermission): GrantStatus {
-        mapsMutex.withLock { statusCacheMap.remove(grant.identifier) }
+        statusCacheMap.remove(grant.identifier)
 
         var currentStatus = checkStatus(grant)
         if (currentStatus == GrantStatus.GRANTED) return currentStatus
@@ -299,8 +369,13 @@ public actual class PlatformGrantDelegate(
             launcher.launch(androidPermissions) { _ -> deferred.complete(Unit) }
             try {
                 withTimeout(SYSTEM_DIALOG_TIMEOUT_MS) { deferred.await() }
+            } catch (e: TimeoutCancellationException) {
+                // Before CancellationException: this is our own timeout, an outcome to absorb.
+                GrantLogger.e(TAG, "System dialog timed out", e)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                GrantLogger.e(TAG, "System dialog timeout or error", e)
+                GrantLogger.e(TAG, "System dialog error", e)
             }
         } else {
             // No GrantLauncher registered — fall back to the self-contained transparent
@@ -311,7 +386,7 @@ public actual class PlatformGrantDelegate(
         }
 
         // Invalidate cache immediately after system dialog returns
-        mapsMutex.withLock { statusCacheMap.remove(grant.identifier) }
+        statusCacheMap.remove(grant.identifier)
 
         var finalStatus = checkStatus(grant)
 
@@ -338,12 +413,16 @@ public actual class PlatformGrantDelegate(
                 if (bgDeferred != null) {
                     try {
                         withTimeout(SYSTEM_DIALOG_TIMEOUT_MS) { bgDeferred.await() }
+                    } catch (e: TimeoutCancellationException) {
+                        GrantLogger.w(TAG, "LOCATION_ALWAYS background step timed out: ${e.message}")
+                    } catch (e: CancellationException) {
+                        throw e
                     } catch (e: Exception) {
                         GrantLogger.w(TAG, "LOCATION_ALWAYS background step failed: ${e.message}")
                     } finally {
                         GrantRequestActivity.cleanup(bgRequestId)
                     }
-                    mapsMutex.withLock { statusCacheMap.remove(grant.identifier) }
+                    statusCacheMap.remove(grant.identifier)
                     finalStatus = checkStatus(grant)
                 }
             }
@@ -358,9 +437,7 @@ public actual class PlatformGrantDelegate(
     }
 
     private suspend fun requestMultipleInternal(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus> {
-        mapsMutex.withLock {
-            grants.forEach { statusCacheMap.remove(it.identifier) }
-        }
+        grants.forEach { statusCacheMap.remove(it.identifier) }
 
         val allAndroidPermissions = mutableSetOf<String>()
         grants.forEach { grant ->
@@ -387,8 +464,12 @@ public actual class PlatformGrantDelegate(
             launcher.launch(allAndroidPermissions.toList()) { _ -> deferred.complete(true) }
             try {
                 withTimeout(SYSTEM_DIALOG_TIMEOUT_MS) { deferred.await() }
+            } catch (e: TimeoutCancellationException) {
+                GrantLogger.e(TAG, "Multi-request timed out", e)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                GrantLogger.e("AndroidGrant", "Multi-request failed", e)
+                GrantLogger.e(TAG, "Multi-request failed", e)
             }
         } else {
             // No GrantLauncher registered — fall back to the self-contained transparent
@@ -397,9 +478,7 @@ public actual class PlatformGrantDelegate(
             requestViaActivity(allAndroidPermissions.toList())
         }
 
-        mapsMutex.withLock {
-            grants.forEach { statusCacheMap.remove(it.identifier) }
-        }
+        grants.forEach { statusCacheMap.remove(it.identifier) }
 
         return kotlinx.coroutines.coroutineScope {
             grants.map { grant ->
@@ -426,11 +505,31 @@ public actual class PlatformGrantDelegate(
      */
     private suspend fun requestViaActivity(androidPermissions: List<String>) {
         val requestId = GrantRequestActivity.requestGrants(context, androidPermissions)
-        val deferred = GrantRequestActivity.getResultDeferred(requestId) ?: return
+        val deferred = GrantRequestActivity.getResultDeferred(requestId)
+        if (deferred == null) {
+            // Should not happen now that requestGrants() always leaves an entry for the
+            // caller, including on the yield path. Returning quietly here is what previously
+            // turned a lost launch-guard race into a request that silently never prompted,
+            // so it is logged rather than swallowed.
+            GrantLogger.w(
+                TAG,
+                "No pending result for request $requestId — the system dialog was never " +
+                    "shown. Reporting the current status unchanged.",
+            )
+            return
+        }
         try {
             withTimeout(SYSTEM_DIALOG_TIMEOUT_MS) { deferred.await() }
+        } catch (e: TimeoutCancellationException) {
+            // Must be caught BEFORE CancellationException — it is a subclass. This one is our
+            // own timeout firing (the user never answered the dialog), which is a normal
+            // outcome to absorb; a plain CancellationException means the caller's scope died
+            // and must propagate.
+            GrantLogger.e(TAG, "GrantRequestActivity fallback timed out", e)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            GrantLogger.e(TAG, "GrantRequestActivity fallback timeout or error", e)
+            GrantLogger.e(TAG, "GrantRequestActivity fallback error", e)
         } finally {
             GrantRequestActivity.cleanup(requestId)
         }

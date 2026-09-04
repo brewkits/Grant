@@ -432,6 +432,7 @@ public final class dev/brewkits/grant/SharedPreferencesGrantStore : dev/brewkits
 	public fun markRawPermissionRequested (Ljava/lang/String;)V
 	public fun setRequested (Ldev/brewkits/grant/AppGrant;)V
 	public fun setStatus (Ldev/brewkits/grant/AppGrant;Ldev/brewkits/grant/GrantStatus;)V
+	public final fun warmUp ()V
 }
 
 public final class dev/brewkits/grant/impl/AndroidGrantLauncher : dev/brewkits/grant/GrantLauncher {
