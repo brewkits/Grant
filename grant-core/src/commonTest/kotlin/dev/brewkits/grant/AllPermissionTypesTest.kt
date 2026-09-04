@@ -6,6 +6,7 @@ import kotlin.experimental.ExperimentalNativeApi
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 /**
  * Comprehensive tests for all permission types supported by Grant.
@@ -222,7 +223,7 @@ class AllPermissionTypesTest {
 
         grants.forEach { grant ->
             assertNotNull(grant.identifier, "Grant ${grant.name} should have identifier")
-            assert(grant.identifier.isNotEmpty()) { "Grant ${grant.name} identifier should not be empty" }
+            assertTrue(grant.identifier.isNotEmpty(), "Grant ${grant.name} identifier should not be empty")
         }
     }
 

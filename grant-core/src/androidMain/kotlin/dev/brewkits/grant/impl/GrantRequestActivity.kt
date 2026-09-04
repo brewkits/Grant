@@ -15,7 +15,7 @@ import androidx.lifecycle.ViewModel
 import dev.brewkits.grant.utils.GrantLogger
 import kotlinx.coroutines.CompletableDeferred
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 import java.util.UUID
 
 public class GrantRequestViewModel(private val savedStateHandle: SavedStateHandle) : ViewModel() {
@@ -48,13 +48,9 @@ public class GrantRequestActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        // Ensure the static guard is set even if recreated by OS after process death
-        isActivityActive.set(true)
-        lastActivityLaunchTime = System.currentTimeMillis()
 
         try {
-            val requestId = viewModel.requestId 
+            val requestId = viewModel.requestId
                 ?: intent.getStringExtra(EXTRA_REQUEST_ID)
                 ?: ""
 
@@ -63,8 +59,15 @@ public class GrantRequestActivity : ComponentActivity() {
                 finishAndCleanup()
                 return
             }
-            
+
             viewModel.requestId = requestId
+
+            // Claim the guard for THIS request. Normally requestGrants() already set it to
+            // this same id, and the CAS is a no-op. After process death the static guard is
+            // gone, so this re-establishes ownership for the restored Activity — which is why
+            // it is done here, with the id in hand, rather than unconditionally above.
+            guardOwner.compareAndSet(null, requestId)
+            lastActivityLaunchTime = System.currentTimeMillis()
 
             currentGrants = intent.getStringArrayExtra(EXTRA_GRANTS) ?: run {
                 setResult(requestId, GrantResult.ERROR)
@@ -95,11 +98,12 @@ public class GrantRequestActivity : ComponentActivity() {
                         val rid = viewModel.requestId ?: ""
                         val deferred = pendingResults[rid]
                         if (deferred?.isActive == true) {
+                            // Complete so a caller awaiting this never hangs, but leave the
+                            // entry: the caller's own finally-block calls cleanup(rid).
                             setResult(rid, GrantResult.ERROR)
-                            pendingResults.remove(rid)
-                            pendingTimestamps.remove(rid)
                         }
-                        isActivityActive.set(false)
+                        // Release only if this Activity's request owns the guard.
+                        guardOwner.compareAndSet(rid, null)
                     }
                     requestMultipleGrantsLauncher?.unregister()
                     requestMultipleGrantsLauncher = null
@@ -134,7 +138,9 @@ public class GrantRequestActivity : ComponentActivity() {
     }
 
     private fun finishAndCleanup() {
-        isActivityActive.set(false)
+        // Release only this request's own claim; a blind clear here would free a guard held
+        // by a different, still-live request (see the KDoc on guardOwner).
+        viewModel.requestId?.let { guardOwner.compareAndSet(it, null) }
         finish()
         overridePendingTransition(0, 0)
     }
@@ -154,16 +160,43 @@ public class GrantRequestActivity : ComponentActivity() {
         // Increase cleanup threshold to handle slow devices or long rationale reading
         private const val ORPHAN_CLEANUP_THRESHOLD_MS = 300_000L // 5 minutes
 
-        private val isActivityActive = AtomicBoolean(false)
+        /** How long a guard may be held before a new request may take it as stale. */
+        private const val GUARD_STALE_AFTER_MS = 60_000L
+
+        /**
+         * The request that currently owns the single-Activity guard, or `null` when free.
+         *
+         * An `AtomicBoolean` was not enough: [cleanup] is called by every request, including
+         * one that *lost* the race, and an unowned flag let that loser clear the winner's
+         * guard while the winner's system dialog was still on screen. A second Activity could
+         * then launch over the first, and — worse — the loser's own entry was removed before
+         * its caller could await it, so `request()` returned without ever showing a dialog.
+         * Storing *who* holds the guard makes release a compare-and-set instead of a blind
+         * write, so only the owner can free it. Regression test:
+         * `GrantRequestActivityGuardTest`.
+         */
+        private val guardOwner = AtomicReference<String?>(null)
+
+        /**
+         * `@Volatile`: written from [requestGrants] (any thread) and from `onCreate` (main),
+         * read from [requestGrants]. Without it a stale read could satisfy the 60-second
+         * staleness check below and steal the guard from a legitimately running Activity.
+         */
+        @Volatile
         private var lastActivityLaunchTime = 0L
 
         /**
          * Check if any GrantRequestActivity is currently active.
          */
-        public fun isAnyActivityActive(): Boolean = isActivityActive.get()
+        public fun isAnyActivityActive(): Boolean = guardOwner.get() != null
 
         /**
          * Launch this Activity to request one or more grants.
+         *
+         * On success the returned id has a pending result the caller must await and then
+         * [cleanup]. When the guard is already held, the returned id's result is completed
+         * with [GrantResult.ERROR] but **left in the map**, so the caller still awaits a
+         * determinate answer rather than finding nothing and returning silently.
          */
         public fun requestGrants(context: Context, androidGrants: List<String>): String {
             val requestId = UUID.randomUUID().toString()
@@ -176,17 +209,19 @@ public class GrantRequestActivity : ComponentActivity() {
 
             cleanupOrphanedEntries()
 
-            // Apply timeout reset before CAS to handle stuck guard state
-            if (isActivityActive.get() && (now - lastActivityLaunchTime > 60_000L)) {
-                GrantLogger.w(TAG, "Activity guard reset after 60s timeout.")
-                isActivityActive.set(false)
+            // Free a guard whose owner is demonstrably stale. compareAndSet against the
+            // owner we observed, so an owner that changed in the meantime is never clobbered.
+            val staleOwner = guardOwner.get()
+            if (staleOwner != null && (now - lastActivityLaunchTime > GUARD_STALE_AFTER_MS)) {
+                GrantLogger.w(TAG, "Activity guard reset after ${GUARD_STALE_AFTER_MS}ms timeout.")
+                guardOwner.compareAndSet(staleOwner, null)
             }
 
-            // Atomic check-and-set: only one concurrent caller proceeds
-            if (!isActivityActive.compareAndSet(false, true)) {
+            // Atomic claim: only one concurrent caller becomes the owner.
+            if (!guardOwner.compareAndSet(null, requestId)) {
                 GrantLogger.w(TAG, "Activity Launch Guard: Another GrantRequestActivity is already active. Yielding.")
+                // Complete but do NOT remove: the caller awaits this and cleans it up itself.
                 pendingResults[requestId]?.complete(GrantResult.ERROR)
-                cleanup(requestId)
                 return requestId
             }
 
@@ -204,9 +239,10 @@ public class GrantRequestActivity : ComponentActivity() {
                 appContext.startActivity(intent)
             } catch (e: Exception) {
                 GrantLogger.e(TAG, "Failed to start GrantRequestActivity", e)
-                isActivityActive.set(false)
+                // Complete but leave the entry for the caller to await and clean up; only the
+                // guard is released here, and only because this request owns it.
+                guardOwner.compareAndSet(requestId, null)
                 pendingResults[requestId]?.complete(GrantResult.ERROR)
-                cleanup(requestId)
             }
 
             return requestId
@@ -237,10 +273,27 @@ public class GrantRequestActivity : ComponentActivity() {
             return pendingResults[requestId]
         }
 
+        /**
+         * Drops this request's pending entry and releases the guard **only if this request
+         * holds it**. The compare-and-set is the fix for the defect described on [guardOwner]:
+         * a blind `set(false)` here let a request that never owned the guard free it out from
+         * under the one that did.
+         */
         internal fun cleanup(requestId: String) {
             pendingResults.remove(requestId)
             pendingTimestamps.remove(requestId)
-            isActivityActive.set(false)
+            guardOwner.compareAndSet(requestId, null)
+        }
+
+        /**
+         * Test-only escape hatch: the guard is process-wide static state, so a test that ends
+         * while holding it would poison every test after it. Not part of the production flow —
+         * production code releases the guard through [cleanup], which only the owner can do.
+         */
+        internal fun forceReleaseGuardForTest() {
+            guardOwner.set(null)
+            pendingResults.clear()
+            pendingTimestamps.clear()
         }
     }
 

@@ -53,6 +53,33 @@ val grantManager = GrantFactory.create(applicationContext, store = InMemoryGrant
 | "has been requested" flags (`isRequestedBefore`, raw permissions) | SharedPreferences | ✅ Yes |
 | Per-session status cache (`getStatus`/`setStatus`) | In-memory map | ❌ No — OS is the source of truth |
 
+### Startup cost, and `warmUp()`
+
+Reading this store the first time does two blocking things: a SharedPreferences disk read (XML
+parse) and a `PackageManager.getPackageInfo()` call — a binder round trip to `system_server`,
+used for the install-identity stamp described below.
+
+Both are deferred until the store is **first read**, not done when it is constructed, so
+`GrantFactory.create(applicationContext)` and the Koin `single { }` stay cheap. Deferring does
+not make the work free, though — it just moves it to whichever thread reads first.
+
+Apps with a tight frame budget (camera preview, games, anything targeting 120 fps, where a
+frame is ~8 ms) should pay that cost up front, off the main thread:
+
+```kotlin
+class MyApp : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        val store = SharedPreferencesGrantStore(this)
+        applicationScope.launch(Dispatchers.IO) { store.warmUp() }   // blocking; keep it off main
+        grantManager = GrantFactory.create(this, store = store)
+    }
+}
+```
+
+`warmUp()` is optional — skipping it is correct, and most apps will never notice. It exists so
+that the one unavoidable disk-and-binder cost does not land on a frame that cannot afford it.
+
 ### Why this is safe (no status desync)
 
 The classic argument against persisting permission state is *desync*: if you cache `CAMERA = DENIED` and the user later enables it in Settings, your cache is wrong. `SharedPreferencesGrantStore` sidesteps this entirely because it **never persists status** — only the immutable fact "this permission was requested at least once", which can never become stale. The live status is always re-read from the OS.
