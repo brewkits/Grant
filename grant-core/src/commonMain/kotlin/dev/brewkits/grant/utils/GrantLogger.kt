@@ -1,10 +1,28 @@
 package dev.brewkits.grant.utils
 
 /**
- * A lightweight logging utility for the Grant library.
+ * A lightweight logging utility for the Grant library's internal diagnostics — missing
+ * `Info.plist` keys, unregistered opt-in modules, Settings-navigation failures, and similar
+ * edge cases the library itself detects.
  *
- * Use this to monitor permission flows, debug platform-specific denials, or
- * integrate Grant's internal logs with your app's logging framework.
+ * This is not a step-by-step audit trail of every permission flow (requested/granted/denied/
+ * rationale-shown/settings-opened) — that is [dev.brewkits.grant.GrantEventListener], a
+ * separate, purpose-built mechanism attached per [dev.brewkits.grant.GrantHandler]. The two
+ * are complementary: this one for "something the library wants a developer to notice",
+ * [dev.brewkits.grant.GrantEventListener] for "what happened in this permission flow".
+ *
+ * ### Android: the default console output needs `logHandler` on retail devices
+ *
+ * The built-in console output (enabled via [isEnabled] alone) is a plain Kotlin `println`.
+ * On Android, `println`/`System.out` is routed to Logcat only on `userdebug`/`eng` system
+ * images (emulators, most physical dev/test hardware) — a retail `user`-build device (the
+ * OS type on essentially every phone a real user carries: `ro.build.type=user`,
+ * `ro.debuggable=0`) never forwards it, silently. `isEnabled = true` with no [logHandler] is
+ * therefore enough to see Grant's diagnostics on an emulator but **produces nothing visible**
+ * on a real production device — verified against a physical Android 17 device in this
+ * project's own test pass. To see logs there, install a [logHandler] that calls
+ * `android.util.Log.d/w/e` (or a crash reporter / analytics SDK) instead of relying on the
+ * console branch.
  *
  * ### Usage Example
  * ```kotlin
