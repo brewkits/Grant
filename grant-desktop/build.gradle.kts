@@ -1,6 +1,17 @@
+// Plugin set differs from the other published modules on purpose, not by omission:
+//  - `dokka` is applied (this module has real public API: GrantDesktop) and it is wired into
+//    the root aggregation alongside the other eight.
+//  - `cyclonedx` is NOT applied. Every other module configures its SBOM task against
+//    `releaseRuntimeClasspath`, an Android configuration; this module has no Android target,
+//    so copying that block would fail at configuration time. It gets an SBOM when the module
+//    is actually wired for publishing (ROADMAP.md v2.6.0's remaining Tier 2 items).
+//  - `kover` is NOT applied. A coverage floor on a module that is deliberately a thin bridge —
+//    most of whose behaviour can only be exercised by a signed .app talking to real TCC, not by
+//    a Gradle test JVM — would measure the wrong thing and invite gaming the number.
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     id("maven-publish")
+    alias(libs.plugins.dokka)
 }
 
 group = "dev.brewkits"

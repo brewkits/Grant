@@ -12,7 +12,12 @@ package dev.brewkits.grant.handlers
  * fabricated grant.
  */
 public object DesktopPermissionHandlerRegistry {
-    private val handlers = mutableMapOf<String, DesktopPermissionHandler>()
+    // ConcurrentHashMap, not the mutableMapOf() that IosPermissionHandlerRegistry uses: this
+    // registry lives on the JVM, where a `register()` during startup can genuinely overlap a
+    // `get()` from a permission request already running on Dispatchers.IO. The iOS registry's
+    // plain map is safe there because registration happens once, on the main thread, before any
+    // request — an assumption a JVM desktop app does not owe us.
+    private val handlers = java.util.concurrent.ConcurrentHashMap<String, DesktopPermissionHandler>()
 
     /** Registers a handler for a specific permission identifier (an [dev.brewkits.grant.AppGrant.identifier] or a [dev.brewkits.grant.RawPermission] identifier). */
     public fun register(identifier: String, handler: DesktopPermissionHandler) {
@@ -23,4 +28,15 @@ public object DesktopPermissionHandlerRegistry {
     internal fun get(identifier: String): DesktopPermissionHandler? {
         return handlers[identifier]
     }
+
+    /**
+     * Opens the OS's privacy settings UI, if a real one is registered — `grant-core`'s own
+     * `jvmMain` never sets this (it has no AppKit dependency; see `PlatformGrantDelegate.jvm.kt`),
+     * so this stays `null` unless `grant-desktop` (or an equivalent opt-in module) provides one.
+     *
+     * `@Volatile` for the same reason the map above is concurrent: the thread that installs this
+     * during startup is not necessarily the thread that later reads it from `openSettings()`.
+     */
+    @Volatile
+    public var settingsOpener: (() -> Unit)? = null
 }

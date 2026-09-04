@@ -50,6 +50,8 @@ compose.desktop {
                     extraKeysRawXml = """
                         <key>NSCameraUsageDescription</key>
                         <string>Grant's Tier 2 macOS harness needs the camera to verify the real TCC consent flow end-to-end.</string>
+                        <key>NSMicrophoneUsageDescription</key>
+                        <string>Grant's Tier 2 macOS harness needs the microphone to verify the real TCC consent flow end-to-end.</string>
                     """.trimIndent()
                 }
             }

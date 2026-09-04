@@ -18,7 +18,8 @@ subprojects {
     }
 }
 
-// Aggregated API reference for the eight published modules (demo is excluded).
+// Aggregated API reference for the library modules (demo and desktop-harness are excluded —
+// the latter is a verification harness, deliberately unpublished; see its build.gradle.kts).
 // Build with: ./gradlew dokkaGenerate  ->  build/dokka/html
 dependencies {
     dokka(project(":grant-core"))
@@ -29,6 +30,7 @@ dependencies {
     dokka(project(":grant-motion"))
     dokka(project(":grant-bluetooth"))
     dokka(project(":grant-location-always"))
+    dokka(project(":grant-desktop"))
 }
 
 dokka {

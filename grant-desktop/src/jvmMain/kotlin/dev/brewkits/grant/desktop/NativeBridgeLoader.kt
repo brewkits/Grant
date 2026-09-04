@@ -7,7 +7,10 @@ import java.io.File
 
 private const val TAG = "GrantDesktopBridge"
 
-/** The C surface `CameraBridge.kt` (Kotlin/Native, `macosMain`) exports — see that file. */
+/**
+ * The C surface `CameraBridge.kt`/`SettingsBridge.kt` (Kotlin/Native, `macosMain`) export —
+ * see those files.
+ */
 internal interface GrantDesktopBridgeLibrary : Library {
     /** Raw `AVAuthorizationStatus`: 0 = NotDetermined, 1 = Restricted, 2 = Denied, 3 = Authorized. */
     fun grant_camera_status(): Int
@@ -18,6 +21,18 @@ internal interface GrantDesktopBridgeLibrary : Library {
      * [grant_camera_status], re-read after the callback, not the completion handler's boolean.
      */
     fun grant_camera_request_blocking(): Int
+
+    /** Same contract as [grant_camera_status], for the microphone. */
+    fun grant_microphone_status(): Int
+
+    /** Same contract as [grant_camera_request_blocking], for the microphone. */
+    fun grant_microphone_request_blocking(): Int
+
+    /**
+     * Opens System Settings' Privacy & Security pane at [anchor] (e.g. `"Privacy_Camera"`,
+     * `"Privacy_Microphone"`) via `NSWorkspace`. Returns whether the URL was handled.
+     */
+    fun grant_open_privacy_settings(anchor: String): Boolean
 }
 
 /**

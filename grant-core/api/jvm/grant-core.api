@@ -421,7 +421,9 @@ public abstract interface class dev/brewkits/grant/handlers/DesktopPermissionHan
 
 public final class dev/brewkits/grant/handlers/DesktopPermissionHandlerRegistry {
 	public static final field INSTANCE Ldev/brewkits/grant/handlers/DesktopPermissionHandlerRegistry;
+	public final fun getSettingsOpener ()Lkotlin/jvm/functions/Function0;
 	public final fun register (Ljava/lang/String;Ldev/brewkits/grant/handlers/DesktopPermissionHandler;)V
+	public final fun setSettingsOpener (Lkotlin/jvm/functions/Function0;)V
 }
 
 public final class dev/brewkits/grant/impl/DefaultGrantManager : dev/brewkits/grant/GrantManager {

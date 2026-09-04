@@ -56,10 +56,15 @@ public actual class PlatformGrantDelegate(
      * (`x-apple.systempreferences:com.apple.preference.security`) — but only `grant-desktop`
      * can invoke it (it needs `NSWorkspace`, an AppKit/macOS-only API `grant-core`'s `jvmMain`
      * does not and should not depend on, since this module also has to compile on any JVM,
-     * not just macOS). Logs instead of silently doing nothing until that module registers a
-     * real handler.
+     * not just macOS). Delegates to [DesktopPermissionHandlerRegistry.settingsOpener] when one
+     * is registered; logs instead of silently doing nothing when none is.
      */
     public actual fun openSettings() {
+        val opener = DesktopPermissionHandlerRegistry.settingsOpener
+        if (opener != null) {
+            opener()
+            return
+        }
         GrantLogger.w(
             TAG,
             "openSettings() has no effect without the grant-desktop module. Add it and call " +

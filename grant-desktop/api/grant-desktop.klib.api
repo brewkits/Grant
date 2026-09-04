@@ -8,3 +8,6 @@
 // Library unique name: <dev.brewkits:grant-desktop>
 final fun dev.brewkits.grant.desktop/grantCameraRequestBlocking(): kotlin/Int // dev.brewkits.grant.desktop/grantCameraRequestBlocking|grantCameraRequestBlocking(){}[0]
 final fun dev.brewkits.grant.desktop/grantCameraStatus(): kotlin/Int // dev.brewkits.grant.desktop/grantCameraStatus|grantCameraStatus(){}[0]
+final fun dev.brewkits.grant.desktop/grantMicrophoneRequestBlocking(): kotlin/Int // dev.brewkits.grant.desktop/grantMicrophoneRequestBlocking|grantMicrophoneRequestBlocking(){}[0]
+final fun dev.brewkits.grant.desktop/grantMicrophoneStatus(): kotlin/Int // dev.brewkits.grant.desktop/grantMicrophoneStatus|grantMicrophoneStatus(){}[0]
+final fun dev.brewkits.grant.desktop/grantOpenPrivacySettings(kotlin/String): kotlin/Boolean // dev.brewkits.grant.desktop/grantOpenPrivacySettings|grantOpenPrivacySettings(kotlin.String){}[0]
