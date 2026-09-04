@@ -182,9 +182,27 @@ just unit tests.
 - [x] Android is a documented no-op reporting GRANTED — honest, not a stub: cross-app tracking is gated there by `com.google.android.gms.permission.AD_ID`, an *install-time* permission with no runtime prompt to show. Users opt out in system settings, which surfaces as a zeroed advertising ID rather than a permission denial Grant could observe.
 - [ ] **Not yet verified on a device.** The status mapping and the foreground-active rule are unit-untestable — `trackingAuthorizationStatus` reads real TCC state a test cannot set, and the prompt needs a human. Must be exercised on a real device before this module is advertised as verified.
 
-**2. Health Connect (Android)** — *not started*
-- [ ] ~200 `android.permission.health.*` permissions exist on API 37. They deliberately do **not** go through `requestPermissions()`: they need `PermissionController.createRequestPermissionResultContract()` plus a rationale activity declared with the `androidx.health.connect.action.SHOW_PERMISSIONS_RATIONALE` intent filter. A `RawPermission` would therefore fail silently, which is why this is a real gap rather than something consumers can already work around.
-- [ ] It also does not fit the `AppGrant` model — modelling 200 enum values would be wrong. Needs its own permission type and its own module; design first, code after.
+**2. Health Connect (Android)** — *deferred: blocked on a design decision, not on effort*
+
+*Deliberately not started. The investigation below is the deliverable for now — it turns out this is an architecture choice with real trade-offs, and picking one unilaterally would have shaped the library in a way that is expensive to undo.*
+
+**Why `RawPermission` cannot absorb this** (unlike every other uncovered Android permission): the ~200 `android.permission.health.*` permissions on API 37 do **not** go through `requestPermissions()` at all. They need `PermissionController.createRequestPermissionResultContract()`, plus a rationale Activity declared with the `androidx.health.connect.action.SHOW_PERMISSIONS_RATIONALE` intent filter. A `RawPermission` routed through the normal path would fail *silently* — the failure mode this library exists to prevent.
+
+**Two constraints in the current design force the choice** (both verified in code):
+1. **`GrantPermission` is `sealed`.** A `grant-health` module cannot add a new permission type; only `grant-core` can. Modelling ~200 `AppGrant` enum values is obviously wrong, so a new type is what this actually needs.
+2. **Android has no handler registry.** iOS has `IosPermissionHandlerRegistry` and the JVM has `DesktopPermissionHandlerRegistry`, but `PlatformGrantDelegate.android.kt` resolves everything inline. There is no extension point for an opt-in Android module to plug into.
+
+**Option A — add an Android handler registry to `grant-core`.**
+Consistent with iOS and JVM, and `grant-health` would then register into it like `grant-contacts` does. Consumers keep the unified `GrantManager` / `GrantHandler` surface: one state machine, one rationale flow, one settings guide.
+*Cost:* new public API in `grant-core`'s Android surface, which every consumer inherits and the ABI gate then locks in. Also unresolved: Health Connect's flow is `ActivityResultContract`-based, so it must reach a host Activity — whether the existing `GrantLauncher` abstraction covers that shape, or needs widening, has not been established.
+
+**Option B — `grant-health` exposes its own API, bypassing `GrantManager`.**
+Zero blast radius on `grant-core`; nothing to undo if Health Connect's contract changes again.
+*Cost:* honest but inconsistent — consumers lose `GrantHandler`'s state machine, rationale and settings-guide handling for health permissions specifically, and have to hand-roll that UX. Two ways to ask for a permission in one library is its own kind of confusion.
+
+**A third constraint that neither option removes:** the consuming app must declare the rationale Activity and (Android 14+) the `<queries>` entry for the Health Connect package in *its own* manifest. A library cannot do that on an app's behalf — the manifest-merger reasons this project already documented for `<uses-permission>` apply here too. So whichever option is chosen, Health Connect will always require setup steps in the host app that no other `AppGrant` needs.
+
+**Recommendation if this is picked up:** start from a real consumer asking for it, and prefer **A** only if that consumer wants the unified handler UX; otherwise **B** is the smaller, more reversible bet. This is also, on current evidence, the least urgent item here — no issue has ever requested it, and it is irrelevant to camera/media apps, which is where Grant's coverage is strongest.
 
 **Deliberately left to `RawPermission`** (all confirmed `dangerous` on API 37, so `checkStatus`/`request` already work on Android today): `READ_MEDIA_AUDIO`, `ACCESS_MEDIA_LOCATION`, `GET_ACCOUNTS`, `BODY_SENSORS`(+`_BACKGROUND`), `RANGING`, `UWB_RANGING`, and the SMS / phone / call-log families. Worth noting in docs that `ACCESS_MEDIA_LOCATION` is the companion to gallery reads (GPS in EXIF) and is **not** auto-granted with `READ_MEDIA_IMAGES`.
 
