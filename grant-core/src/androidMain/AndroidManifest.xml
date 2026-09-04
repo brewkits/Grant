@@ -52,6 +52,22 @@
           than crashes.
     -->
 
+    <!--
+        On android:stateNotNeeded="true" alongside GrantRequestViewModel's SavedStateHandle,
+        which looks contradictory but is not:
+
+        - Across a CONFIGURATION CHANGE the ViewModel is retained in memory, so requestId and
+          alreadyLaunched survive without onSaveInstanceState being involved at all. This is
+          the case that actually matters (rotating the device while the system dialog is up).
+        - Across PROCESS DEATH nothing can be restored anyway: the pending CompletableDeferred
+          lives in a static map that dies with the process, and the coroutine awaiting it is
+          gone too. onCreate() therefore falls back to the intent extra, which does survive,
+          purely so the restored Activity can finish cleanly instead of hanging.
+
+        stateNotNeeded="true" tells the OS not to spend effort preserving state for a
+        transparent, short-lived dialog host whose state cannot be meaningfully restored. It
+        does not weaken the configuration-change path.
+    -->
     <application>
         <activity
             android:name="dev.brewkits.grant.impl.GrantRequestActivity"

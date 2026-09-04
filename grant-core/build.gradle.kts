@@ -41,6 +41,35 @@ kotlin {
         // Calling this block enables validation; klib dumps are always produced.
     }
 
+    // Browser targets — classic JS and Kotlin/Wasm, both consent-real via
+    // navigator.permissions / getUserMedia / Notification / geolocation, not a stub.
+    // wasmJs exists specifically because Compose Multiplatform Web targets it, not the
+    // classic js backend; shipping js-only under a "web" label would leave every
+    // Compose Web consumer unable to link this artifact at all.
+    // See webMain's PlatformGrantDelegate.web.kt for the per-AppGrant mapping and its
+    // documented gaps (permissions with no browser equivalent resolve to DENIED_ALWAYS,
+    // never a fabricated GRANTED — a web app cannot silently gain contacts/calendar
+    // access just because grant-core compiles here).
+    js {
+        browser()
+    }
+    @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
+    wasmJs {
+        browser()
+    }
+
+    // Desktop bridge target for Tier 2 (macOS via Compose Desktop) — see ROADMAP.md v2.6.0.
+    // This is deliberately a MINIMAL actual: jvmMain's PlatformGrantDelegate reports every
+    // permission unsupported (DENIED_ALWAYS + log) unless a real handler has been registered
+    // into DesktopPermissionHandlerRegistry. It is the `grant-desktop` module (JNA + a
+    // Kotlin/Native macOS dylib bridging AVFoundation/CoreLocation/Contacts/EventKit — not
+    // hand-rolled objc_msgSend, which cannot safely receive Objective-C completion-handler
+    // blocks) that registers real handlers when added, the same opt-in-module pattern
+    // grant-contacts/grant-calendar/grant-motion already use for iOS. A consumer that adds
+    // only grant-core and calls jvm() gets the honest-unsupported delegate, never a fabricated
+    // GRANTED for a permission this module alone cannot back.
+    jvm()
+
     listOf(
         iosX64(),
         iosArm64(),
