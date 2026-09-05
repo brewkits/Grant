@@ -1,7 +1,7 @@
 # Migration Guide to Grant
 
-**Version:** 2.3.0
-**Last Updated:** July 10, 2026
+**Version:** 2.4.0
+**Last Updated:** September 4, 2026
 
 This guide helps you migrate from previous versions of Grant or other permission libraries.
 
@@ -9,17 +9,212 @@ This guide helps you migrate from previous versions of Grant or other permission
 
 ## 📚 Table of Contents
 
-1. [Upgrading from Grant 2.2.x to 2.3.0](#upgrading-from-grant-22x-to-230)
-2. [Upgrading from Grant 2.1.0 to 2.2.0](#upgrading-from-grant-210-to-220)
-3. [Upgrading from Grant 2.0.0 to 2.1.0](#upgrading-from-grant-200-to-210)
-4. [Upgrading from Grant 1.x to 2.0.0](#upgrading-from-grant-1x-to-200)
-5. [Upgrading from Grant 1.3.x to 1.4.2](#upgrading-from-grant-13x-to-142)
-6. [From moko-permissions](#from-moko-permissions)
-7. [From Google Accompanist](#from-google-accompanist)
-8. [From Custom Implementation](#from-custom-implementation)
-9. [From Native Android APIs](#from-native-android-apis)
-10. [Common Migration Patterns](#common-migration-patterns)
-9. [Troubleshooting](#troubleshooting)
+1. [Upgrading from Grant 2.3.0 to 2.4.0](#upgrading-from-grant-230-to-240)
+2. [Upgrading from Grant 2.2.x to 2.3.0](#upgrading-from-grant-22x-to-230)
+3. [Upgrading from Grant 2.1.0 to 2.2.0](#upgrading-from-grant-210-to-220)
+4. [Upgrading from Grant 2.0.0 to 2.1.0](#upgrading-from-grant-200-to-210)
+5. [Upgrading from Grant 1.x to 2.0.0](#upgrading-from-grant-1x-to-200)
+6. [Upgrading from Grant 1.3.x to 1.4.2](#upgrading-from-grant-13x-to-142)
+7. [From moko-permissions](#from-moko-permissions)
+8. [From Google Accompanist](#from-google-accompanist)
+9. [From Custom Implementation](#from-custom-implementation)
+10. [From Native Android APIs](#from-native-android-apis)
+11. [Common Migration Patterns](#common-migration-patterns)
+12. [Troubleshooting](#troubleshooting)
+
+---
+
+## 🚀 Upgrading from Grant 2.3.0 to 2.4.0
+
+> **2.4.0 is not on Maven Central yet.** It is built and tested but unreleased; the coordinates
+> below will resolve once it ships. Until then, 2.3.0 remains the latest published version.
+
+### Overview
+
+**Nothing you have to change.** 2.4.0 is additive: every existing `AppGrant`, method and
+behaviour works exactly as before. The items below are opportunities, plus one compatibility
+note that matters only if you mix binary versions.
+
+New in 2.4.0: finer-grained Bluetooth, an App Tracking Transparency module, a multi-process
+advisory, and fixes for `SCHEDULE_EXACT_ALARM` and the iOS 17+ write-only calendar key.
+
+### 1. New: `BLUETOOTH_SCAN` and `BLUETOOTH_CONNECT` — ask for less
+
+`AppGrant.BLUETOOTH` requests Android's `BLUETOOTH_SCAN` **and** `BLUETOOTH_CONNECT` together.
+Android 12 separated them because they differ in sensitivity, and Grant now exposes that split.
+
+**Why it is worth acting on**, not just cosmetic: a plain `BLUETOOTH_SCAN` is treated by
+Android as capable of deriving physical location — scan results reveal which devices are
+nearby. So a **connect-only** app (POS terminal, car key, scale, wearable) using
+`AppGrant.BLUETOOTH` has been carrying a location implication for a capability it never uses —
+visible to Play review, privacy audits, and in the permission list users see.
+
+| Your app | Use | Requests |
+|---|---|---|
+| Connects to already-paired devices only | `AppGrant.BLUETOOTH_CONNECT` | `BLUETOOTH_CONNECT` — **nothing below API 31** |
+| Scans for devices/beacons only | `AppGrant.BLUETOOTH_SCAN` | `BLUETOOTH_SCAN` (API 31+) / `ACCESS_FINE_LOCATION` below |
+| Both scans and connects | `AppGrant.BLUETOOTH` — unchanged | both |
+
+```kotlin
+// Before — over-asks for a connect-only app
+val status = grantManager.request(AppGrant.BLUETOOTH)
+
+// After — asks for exactly what a POS/car-key/scale app uses
+val status = grantManager.request(AppGrant.BLUETOOTH_CONNECT)
+```
+
+Narrow your manifest to match:
+
+```xml
+<!-- Connect-only: this is the whole declaration you need -->
+<uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+```
+
+**On iOS nothing changes.** iOS has a single Bluetooth authorization covering scan, connect and
+advertise, so all four values behave identically there. The split is an Android-only
+distinction; using the narrower value is safe in shared KMP code.
+
+### 2. New advisory: `BLUETOOTH_SCAN` without `neverForLocation`
+
+If you request `BLUETOOTH_SCAN` and your manifest does not declare the opt-out, Grant now logs
+a warning once per process:
+
+```xml
+<uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+    android:usesPermissionFlags="neverForLocation" />
+```
+
+Add the flag if your app does **not** derive physical location from scan results. It is a
+declaration only your app can make, which is why Grant warns rather than changing any status.
+Nothing breaks if you ignore it — but this is usually discovered during a Play review instead.
+
+### 3. New advisory: multi-process apps
+
+**Only relevant if your app runs in more than one process** (`android:process=":miniapp"`,
+`:webview`, `:push` — the usual super-app shape). If it does not, skip this.
+
+Grant's fallback dialog host, `GrantRequestActivity`, always launches in your app's **main**
+process, and the state bridging a request to its result is `static` — meaning per-process. A
+`request()` issued from a *secondary* process therefore waits on a result the main process
+completes somewhere it cannot see: the dialog appears, the user answers, and the call times out
+after five minutes reporting the unchanged status.
+
+Grant cannot bridge processes on your behalf — that needs IPC your app owns — so as of 2.4.0 it
+**detects and logs** this instead of failing silently.
+
+> **Measured on a real Android 17 device.** The same request, tapping Allow the same way,
+> differing only in which process it ran from:
+>
+> | Process | Permission actually granted | What the caller saw |
+> |---|---|---|
+> | main | yes | `GRANTED` after 2.8s |
+> | secondary | yes | **nothing — still waiting after 120s** |
+>
+> The user says yes, the permission is granted, and your code in the secondary process never
+> finds out.
+
+**The fix is one line, per process:**
+
+```kotlin
+// In the Activity of each process that requests permissions
+grantManager.setLauncher(object : GrantLauncher {
+    override fun launch(permissions: List<String>, onResult: (Map<String, Boolean>) -> Unit) {
+        // your ActivityResultLauncher, bound to THIS process's Activity
+    }
+})
+```
+
+`setLauncher()` never touches the static bridge, so it works correctly from any process.
+
+### 4. New: `AppGrant.APP_TRACKING` (iOS App Tracking Transparency)
+
+For ad attribution and cross-app measurement. Needs the opt-in module — linking
+`AppTrackingTransparency` makes Apple require the usage-description key in *every* app that
+links it, so it cannot live in `grant-core`:
+
+```kotlin
+implementation("dev.brewkits:grant-tracking:2.4.0")
+```
+
+```kotlin
+GrantTracking.initialize()   // once, at startup
+val status = grantManager.request(AppGrant.APP_TRACKING)
+```
+
+```xml
+<!-- Info.plist -->
+<key>NSUserTrackingUsageDescription</key>
+<string>Explain what tracking gives the user.</string>
+```
+
+⚠️ **Timing is not optional here.** iOS shows the ATT prompt only while your app is
+foreground-**active**. Called during launch or from the background, it returns the current
+status with no prompt — and the **single ask each install gets is spent**. Request it from a
+screen the user is looking at. Grant logs a warning if it detects a non-active state, but it
+cannot recover the lost ask.
+
+On Android this is a no-op reporting `GRANTED`: cross-app tracking is gated there by
+`com.google.android.gms.permission.AD_ID`, an install-time permission with no runtime prompt.
+
+### 5. Behaviour change: `SCHEDULE_EXACT_ALARM` now actually opens something
+
+**Android.** Previously `request(AppGrant.SCHEDULE_EXACT_ALARM)` showed nothing at all and the
+status then escalated to `DENIED_ALWAYS`, sending users to a Settings page that does not
+contain the toggle. `SCHEDULE_EXACT_ALARM` is *special app access*, not a runtime permission —
+`requestPermissions()` can never grant it.
+
+It now opens the Alarms & reminders screen, which is the platform's real request flow. Two
+consequences for your code:
+
+- The status is now `DENIED` rather than `DENIED_ALWAYS` when not granted. Special app access
+  has no permanent-denial state — the toggle stays available and re-requesting reopens the
+  screen. If you branched on `DENIED_ALWAYS` for this permission specifically, switch to
+  `DENIED`.
+- `request()` returns as soon as Settings opens; it cannot observe the user's choice. Re-read
+  on resume with `GrantHandler.onReturnFromSettings()` or `refreshStatus()` — the same pattern
+  `openSettings()` already required.
+
+**iOS.** This reported `GRANTED` unconditionally, which was correct through iOS 25 where
+nothing gated scheduling. iOS 26 added AlarmKit, which *is* consent-gated. If your app declares
+`NSAlarmKitUsageDescription`, Grant now reports `DENIED_ALWAYS` rather than a `GRANTED` it
+cannot back — AlarmKit is Swift-only, so Kotlin/Native cannot query it. For a real answer,
+bridge AlarmKit in Swift and register it:
+
+```kotlin
+IosPermissionHandlerRegistry.register(AppGrant.SCHEDULE_EXACT_ALARM.identifier, yourHandler)
+```
+
+Apps that do not declare that key see no change.
+
+### 6. Fixed: iOS 17+ write-only calendar access
+
+If your app declares only `NSCalendarsWriteOnlyAccessUsageDescription` — the minimal-scope
+choice for an app that only *adds* events — Grant used to report `DENIED_ALWAYS` before EventKit
+was ever consulted. That key is now accepted. No action needed; it just starts working.
+
+### Compatibility note: enum ordinals shifted
+
+`BLUETOOTH_SCAN` and `BLUETOOTH_CONNECT` were inserted after `BLUETOOTH` rather than appended,
+which shifts `AppGrant.ordinal` for the eight values below them by two.
+
+**This affects nothing in normal use.** Grant identifies permissions by `name`, never ordinal —
+`identifier` is `name`, and persisted request history is keyed on `name`, so stored state
+survives the upgrade untouched.
+
+It matters only if **you** persisted an ordinal, sent one across a process or network boundary,
+or mix modules compiled against different Grant versions (ordinals are inlined at compile time).
+If any of those apply, rebuild all modules against 2.4.0 and migrate any stored ordinals to
+`name` — which is the more robust key regardless.
+
+### Version bump
+
+```kotlin
+implementation("dev.brewkits:grant-core:2.4.0")
+implementation("dev.brewkits:grant-compose:2.4.0")
+implementation("dev.brewkits:grant-core-koin:2.4.0")
+implementation("dev.brewkits:grant-tracking:2.4.0")          // new, optional (iOS ATT)
+// ...and any other optional iOS modules you use, all at 2.4.0
+```
 
 ---
 

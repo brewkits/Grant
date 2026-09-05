@@ -2,6 +2,8 @@ public class dev/brewkits/grant/AppGrant : java/lang/Enum, dev/brewkits/grant/Gr
 	public static final field APP_TRACKING Ldev/brewkits/grant/AppGrant;
 	public static final field BLUETOOTH Ldev/brewkits/grant/AppGrant;
 	public static final field BLUETOOTH_ADVERTISE Ldev/brewkits/grant/AppGrant;
+	public static final field BLUETOOTH_CONNECT Ldev/brewkits/grant/AppGrant;
+	public static final field BLUETOOTH_SCAN Ldev/brewkits/grant/AppGrant;
 	public static final field CALENDAR Ldev/brewkits/grant/AppGrant;
 	public static final field CAMERA Ldev/brewkits/grant/AppGrant;
 	public static final field CONTACTS Ldev/brewkits/grant/AppGrant;

@@ -114,7 +114,11 @@ private object IosHandlerDispatchValidator {
 
         AppGrant.APP_TRACKING         -> stubHandler("APP_TRACKING")
 
+        // All four share one handler: iOS has a single Bluetooth authorization covering scan,
+        // connect and advertise. The scan/connect split is Android-only (API 31+).
         AppGrant.BLUETOOTH,
+        AppGrant.BLUETOOTH_SCAN,
+        AppGrant.BLUETOOTH_CONNECT,
         AppGrant.BLUETOOTH_ADVERTISE  -> stubHandler("BLUETOOTH")
 
         // Its own handler since #74 — GRANTED only when the app does not declare

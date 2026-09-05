@@ -208,6 +208,39 @@ Zero blast radius on `grant-core`; nothing to undo if Health Connect's contract 
 
 **Note on the `RawPermission` escape hatch — it is not symmetric.** On Android it is complete: `checkStatus()` and `request()` both work for any dangerous permission. On iOS `request()` **cannot** work — there is no generic request API, so it logs and returns `NOT_DETERMINED`; the only real route is implementing `PermissionHandler` and registering it via `IosPermissionHandlerRegistry`. So "missing permission X" is a documentation matter on Android and a real gap on iOS.
 
+### v2.4.0 — Production & super-app readiness ✅
+
+*Origin: an audit asking whether the library holds up for production apps, super-apps, and advanced Bluetooth. The Bluetooth path turned out to be correct but over-asking; the blocker was somewhere else entirely.*
+
+**1. Multi-process apps got a silent no-op** ✅ *detected and logged*
+- [x] Every piece of state bridging a request to its result is `static` — hence **per-process**: `GrantRequestActivity`'s `pendingResults` and `guardOwner`, `PlatformConfig.activity`, the lifecycle-callback guard. The library manifest declares no `android:process`, so that Activity always launches in the **main** process.
+- [x] A `request()` from a secondary process (`:miniapp`, `:webview` — the normal super-app shape) puts its `CompletableDeferred` in *that* process's map while the Activity completes a lookup in the main process's empty one. The dialog shows, the user answers, and the caller's `withTimeout` runs its full five minutes before returning the unchanged status with nothing logged.
+- [x] Affects the `GrantRequestActivity` fallback only — which is the *default* path, since `setLauncher()` is optional and the fallback exists precisely so apps need not bind one (Issue #53).
+- [x] Grant cannot fix it internally: bridging processes needs IPC the consuming app owns. It now **detects** the case (`Application.getProcessName()`, API 28+; silent below, never warning on a guess) and logs the one-line workaround — `setLauncher()` binds to the calling process's own Activity and never touches the static bridge.
+- [x] **Verified on a real Android 17 device, with a control — and the first attempt at that control was wrong.** A probe Activity requested CAMERA without `setLauncher()`, once with `android:process=":probe"` and once in the main process, tapping Allow by coordinate in both.
+
+  | Process | Permission actually granted | Caller saw |
+  |---|---|---|
+  | main | `granted=true` | `GRANTED` after **2.8s** |
+  | `:probe` | `granted=true` | **`NO_RESOLUTION` after 120s** |
+
+  Same code, same tap, one variable. The secondary-process caller never learns that the user said yes.
+
+- [x] **A methodology error nearly produced the opposite conclusion, and is recorded because it would recur.** The first control run used a 25-second probe window while the operator was still running `uiautomator dump` to find the button — so the tap landed *after* the window expired, and the main process also reported `NO_RESOLUTION`. That reading suggested the fallback's completion path was broken in a single process, which would have been a more serious (and entirely fictional) bug. Re-running with a 120-second window and a pre-known tap coordinate showed the main process resolving in 2.8s. **A manual-tap experiment must give the operator more time than the code under test allows, or it measures the operator.**
+- [x] The advisory added in this milestone is therefore correct as written, and the follow-up it once implied — "fix the fallback's completion path" — is withdrawn: there is nothing wrong with that path in a single process.
+
+**2. Bluetooth granularity** ✅ *shipped*
+- [x] `AppGrant.BLUETOOTH` requests `BLUETOOTH_SCAN` + `BLUETOOTH_CONNECT` together. Android 12 split them because they differ in sensitivity: a plain `BLUETOOTH_SCAN` is treated as **location-capable**, `BLUETOOTH_CONNECT` is not. So a connect-only app (POS, car key, scale) carried a location implication for a capability it never used.
+- [x] Added `BLUETOOTH_SCAN` and `BLUETOOTH_CONNECT`. `BLUETOOTH` is unchanged for apps that genuinely do both. Below API 31, connect-only now maps to **nothing** — connecting to an already-paired device never needed a runtime permission there, so the old `ACCESS_FINE_LOCATION` fallback was pure over-ask.
+- [x] iOS keeps one handler for all four: it has a single Bluetooth authorization covering scan, connect and advertise. Mirroring the Android split there would invent a distinction the platform does not have.
+- [x] `BluetoothGranularityTest` pins the per-API-level mapping; confirmed it bites by reverting connect-only to the combined behaviour.
+
+**3. `neverForLocation` advisory** ✅ *shipped*
+- [x] `ManifestValidator` now reads `PackageInfo.requestedPermissionsFlags` and warns once when `BLUETOOTH_SCAN` is requested without `android:usesPermissionFlags="neverForLocation"`. Verified the flag is public API before building on it (`REQUESTED_PERMISSION_NEVER_FOR_LOCATION = 0x10000`, present in the API 35/36/37 platform jars; written as a literal because it postdates this project's compileSdk, the same convention as `ACCESS_LOCAL_NETWORK`).
+- [x] A warning, not a status change: the flag is a declaration only the app can make in its own manifest. `null` (flags unavailable, or a test environment) never warns — no guessing.
+
+**Enum ordinals shifted**, and that is recorded rather than hidden: `BLUETOOTH_SCAN`/`BLUETOOTH_CONNECT` are inserted after `BLUETOOTH` rather than appended, because this enum reads as grouped-by-domain and a stranded Bluetooth value at the end would cost every future reader more than a one-time shift. Safe by construction inside Grant — `identifier` is `name` and request history is keyed on `name`, verified by grep — and documented in `MIGRATION_GUIDE.md` for the narrow cases where a consumer persisted an ordinal or mixes binary versions.
+
 ## 📋 Backlog / Considering
 
 *Not committed to a version yet — pulled into a milestone when a consumer actually asks.*
