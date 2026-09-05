@@ -75,6 +75,7 @@ jobs:
           :grant-contacts:iosSimulatorArm64Test
           :grant-motion:iosSimulatorArm64Test
           :grant-tracking:iosSimulatorArm64Test
+          :grant-testing:iosSimulatorArm64Test
 
       - name: Build Compose iOS Framework
         run: ./gradlew :grant-compose:linkDebugFrameworkIosArm64 :grant-compose:linkDebugFrameworkIosSimulatorArm64 || true

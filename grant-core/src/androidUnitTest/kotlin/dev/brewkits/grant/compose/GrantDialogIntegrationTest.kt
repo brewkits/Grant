@@ -1,7 +1,7 @@
 package dev.brewkits.grant.compose
 
 import dev.brewkits.grant.*
-import dev.brewkits.grant.fakes.FakeGrantManager
+import dev.brewkits.grant.testing.FakeGrantManager
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher

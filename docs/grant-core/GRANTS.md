@@ -827,7 +827,7 @@ val alarmGrant = GrantHandler(grantManager, AppGrant.SCHEDULE_EXACT_ALARM, scope
 - **Use cases**: ad attribution, cross-app measurement.
 
 ```kotlin
-implementation("dev.brewkits:grant-tracking:2.4.0")
+implementation("dev.brewkits:grant-tracking:2.5.0")
 ```
 
 ```kotlin

@@ -10,13 +10,14 @@
 
 set -e
 
-VERSION="2.4.0"
+VERSION="2.5.0"
 GROUP_PATH="dev/brewkits"
 BUNDLE_NAME="grant-v${VERSION}-bundle.jar"
 OUTPUT_DIR="maven-central-artifacts/v${VERSION}"
 
 # Every published library module. Keep in sync with settings.gradle.kts
-# (the `demo` module is intentionally excluded — it is not published).
+# (the `demo` module is intentionally excluded — it is not published; `grant-desktop` and
+# `desktop-harness` are likewise excluded — see their own build.gradle.kts headers).
 MODULES=(
     grant-core
     grant-compose
@@ -27,6 +28,8 @@ MODULES=(
     grant-bluetooth
     grant-location-always
     grant-tracking
+    grant-testing
+    grant-bom
 )
 
 echo "=========================================="

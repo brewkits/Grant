@@ -1,0 +1,116 @@
+// Klib ABI Dump
+// Targets: [iosArm64, iosSimulatorArm64, iosX64, js, wasmJs]
+// Rendering settings:
+// - Signature version: 2
+// - Show manifest properties: true
+// - Show declarations: true
+
+// Library unique name: <dev.brewkits:grant-testing>
+final class dev.brewkits.grant.testing/FakeGrantManager : dev.brewkits.grant/GrantManager { // dev.brewkits.grant.testing/FakeGrantManager|null[0]
+    constructor <init>(dev.brewkits.grant/GrantStatus = ..., dev.brewkits.grant/GrantStatus = ...) // dev.brewkits.grant.testing/FakeGrantManager.<init>|<init>(dev.brewkits.grant.GrantStatus;dev.brewkits.grant.GrantStatus){}[0]
+
+    final val checkStatusCalls // dev.brewkits.grant.testing/FakeGrantManager.checkStatusCalls|{}checkStatusCalls[0]
+        final fun <get-checkStatusCalls>(): kotlin.collections/MutableList<dev.brewkits.grant/GrantPermission> // dev.brewkits.grant.testing/FakeGrantManager.checkStatusCalls.<get-checkStatusCalls>|<get-checkStatusCalls>(){}[0]
+    final val requestedGrants // dev.brewkits.grant.testing/FakeGrantManager.requestedGrants|{}requestedGrants[0]
+        final fun <get-requestedGrants>(): kotlin.collections/MutableList<dev.brewkits.grant/GrantPermission> // dev.brewkits.grant.testing/FakeGrantManager.requestedGrants.<get-requestedGrants>|<get-requestedGrants>(){}[0]
+
+    final var capturedLauncher // dev.brewkits.grant.testing/FakeGrantManager.capturedLauncher|{}capturedLauncher[0]
+        final fun <get-capturedLauncher>(): dev.brewkits.grant/GrantLauncher? // dev.brewkits.grant.testing/FakeGrantManager.capturedLauncher.<get-capturedLauncher>|<get-capturedLauncher>(){}[0]
+        final fun <set-capturedLauncher>(dev.brewkits.grant/GrantLauncher?) // dev.brewkits.grant.testing/FakeGrantManager.capturedLauncher.<set-capturedLauncher>|<set-capturedLauncher>(dev.brewkits.grant.GrantLauncher?){}[0]
+    final var mockRequestResult // dev.brewkits.grant.testing/FakeGrantManager.mockRequestResult|{}mockRequestResult[0]
+        final fun <get-mockRequestResult>(): dev.brewkits.grant/GrantStatus // dev.brewkits.grant.testing/FakeGrantManager.mockRequestResult.<get-mockRequestResult>|<get-mockRequestResult>(){}[0]
+        final fun <set-mockRequestResult>(dev.brewkits.grant/GrantStatus) // dev.brewkits.grant.testing/FakeGrantManager.mockRequestResult.<set-mockRequestResult>|<set-mockRequestResult>(dev.brewkits.grant.GrantStatus){}[0]
+    final var mockStatus // dev.brewkits.grant.testing/FakeGrantManager.mockStatus|{}mockStatus[0]
+        final fun <get-mockStatus>(): dev.brewkits.grant/GrantStatus // dev.brewkits.grant.testing/FakeGrantManager.mockStatus.<get-mockStatus>|<get-mockStatus>(){}[0]
+        final fun <set-mockStatus>(dev.brewkits.grant/GrantStatus) // dev.brewkits.grant.testing/FakeGrantManager.mockStatus.<set-mockStatus>|<set-mockStatus>(dev.brewkits.grant.GrantStatus){}[0]
+    final var openSettingsCalled // dev.brewkits.grant.testing/FakeGrantManager.openSettingsCalled|{}openSettingsCalled[0]
+        final fun <get-openSettingsCalled>(): kotlin/Boolean // dev.brewkits.grant.testing/FakeGrantManager.openSettingsCalled.<get-openSettingsCalled>|<get-openSettingsCalled>(){}[0]
+        final fun <set-openSettingsCalled>(kotlin/Boolean) // dev.brewkits.grant.testing/FakeGrantManager.openSettingsCalled.<set-openSettingsCalled>|<set-openSettingsCalled>(kotlin.Boolean){}[0]
+    final var requestCalled // dev.brewkits.grant.testing/FakeGrantManager.requestCalled|{}requestCalled[0]
+        final fun <get-requestCalled>(): kotlin/Boolean // dev.brewkits.grant.testing/FakeGrantManager.requestCalled.<get-requestCalled>|<get-requestCalled>(){}[0]
+        final fun <set-requestCalled>(kotlin/Boolean) // dev.brewkits.grant.testing/FakeGrantManager.requestCalled.<set-requestCalled>|<set-requestCalled>(kotlin.Boolean){}[0]
+    final var shouldThrow // dev.brewkits.grant.testing/FakeGrantManager.shouldThrow|{}shouldThrow[0]
+        final fun <get-shouldThrow>(): kotlin/Exception? // dev.brewkits.grant.testing/FakeGrantManager.shouldThrow.<get-shouldThrow>|<get-shouldThrow>(){}[0]
+        final fun <set-shouldThrow>(kotlin/Exception?) // dev.brewkits.grant.testing/FakeGrantManager.shouldThrow.<set-shouldThrow>|<set-shouldThrow>(kotlin.Exception?){}[0]
+    final var simulatedDelayMs // dev.brewkits.grant.testing/FakeGrantManager.simulatedDelayMs|{}simulatedDelayMs[0]
+        final fun <get-simulatedDelayMs>(): kotlin/Long // dev.brewkits.grant.testing/FakeGrantManager.simulatedDelayMs.<get-simulatedDelayMs>|<get-simulatedDelayMs>(){}[0]
+        final fun <set-simulatedDelayMs>(kotlin/Long) // dev.brewkits.grant.testing/FakeGrantManager.simulatedDelayMs.<set-simulatedDelayMs>|<set-simulatedDelayMs>(kotlin.Long){}[0]
+
+    final fun configure(dev.brewkits.grant/GrantPermission, dev.brewkits.grant/GrantStatus, dev.brewkits.grant/GrantStatus = ...) // dev.brewkits.grant.testing/FakeGrantManager.configure|configure(dev.brewkits.grant.GrantPermission;dev.brewkits.grant.GrantStatus;dev.brewkits.grant.GrantStatus){}[0]
+    final fun openSettings() // dev.brewkits.grant.testing/FakeGrantManager.openSettings|openSettings(){}[0]
+    final fun reset() // dev.brewkits.grant.testing/FakeGrantManager.reset|reset(){}[0]
+    final fun setLauncher(dev.brewkits.grant/GrantLauncher) // dev.brewkits.grant.testing/FakeGrantManager.setLauncher|setLauncher(dev.brewkits.grant.GrantLauncher){}[0]
+    final fun setRequestResult(dev.brewkits.grant/GrantPermission, dev.brewkits.grant/GrantStatus) // dev.brewkits.grant.testing/FakeGrantManager.setRequestResult|setRequestResult(dev.brewkits.grant.GrantPermission;dev.brewkits.grant.GrantStatus){}[0]
+    final fun setResult(dev.brewkits.grant/GrantPermission, dev.brewkits.grant/GrantStatus) // dev.brewkits.grant.testing/FakeGrantManager.setResult|setResult(dev.brewkits.grant.GrantPermission;dev.brewkits.grant.GrantStatus){}[0]
+    final fun setStatus(dev.brewkits.grant/GrantPermission, dev.brewkits.grant/GrantStatus) // dev.brewkits.grant.testing/FakeGrantManager.setStatus|setStatus(dev.brewkits.grant.GrantPermission;dev.brewkits.grant.GrantStatus){}[0]
+    final suspend fun checkStatus(dev.brewkits.grant/GrantPermission): dev.brewkits.grant/GrantStatus // dev.brewkits.grant.testing/FakeGrantManager.checkStatus|checkStatus(dev.brewkits.grant.GrantPermission){}[0]
+    final suspend fun request(dev.brewkits.grant/GrantPermission): dev.brewkits.grant/GrantStatus // dev.brewkits.grant.testing/FakeGrantManager.request|request(dev.brewkits.grant.GrantPermission){}[0]
+    final suspend fun request(kotlin.collections/List<dev.brewkits.grant/GrantPermission>): kotlin.collections/Map<dev.brewkits.grant/GrantPermission, dev.brewkits.grant/GrantStatus> // dev.brewkits.grant.testing/FakeGrantManager.request|request(kotlin.collections.List<dev.brewkits.grant.GrantPermission>){}[0]
+}
+
+final class dev.brewkits.grant.testing/FakeGrantStore : dev.brewkits.grant/GrantStore { // dev.brewkits.grant.testing/FakeGrantStore|null[0]
+    constructor <init>() // dev.brewkits.grant.testing/FakeGrantStore.<init>|<init>(){}[0]
+
+    final fun clear() // dev.brewkits.grant.testing/FakeGrantStore.clear|clear(){}[0]
+    final fun clear(dev.brewkits.grant/AppGrant) // dev.brewkits.grant.testing/FakeGrantStore.clear|clear(dev.brewkits.grant.AppGrant){}[0]
+    final fun getStatus(dev.brewkits.grant/AppGrant): dev.brewkits.grant/GrantStatus? // dev.brewkits.grant.testing/FakeGrantStore.getStatus|getStatus(dev.brewkits.grant.AppGrant){}[0]
+    final fun isRawPermissionRequested(kotlin/String): kotlin/Boolean // dev.brewkits.grant.testing/FakeGrantStore.isRawPermissionRequested|isRawPermissionRequested(kotlin.String){}[0]
+    final fun isRequestedBefore(dev.brewkits.grant/AppGrant): kotlin/Boolean // dev.brewkits.grant.testing/FakeGrantStore.isRequestedBefore|isRequestedBefore(dev.brewkits.grant.AppGrant){}[0]
+    final fun markRawPermissionRequested(kotlin/String) // dev.brewkits.grant.testing/FakeGrantStore.markRawPermissionRequested|markRawPermissionRequested(kotlin.String){}[0]
+    final fun setRequested(dev.brewkits.grant/AppGrant) // dev.brewkits.grant.testing/FakeGrantStore.setRequested|setRequested(dev.brewkits.grant.AppGrant){}[0]
+    final fun setStatus(dev.brewkits.grant/AppGrant, dev.brewkits.grant/GrantStatus) // dev.brewkits.grant.testing/FakeGrantStore.setStatus|setStatus(dev.brewkits.grant.AppGrant;dev.brewkits.grant.GrantStatus){}[0]
+}
+
+final class dev.brewkits.grant.testing/FakeServiceManager : dev.brewkits.grant/ServiceManager { // dev.brewkits.grant.testing/FakeServiceManager|null[0]
+    constructor <init>(dev.brewkits.grant/ServiceStatus = ...) // dev.brewkits.grant.testing/FakeServiceManager.<init>|<init>(dev.brewkits.grant.ServiceStatus){}[0]
+
+    final val serviceCheckCalls // dev.brewkits.grant.testing/FakeServiceManager.serviceCheckCalls|{}serviceCheckCalls[0]
+        final fun <get-serviceCheckCalls>(): kotlin.collections/MutableList<dev.brewkits.grant/ServiceType> // dev.brewkits.grant.testing/FakeServiceManager.serviceCheckCalls.<get-serviceCheckCalls>|<get-serviceCheckCalls>(){}[0]
+
+    final var isServiceEnabledCalled // dev.brewkits.grant.testing/FakeServiceManager.isServiceEnabledCalled|{}isServiceEnabledCalled[0]
+        final fun <get-isServiceEnabledCalled>(): kotlin/Boolean // dev.brewkits.grant.testing/FakeServiceManager.isServiceEnabledCalled.<get-isServiceEnabledCalled>|<get-isServiceEnabledCalled>(){}[0]
+        final fun <set-isServiceEnabledCalled>(kotlin/Boolean) // dev.brewkits.grant.testing/FakeServiceManager.isServiceEnabledCalled.<set-isServiceEnabledCalled>|<set-isServiceEnabledCalled>(kotlin.Boolean){}[0]
+    final var mockEnabled // dev.brewkits.grant.testing/FakeServiceManager.mockEnabled|{}mockEnabled[0]
+        final fun <get-mockEnabled>(): kotlin/Boolean // dev.brewkits.grant.testing/FakeServiceManager.mockEnabled.<get-mockEnabled>|<get-mockEnabled>(){}[0]
+        final fun <set-mockEnabled>(kotlin/Boolean) // dev.brewkits.grant.testing/FakeServiceManager.mockEnabled.<set-mockEnabled>|<set-mockEnabled>(kotlin.Boolean){}[0]
+    final var mockStatus // dev.brewkits.grant.testing/FakeServiceManager.mockStatus|{}mockStatus[0]
+        final fun <get-mockStatus>(): dev.brewkits.grant/ServiceStatus // dev.brewkits.grant.testing/FakeServiceManager.mockStatus.<get-mockStatus>|<get-mockStatus>(){}[0]
+        final fun <set-mockStatus>(dev.brewkits.grant/ServiceStatus) // dev.brewkits.grant.testing/FakeServiceManager.mockStatus.<set-mockStatus>|<set-mockStatus>(dev.brewkits.grant.ServiceStatus){}[0]
+    final var openServiceSettingsCalled // dev.brewkits.grant.testing/FakeServiceManager.openServiceSettingsCalled|{}openServiceSettingsCalled[0]
+        final fun <get-openServiceSettingsCalled>(): kotlin/Boolean // dev.brewkits.grant.testing/FakeServiceManager.openServiceSettingsCalled.<get-openServiceSettingsCalled>|<get-openServiceSettingsCalled>(){}[0]
+        final fun <set-openServiceSettingsCalled>(kotlin/Boolean) // dev.brewkits.grant.testing/FakeServiceManager.openServiceSettingsCalled.<set-openServiceSettingsCalled>|<set-openServiceSettingsCalled>(kotlin.Boolean){}[0]
+    final var shouldThrow // dev.brewkits.grant.testing/FakeServiceManager.shouldThrow|{}shouldThrow[0]
+        final fun <get-shouldThrow>(): kotlin/Exception? // dev.brewkits.grant.testing/FakeServiceManager.shouldThrow.<get-shouldThrow>|<get-shouldThrow>(){}[0]
+        final fun <set-shouldThrow>(kotlin/Exception?) // dev.brewkits.grant.testing/FakeServiceManager.shouldThrow.<set-shouldThrow>|<set-shouldThrow>(kotlin.Exception?){}[0]
+    final var simulatedDelayMs // dev.brewkits.grant.testing/FakeServiceManager.simulatedDelayMs|{}simulatedDelayMs[0]
+        final fun <get-simulatedDelayMs>(): kotlin/Long // dev.brewkits.grant.testing/FakeServiceManager.simulatedDelayMs.<get-simulatedDelayMs>|<get-simulatedDelayMs>(){}[0]
+        final fun <set-simulatedDelayMs>(kotlin/Long) // dev.brewkits.grant.testing/FakeServiceManager.simulatedDelayMs.<set-simulatedDelayMs>|<set-simulatedDelayMs>(kotlin.Long){}[0]
+
+    final suspend fun checkServiceStatus(dev.brewkits.grant/ServiceType): dev.brewkits.grant/ServiceStatus // dev.brewkits.grant.testing/FakeServiceManager.checkServiceStatus|checkServiceStatus(dev.brewkits.grant.ServiceType){}[0]
+    final suspend fun isServiceEnabled(dev.brewkits.grant/ServiceType): kotlin/Boolean // dev.brewkits.grant.testing/FakeServiceManager.isServiceEnabled|isServiceEnabled(dev.brewkits.grant.ServiceType){}[0]
+    final suspend fun openServiceSettings(dev.brewkits.grant/ServiceType): kotlin/Boolean // dev.brewkits.grant.testing/FakeServiceManager.openServiceSettings|openServiceSettings(dev.brewkits.grant.ServiceType){}[0]
+}
+
+final class dev.brewkits.grant.testing/MultiGrantFakeManager : dev.brewkits.grant/GrantManager { // dev.brewkits.grant.testing/MultiGrantFakeManager|null[0]
+    constructor <init>() // dev.brewkits.grant.testing/MultiGrantFakeManager.<init>|<init>(){}[0]
+
+    final var delayMillis // dev.brewkits.grant.testing/MultiGrantFakeManager.delayMillis|{}delayMillis[0]
+        final fun <get-delayMillis>(): kotlin/Long // dev.brewkits.grant.testing/MultiGrantFakeManager.delayMillis.<get-delayMillis>|<get-delayMillis>(){}[0]
+        final fun <set-delayMillis>(kotlin/Long) // dev.brewkits.grant.testing/MultiGrantFakeManager.delayMillis.<set-delayMillis>|<set-delayMillis>(kotlin.Long){}[0]
+    final var openSettingsCalled // dev.brewkits.grant.testing/MultiGrantFakeManager.openSettingsCalled|{}openSettingsCalled[0]
+        final fun <get-openSettingsCalled>(): kotlin/Boolean // dev.brewkits.grant.testing/MultiGrantFakeManager.openSettingsCalled.<get-openSettingsCalled>|<get-openSettingsCalled>(){}[0]
+        final fun <set-openSettingsCalled>(kotlin/Boolean) // dev.brewkits.grant.testing/MultiGrantFakeManager.openSettingsCalled.<set-openSettingsCalled>|<set-openSettingsCalled>(kotlin.Boolean){}[0]
+    final var requestCount // dev.brewkits.grant.testing/MultiGrantFakeManager.requestCount|{}requestCount[0]
+        final fun <get-requestCount>(): kotlin/Int // dev.brewkits.grant.testing/MultiGrantFakeManager.requestCount.<get-requestCount>|<get-requestCount>(){}[0]
+        final fun <set-requestCount>(kotlin/Int) // dev.brewkits.grant.testing/MultiGrantFakeManager.requestCount.<set-requestCount>|<set-requestCount>(kotlin.Int){}[0]
+
+    final fun configure(dev.brewkits.grant/GrantPermission, dev.brewkits.grant/GrantStatus, dev.brewkits.grant/GrantStatus = ...) // dev.brewkits.grant.testing/MultiGrantFakeManager.configure|configure(dev.brewkits.grant.GrantPermission;dev.brewkits.grant.GrantStatus;dev.brewkits.grant.GrantStatus){}[0]
+    final fun isRequestCalled(dev.brewkits.grant/GrantPermission): kotlin/Boolean // dev.brewkits.grant.testing/MultiGrantFakeManager.isRequestCalled|isRequestCalled(dev.brewkits.grant.GrantPermission){}[0]
+    final fun openSettings() // dev.brewkits.grant.testing/MultiGrantFakeManager.openSettings|openSettings(){}[0]
+    final fun setLauncher(dev.brewkits.grant/GrantLauncher) // dev.brewkits.grant.testing/MultiGrantFakeManager.setLauncher|setLauncher(dev.brewkits.grant.GrantLauncher){}[0]
+    final fun setRequestResult(dev.brewkits.grant/GrantPermission, dev.brewkits.grant/GrantStatus) // dev.brewkits.grant.testing/MultiGrantFakeManager.setRequestResult|setRequestResult(dev.brewkits.grant.GrantPermission;dev.brewkits.grant.GrantStatus){}[0]
+    final fun setStatus(dev.brewkits.grant/GrantPermission, dev.brewkits.grant/GrantStatus) // dev.brewkits.grant.testing/MultiGrantFakeManager.setStatus|setStatus(dev.brewkits.grant.GrantPermission;dev.brewkits.grant.GrantStatus){}[0]
+    final suspend fun checkStatus(dev.brewkits.grant/GrantPermission): dev.brewkits.grant/GrantStatus // dev.brewkits.grant.testing/MultiGrantFakeManager.checkStatus|checkStatus(dev.brewkits.grant.GrantPermission){}[0]
+    final suspend fun request(dev.brewkits.grant/GrantPermission): dev.brewkits.grant/GrantStatus // dev.brewkits.grant.testing/MultiGrantFakeManager.request|request(dev.brewkits.grant.GrantPermission){}[0]
+    final suspend fun request(kotlin.collections/List<dev.brewkits.grant/GrantPermission>): kotlin.collections/Map<dev.brewkits.grant/GrantPermission, dev.brewkits.grant/GrantStatus> // dev.brewkits.grant.testing/MultiGrantFakeManager.request|request(kotlin.collections.List<dev.brewkits.grant.GrantPermission>){}[0]
+}

@@ -1,8 +1,15 @@
-package dev.brewkits.grant.fakes
+package dev.brewkits.grant.testing
 
-import dev.brewkits.grant.*
+import dev.brewkits.grant.AppGrant
+import dev.brewkits.grant.GrantStatus
+import dev.brewkits.grant.GrantStore
 
-internal class FakeGrantStore : GrantStore {
+/**
+ * An in-memory [GrantStore] for tests — same contract as
+ * [dev.brewkits.grant.InMemoryGrantStore], reimplemented here so tests don't need to depend on
+ * `grant-core`'s internal implementation to get a working store.
+ */
+public class FakeGrantStore : GrantStore {
     private val requestedSet = mutableSetOf<String>()
     private val statusMap = mutableMapOf<String, GrantStatus>()
 

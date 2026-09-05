@@ -1,7 +1,7 @@
 package dev.brewkits.grant
 
-import dev.brewkits.grant.fakes.FakeGrantManager
-import dev.brewkits.grant.fakes.FakeServiceManager
+import dev.brewkits.grant.testing.FakeGrantManager
+import dev.brewkits.grant.testing.FakeServiceManager
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope

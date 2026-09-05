@@ -5,7 +5,7 @@ import dev.brewkits.grant.GrantEventListener
 import dev.brewkits.grant.GrantHandler
 import dev.brewkits.grant.GrantPermission
 import dev.brewkits.grant.GrantStatus
-import dev.brewkits.grant.fakes.FakeGrantManager
+import dev.brewkits.grant.testing.FakeGrantManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async

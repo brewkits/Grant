@@ -2,7 +2,7 @@ package dev.brewkits.grant.impl
 
 import app.cash.turbine.test
 import dev.brewkits.grant.*
-import dev.brewkits.grant.fakes.FakeGrantManager
+import dev.brewkits.grant.testing.FakeGrantManager
 import kotlinx.coroutines.*
 import kotlinx.coroutines.test.*
 import kotlin.test.*

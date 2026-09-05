@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "dev.brewkits"
-version = "2.4.0"
+version = "2.5.0"
 
 kotlin {
     androidTarget {
@@ -106,6 +106,7 @@ kotlin {
             implementation(libs.koin.test)
             implementation(libs.kotest.assertions)
             implementation(libs.kotest.property)
+            implementation(project(":grant-testing"))
         }
 
         androidInstrumentedTest.dependencies {
@@ -215,7 +216,7 @@ publishing {
     publications.configureEach {
         (this as? MavenPublication)?.let {
             groupId = "dev.brewkits"
-            version = "2.4.0"
+            version = "2.5.0"
 
             pom {
                 name.set("KMP Grant")

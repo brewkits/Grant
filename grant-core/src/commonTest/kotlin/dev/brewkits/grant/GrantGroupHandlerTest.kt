@@ -1,7 +1,7 @@
 package dev.brewkits.grant
 
 import app.cash.turbine.test
-import dev.brewkits.grant.fakes.MultiGrantFakeManager
+import dev.brewkits.grant.testing.MultiGrantFakeManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel

@@ -5,8 +5,10 @@
 > sequencing below with JS/Wasm (Tier 1) already in `grant-core`, since that work landed on
 > `main` before this cut; the macOS camera/microphone bridge (Tier 2) also verified end-to-end,
 > but ships unpublished (`grant-desktop` is Gradle-only, not in
-> `create-grant-maven-bundle-auto.sh`'s `MODULES`). Next: **v2.5.0** (Group UX), then **v2.6.0**
-> (Windows Tier 2.5 — the only multi-platform scope still open).
+> `create-grant-maven-bundle-auto.sh`'s `MODULES`). Next: **v2.5.0** (Testing support + BOM —
+> `grant-testing` and `grant-bom`, code-complete and awaiting Maven Central publish), then
+> **v2.6.0** (Group UX), then **v2.7.0** (Windows Tier 2.5 — the only multi-platform scope still
+> open).
 
 ---
 
@@ -121,7 +123,26 @@ just unit tests.
 **6. Privacy position pinned** ✅
 - [x] `GrantLogger` defaults to `isEnabled = false` with no handler installed, so a library sitting in front of contacts, calendar and location writes nothing the host app did not ask for. Now covered by `LoggerPrivacyDefaultTest`, including that installing a handler is itself an opt-in (independent of `isEnabled`, which gates only the console branch) and that clearing the handler restores silence.
 
-### v2.5.0 — Group UX
+### v2.5.0 — Testing support + BOM
+
+*Origin: a review of KRelay (another KMP library in this workspace) against its own professional-readiness checklist surfaced two gaps Grant shared: no official test-double artifact, and no Maven BOM. Per `SUPPORT.md`'s own table ("new permission, new API, new module" → minor), two brand-new modules make this a minor release on its own — it does not wait for Group UX to also be ready.*
+
+**1. `grant-testing` module** ✅ *code-complete, awaiting Maven Central publish*
+- [x] Consolidates `FakeGrantManager`, `FakeServiceManager`, `MultiGrantFakeManager`, `FakeGrantStore` — previously seven near-duplicate `internal` copies inside `grant-core`'s and five opt-in modules' own `commonTest` source sets — into one `public`, `explicitApi()`, ABI-locked artifact consumers can depend on directly.
+- [x] `grant-core` and the five opt-in modules (`grant-bluetooth`, `grant-contacts`, `grant-calendar`, `grant-motion`, `grant-location-always`) now test-depend on `grant-testing` instead of a local copy; all duplicate `fakes/` packages deleted.
+- [x] Matches `grant-core`'s full target set (android, jvm, js, wasmJs, 3 iOS targets) — required because `grant-core`'s own `commonTest` depends on it, and a missing target there fails that target's test-classpath resolution only, not at configure time.
+- [x] Verified this is not a real circular dependency, empirically, not just by reasoning: `grant-testing` depends on `grant-core` via `api`, and `grant-core` depends on `grant-testing` only via `commonTest`'s `implementation` — two different Gradle configurations (`apiElements` vs. `testCompileClasspath`) that Gradle resolves independently. `:grant-core:allTests` passes clean.
+- [x] Real Kover floor (80%, not the "100% on an untestable no-op" trap the iOS-only modules fall into) — this module's logic is plain Kotlin that runs on the JVM/Android target Kover measures.
+- [x] Carries the same `dokkaJavadocJar` fix `grant-core-jvm` needed for its first Maven Central upload (Sonatype rejects a `jar`-packaged artifact with no javadoc jar) — wired up from this module's first release rather than discovered the hard way twice.
+
+**2. `grant-bom` module** ✅ *code-complete, awaiting Maven Central publish*
+- [x] A pure Maven BOM (Gradle `java-platform` plugin, no Kotlin code, no Dokka, no Kover, no lint) pinning matching versions of every published Kotlin module via `constraints { api(project(...)) }` — verified the generated POM resolves all 10 dependency versions from the actual `project(...)` reference, not a hardcoded string that could drift.
+- [x] `grant-desktop` deliberately excluded from the BOM's constraints — it is Gradle-published only, not on Maven Central.
+- [x] Lets a consumer write `implementation(platform("dev.brewkits:grant-bom:2.5.0"))` once and drop the version from every other `dev.brewkits:grant-*` line.
+
+**Versioning note**: `grant-testing:2.5.0` and `grant-bom:2.5.0` are artifacts that have never been published before, so per-GAV Maven Central immutability is not the deciding factor here — the family-wide minor bump follows this project's own lock-step versioning convention (one `VERSION` value drives every module's `build.gradle.kts`) and `SUPPORT.md`'s "new module → minor" rule instead. See `docs/MIGRATION_GUIDE.md`'s 2.4.0 → 2.5.0 section for the consumer-facing summary — it is additive-only, no existing type or method changed.
+
+### v2.6.0 — Group UX
 
 **1. Opt-in pre-request rationale for groups**
 - [ ] A single "priming" dialog that explains a whole `GrantGroupHandler` set **before** any system prompt fires, instead of the current per-permission rationale shown **after** a refusal.
@@ -131,11 +152,11 @@ just unit tests.
 
 *Origin: an external evaluation proposed this alongside "permission funnel analytics" and "atomic batch requests". Those two already ship — `GrantEventListener` (v2.1.0) and `GrantGroupHandler` respectively — and the merged pre-request rationale was the one genuinely new idea in the proposal. That an expert reviewer missed both shipped features was itself the finding: `GrantGroupHandler` appeared **zero** times in the README and `GrantEventListener` only once, buried inside a code sample. Both now have their own Features bullet and Usage section.*
 
-### v2.6.0 — Multi-platform expansion (JS/Wasm, macOS, Windows)
+### v2.7.0 — Multi-platform expansion (JS/Wasm, macOS, Windows)
 
 **Tier 1 (JS/Wasm) and the `jvm()` half of Tier 2 (macOS camera/microphone) actually shipped in
 v2.4.0** — see the note at the top of that section above. What's left under this heading, and
-what actually defines v2.6.0's remaining scope, is **Tier 2.5 (Windows)**, not started.
+what actually defines v2.7.0's remaining scope, is **Tier 2.5 (Windows)**, not started.
 
 *Origin: a full-market survey found no general-purpose KMP permission library with working desktop or web support. The closest by reach, **Calf** (1642 ★), ships a `desktopMain` source set for permissions, but `launchMultiplePermissionRequest()` there is an empty function body — it compiles and does nothing. The rule this expansion follows throughout: **a platform ships only when its permission flow is real, verified on the actual OS, and covered by a test that would fail if the implementation regressed to a no-op** — never a silently-inert stub.*
 
@@ -180,7 +201,7 @@ what actually defines v2.6.0's remaining scope, is **Tier 2.5 (Windows)**, not s
 
 **Explicitly out of scope, with reasons** (so it isn't re-litigated by assumption): Linux desktop (no reliable cross-environment signal), watchOS/tvOS (different problem shape, stays in Backlog below), standalone Kotlin/Native `macosArm64`/`macosX64` klib target (can't be consumed by a Compose Desktop app — this is what `grant-desktop`'s `.dylib`-over-JNA approach sidesteps).
 
-### v2.7.0 — Newest-OS permission coverage
+### v2.8.0 — Newest-OS permission coverage
 
 *Origin: an audit of coverage against the newest OS releases, grounded in a connected Android 17 (API 37) device (`pm list permissions -d`, `pm grant`) and the iOS 26.5 SDK/runtime rather than recall. It produced three defect fixes (shipped in #70 and #74) and one genuine gap, below.*
 

@@ -1,6 +1,6 @@
 package dev.brewkits.grant
 
-import dev.brewkits.grant.fakes.FakeGrantManager
+import dev.brewkits.grant.testing.FakeGrantManager
 import kotlinx.coroutines.test.runTest
 import kotlin.experimental.ExperimentalNativeApi
 import kotlin.test.Test

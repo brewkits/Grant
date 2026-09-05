@@ -90,6 +90,22 @@ jobs:
       - name: Build grant-tracking
         run: ./gradlew :grant-tracking:build -x checkKotlinAbi
 
+      # The official test-doubles module (FakeGrantManager, FakeServiceManager,
+      # MultiGrantFakeManager, FakeGrantStore) — consolidates what used to be 7 near-duplicate
+      # `internal` copies inside other modules' own commonTest source sets. Depends on
+      # grant-core's *published* variant (api(project(":grant-core"))), not its test
+      # configuration, so this is not circular despite grant-core's own commonTest also
+      # depending back on grant-testing (verified: they resolve different Gradle
+      # configurations — grant-core's testCompileClasspath vs. apiElements).
+      - name: Build grant-testing
+        run: ./gradlew :grant-testing:build -x checkKotlinAbi
+
+      # A Maven BOM (java-platform, no Kotlin compilation) pinning every sibling module's
+      # version — pure POM generation, so there is no Linux/macOS split the way there is for
+      # KMP modules; this one line is the whole build for it.
+      - name: Build grant-bom
+        run: ./gradlew :grant-bom:build
+
       # New in v2.4.0 (macOS Tier 2, PR #72). Only the jvmMain compile + jvmTest are Linux-buildable
       # here — the macosArm64 shared-library target is Kotlin/Native cross-compiled to Apple, which
       # only a macOS host can do; KGP disables that target on Linux rather than failing the build,

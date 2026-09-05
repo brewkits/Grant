@@ -135,7 +135,7 @@ A consumer who only adds `grant-core` to their dependencies never downloads `gra
 
 ```
 Consumer build.gradle.kts:
-  implementation("dev.brewkits:grant-core:2.4.0")
+  implementation("dev.brewkits:grant-core:2.5.0")
   // grant-contacts NOT added
 
         ▼  Dependency resolution
@@ -158,12 +158,12 @@ Only add the modules your app actually uses:
 ```kotlin
 // shared/build.gradle.kts
 commonMain.dependencies {
-    implementation("dev.brewkits:grant-core:2.4.0")
+    implementation("dev.brewkits:grant-core:2.5.0")
 
     // Add only what you use:
-    implementation("dev.brewkits:grant-contacts:2.4.0")  // Contacts
-    implementation("dev.brewkits:grant-calendar:2.4.0")  // Calendar / EventKit
-    implementation("dev.brewkits:grant-motion:2.4.0")    // CoreMotion / Step Counter
+    implementation("dev.brewkits:grant-contacts:2.5.0")  // Contacts
+    implementation("dev.brewkits:grant-calendar:2.5.0")  // Calendar / EventKit
+    implementation("dev.brewkits:grant-motion:2.5.0")    // CoreMotion / Step Counter
 }
 ```
 

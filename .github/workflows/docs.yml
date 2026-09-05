@@ -13,8 +13,9 @@ concurrency:
 
 jobs:
   publish:
-    # macOS: the aggregated publication includes the Apple targets of all eight
-    # modules, and Kotlin/Native cannot cross-compile those on Linux.
+    # macOS: the aggregated publication includes the Apple targets of all 10 Kotlin modules
+    # (grant-bom is a pure Maven BOM with no Kotlin/Dokka involvement), and Kotlin/Native
+    # cannot cross-compile those targets on Linux.
     runs-on: macos-latest
 
     permissions:

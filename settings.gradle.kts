@@ -37,6 +37,8 @@ include(":demo")
 include(":grant-bluetooth")
 include(":grant-location-always")
 include(":grant-tracking")
+include(":grant-testing")
+include(":grant-bom")
 include(":grant-desktop")
 // Deliberately not "grant-desktop-harness" — see desktop-harness/build.gradle.kts's header
 // comment for why this module must never be mistaken for a published library.

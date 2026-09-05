@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.5.0] - Unreleased
+
+### ✨ Added
+
+- **`grant-testing` module** — official test doubles (`FakeGrantManager`, `FakeServiceManager`,
+  `MultiGrantFakeManager`, `FakeGrantStore`), consolidated from seven near-duplicate `internal`
+  copies previously living inside `grant-core`'s and five opt-in modules' own `commonTest`
+  source sets. `explicitApi()`, ABI-locked, 80%+ real Kover coverage.
+- **`grant-bom` module** — a Maven BOM (Gradle `java-platform`) pinning every published Kotlin
+  module to a matching version via `constraints { api(project(...)) }`. `grant-desktop` is
+  deliberately excluded (Gradle-published only, not on Maven Central).
+
+### 📝 Notes
+
+- Purely additive: no existing type, method, or behavior changed. The whole family bumps to
+  2.5.0 together (this project releases in lock-step) per `SUPPORT.md`'s "new module → minor"
+  policy — see `docs/MIGRATION_GUIDE.md`'s 2.4.0 → 2.5.0 section for the full rationale.
+
 ## [2.4.0] - 2026-09-05
 
 ### ✨ Added

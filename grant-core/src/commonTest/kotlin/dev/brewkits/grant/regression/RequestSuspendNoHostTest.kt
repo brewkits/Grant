@@ -4,7 +4,7 @@ import dev.brewkits.grant.AppGrant
 import dev.brewkits.grant.GrantHandler
 import dev.brewkits.grant.GrantStatus
 import dev.brewkits.grant.PlatformConfig
-import dev.brewkits.grant.fakes.FakeGrantManager
+import dev.brewkits.grant.testing.FakeGrantManager
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
