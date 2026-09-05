@@ -4,11 +4,11 @@
 
 # Grant
 
-**Type-safe permission management for Kotlin Multiplatform — Android & iOS**
+**Type-safe permission management for Kotlin Multiplatform — Android, iOS & Browser**
 
 [![Maven Central](https://img.shields.io/maven-central/v/dev.brewkits/grant-core?style=flat-square&color=7F52FF&label=maven%20central)](https://central.sonatype.com/artifact/dev.brewkits/grant-core)
 [![Kotlin](https://img.shields.io/badge/kotlin-2.4.0-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](https://kotlinlang.org)
-[![Platforms](https://img.shields.io/badge/platforms-android%20%7C%20ios-555?style=flat-square)](https://kotlinlang.org/docs/multiplatform.html)
+[![Platforms](https://img.shields.io/badge/platforms-android%20%7C%20ios%20%7C%20js%20%7C%20wasm-555?style=flat-square)](https://kotlinlang.org/docs/multiplatform.html)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square)](LICENSE)
 
 [Documentation](docs/README.md) · [Quick start](docs/getting-started/quick-start.md) · [Why Grant?](#why-grant) · [Demo app](docs/demo/DEMO_GUIDE.md)
@@ -40,7 +40,8 @@ fun CameraScreen(viewModel: CameraViewModel) {
 }
 ```
 
-**Requirements:** Android 8.0+ (API 26) · iOS 13+ · Kotlin 2.x · JVM 17
+**Requirements:** Android 8.0+ (API 26) · iOS 13+ · a browser with `navigator.permissions`
+(`grant-core` only — Compose Multiplatform Web or Kotlin/JS) · Kotlin 2.x · JVM 17
 
 ## Features
 
@@ -51,6 +52,7 @@ fun CameraScreen(viewModel: CameraViewModel) {
 - **Android process-death recovery** — a request in flight survives system-initiated process death via `SavedStateHandle`, with no timeouts.
 - **Deadlock-free by construction** — reentrant locking plus a `withTimeout` test policy that converts silent deadlocks into failing tests.
 - **23 built-in permissions** — Camera, Gallery (incl. Android 14 partial access and a save-only mode that never prompts), Location (incl. "Approximate"-only), Bluetooth, Local Network (Android 17), App Tracking Transparency (iOS), and more — plus `RawPermission` for anything the library doesn't ship yet.
+- **Browser target** (`grant-core` only) — real `navigator.permissions`/`getUserMedia`/`Notification`/`Geolocation` checks for Camera, Microphone, Location, and Notification on `js` and `wasmJs`, the latter specifically for Compose Multiplatform Web. Every other grant honestly reports unsupported rather than a fabricated `GRANTED`.
 - **Permission groups as one unit** — `GrantGroupHandler` requests several permissions in a single batch, drives one `StateFlow` for the whole group, and fires `onAllGranted` only when every one is satisfied.
 - **Funnel analytics** — attach an optional `GrantEventListener` to any handler and observe every stage: requested, granted, denied, rationale shown, settings guide shown, settings opened.
 - **Service-state checks** — one call answers both "is the permission granted?" and "is GPS/Bluetooth actually on?".
@@ -283,6 +285,7 @@ ceremony, not speed.
 | Schedule Exact Alarm | ✅ | ✅ | Android 12+ `SCHEDULE_EXACT_ALARM` |
 | Nearby Wi-Fi Devices | ✅ | ✅ | `NEARBY_WIFI_DEVICES` (API 33+); no-op on iOS |
 | Local Network | ✅ | ✅ | Android 17+ `ACCESS_LOCAL_NETWORK`; no-op below API 37 and on iOS (OS auto-prompts) |
+| App Tracking Transparency | ✅ | ✅ | `AppGrant.APP_TRACKING` — iOS `ATTrackingManager` (requires the optional `grant-tracking` module); Android has no runtime gate for cross-app tracking, so this honestly reports `GRANTED` rather than prompting |
 
 **Service checks (`ServiceType`)**
 

@@ -36,7 +36,8 @@ behaviour works exactly as before. The items below are opportunities, plus one c
 note that matters only if you mix binary versions.
 
 New in 2.4.0: finer-grained Bluetooth, an App Tracking Transparency module, a multi-process
-advisory, and fixes for `SCHEDULE_EXACT_ALARM` and the iOS 17+ write-only calendar key.
+advisory, `grant-core` now resolving `js`/`wasmJs` artifacts for browser targets, and fixes for
+`SCHEDULE_EXACT_ALARM` and the iOS 17+ write-only calendar key.
 
 ### 1. New: `BLUETOOTH_SCAN` and `BLUETOOTH_CONNECT` — ask for less
 
@@ -191,6 +192,43 @@ Apps that do not declare that key see no change.
 If your app declares only `NSCalendarsWriteOnlyAccessUsageDescription` — the minimal-scope
 choice for an app that only *adds* events — Grant used to report `DENIED_ALWAYS` before EventKit
 was ever consulted. That key is now accepted. No action needed; it just starts working.
+
+### 7. New: `grant-core` now targets the browser (`js` + `wasmJs`)
+
+Nothing changes for existing Android/iOS consumers — this is a new capability, not a behavior
+change to any target you already use. If your app doesn't build a Compose Multiplatform Web or
+Kotlin/JS target, skip this section.
+
+```kotlin
+implementation("dev.brewkits:grant-core:2.4.0") // now resolves js and wasmJs artifacts too
+```
+
+Real permission checks, not a stub: `navigator.permissions.query()` for status, paired with
+`getUserMedia`, `Notification.requestPermission()`, and `navigator.geolocation` for the request
+itself. `wasmJs` is included specifically because Compose Multiplatform Web targets it, not the
+classic `js` backend — an app using either resolves the same `grant-core` artifact.
+
+Only four `AppGrant` values have a browser equivalent:
+
+| `AppGrant` | Browser API |
+|---|---|
+| `CAMERA` | `getUserMedia({ video: true })` |
+| `MICROPHONE` | `getUserMedia({ audio: true })` |
+| `LOCATION` | `navigator.geolocation` |
+| `NOTIFICATION` | `Notification.requestPermission()` |
+
+Every other value resolves to `GrantStatus.DENIED_ALWAYS` with a logged reason — never a
+fabricated `GRANTED` — the same discipline `hasInfoPlistKey()` already holds iOS to. Firefox
+throws for the `'camera'`/`'microphone'` permission names in `permissions.query()`; Grant falls
+back to "ask the browser to find out" there rather than surfacing that as an error.
+
+`openSettings()` has no browser equivalent — there is no OS-style settings page to deep-link
+to — so it is a documented no-op on this target, logged rather than silently doing nothing.
+
+A `jvm()` target also ships as part of this same change, but it exists only so
+`grant-desktop` (Gradle-published, macOS-only, not on Maven Central) has an `expect` to
+satisfy — calling it directly without `grant-desktop` added reports every permission as
+`DENIED_ALWAYS`, the same honest-unsupported pattern as the browser target's unmapped grants.
 
 ### Compatibility note: enum ordinals shifted
 

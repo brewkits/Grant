@@ -6,9 +6,11 @@ Thank you for your interest in contributing to Grant! We welcome contributions f
 
 ### Prerequisites
 
-- **Kotlin**: Version 2.1.0 or higher
+- **Kotlin**: Version 2.4.0 (pinned in `gradle/libs.versions.toml` — the Gradle wrapper brings its
+  own, you don't need it installed separately)
 - **Android Studio**: Latest stable version (for Android development)
-- **Xcode**: Latest stable version (for iOS development)
+- **Xcode**: Latest stable version (for iOS development; required for the iOS test targets and
+  `checkKotlinAbi`'s klib dumps)
 - **JDK**: Version 17 or higher
 
 ### Setup Development Environment
@@ -26,8 +28,17 @@ Thank you for your interest in contributing to Grant! We welcome contributions f
 
 3. **Run tests**
    ```bash
-   ./gradlew test
+   ./gradlew allTests          # Android JVM + iOS simulator, per module
+   ./gradlew :grant-core:build # a single module, faster while iterating
    ```
+
+### Looking for a first contribution?
+
+Issues labeled [`good first issue`](https://github.com/brewkits/Grant/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+are scoped to be self-contained and don't require deep familiarity with the whole codebase. If
+none are open, [`help wanted`](https://github.com/brewkits/Grant/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22)
+issues are the next best place to look — comment on the issue before starting so effort isn't
+duplicated.
 
 ## 📝 How to Contribute
 
@@ -161,23 +172,9 @@ By contributing, you agree that your contributions will be licensed under the Ap
 
 ## 🤝 Code of Conduct
 
-### Our Pledge
-
-We pledge to make participation in our project a harassment-free experience for everyone.
-
-### Expected Behavior
-
-- Be respectful and inclusive
-- Accept constructive criticism gracefully
-- Focus on what is best for the community
-- Show empathy towards others
-
-### Unacceptable Behavior
-
-- Harassment, discrimination, or offensive comments
-- Personal or political attacks
-- Public or private harassment
-- Publishing others' private information
+This project follows the [Contributor Covenant](./CODE_OF_CONDUCT.md). By
+participating, you are expected to uphold it — report unacceptable behavior
+to the address listed there.
 
 ## 📞 Contact
 

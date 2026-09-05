@@ -797,6 +797,50 @@ val localNetworkGrant = GrantHandler(grantManager, AppGrant.LOCAL_NETWORK, scope
 > Android 17 also ships a permission-free, system-mediated **device picker** for local
 > network use cases — if a picker fits your UX, you can skip the permission entirely.
 
+### Exact Alarms (`SCHEDULE_EXACT_ALARM`)
+- **Android**: `SCHEDULE_EXACT_ALARM` (API 31+) — *special app access*, not a runtime
+  permission. `request()` opens the Alarms & reminders settings screen rather than a system
+  dialog, since `requestPermissions()` can never grant this. The unresolved status is `DENIED`
+  (special app access has no permanent-denial state), and `request()` returns as soon as
+  Settings opens — re-read on resume with `GrantHandler.onReturnFromSettings()` or
+  `refreshStatus()`.
+- **iOS**: honest `DENIED_ALWAYS` for apps declaring `NSAlarmKitUsageDescription` (iOS 26's
+  AlarmKit is consent-gated but Swift-only — Grant cannot query it from Kotlin/Native without a
+  registered custom handler); `GRANTED` for apps that don't declare that key, since nothing
+  gates scheduling for them.
+- **Use cases**: reminder apps, alarm clocks, scheduled notifications that must fire at an
+  exact time rather than a battery-optimized window.
+
+```kotlin
+val alarmGrant = GrantHandler(grantManager, AppGrant.SCHEDULE_EXACT_ALARM, scope)
+```
+
+### App Tracking Transparency (iOS)
+- **iOS**: `NSUserTrackingUsageDescription`, via `ATTrackingManager` — needs the optional
+  `grant-tracking` module (linking `AppTrackingTransparency.framework` makes Apple require the
+  usage-description key in *every* app that links it, so it cannot live in `grant-core`).
+  **The prompt only appears while the app is foreground-active** — call it from a screen the
+  user is looking at, never from launch or the background, or the one ask each install gets is
+  spent for nothing.
+- **Android**: no-op reporting `GRANTED` — there is no runtime gate for cross-app tracking;
+  `com.google.android.gms.permission.AD_ID` is install-time with no prompt to show.
+- **Use cases**: ad attribution, cross-app measurement.
+
+```kotlin
+implementation("dev.brewkits:grant-tracking:2.4.0")
+```
+
+```kotlin
+GrantTracking.initialize()   // once, at startup
+val trackingGrant = GrantHandler(grantManager, AppGrant.APP_TRACKING, scope)
+```
+
+```xml
+<!-- Info.plist -->
+<key>NSUserTrackingUsageDescription</key>
+<string>Explain what tracking gives the user.</string>
+```
+
 ### Contacts on Android 17: prefer the Contact Picker for read-only flows
 
 Android 17 adds a **permission-free Contact Picker**

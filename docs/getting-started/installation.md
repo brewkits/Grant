@@ -1,14 +1,15 @@
 # Installation Guide
 
 This guide walks you through adding Grant to a Kotlin Multiplatform (KMP) project
-targeting **Android** and **iOS**.
+targeting **Android**, **iOS**, and (via `grant-core` alone) the **browser**.
 
 ## Prerequisites
 
 - **Kotlin**: 2.1.0 or higher (the library itself is built with Kotlin 2.4.0; consumers on any Kotlin 2.x line can use it)
-- **Compose Multiplatform**: 1.6.0 or higher (only if you use `grant-compose`)
+- **Compose Multiplatform**: 1.6.0 or higher (only if you use `grant-compose`; Android/iOS only — not published for `js`/`wasmJs`)
 - **Android**: minSdk 26 (Android 8.0)
 - **iOS**: iOS 13.0 or higher
+- **Browser**: a `js` or `wasmJs` target with `navigator.permissions` (`grant-core` only)
 - **JVM target**: 17
 
 ## Repository
@@ -74,9 +75,18 @@ kotlin {
 > they're never asked for permissions they don't use. See the
 > [Migration Guide](../MIGRATION_GUIDE.md) for details.
 
-> **Web (JS) or Desktop (JVM) targets?** Use an intermediate `mobileMain` source
-> set so the iOS/Android dependencies aren't linked on unsupported platforms.
-> See [Dependency Management](../DEPENDENCY_MANAGEMENT.md).
+> **Web target?** As of 2.4.0, `grant-core` itself resolves `js` and `wasmJs` artifacts — no
+> extra dependency, no intermediate source set needed. `wasmJs` is what a Compose Multiplatform
+> Web app needs; `js` covers a classic Kotlin/JS target. Only Camera, Microphone, Location, and
+> Notification have a real browser API behind them — see the
+> [Migration Guide](../MIGRATION_GUIDE.md#7-new-grant-core-now-targets-the-browser-js--wasmjs)
+> for the full mapping and what every other `AppGrant` does there.
+>
+> **Desktop (JVM) target?** `grant-core` publishes a minimal `jvm()` actual that reports every
+> permission as unsupported — it exists only so the optional `grant-desktop` module (a
+> macOS-only Compose Desktop camera/microphone bridge, not yet on Maven Central) has something
+> to extend. There is no supported cross-platform desktop permission flow here yet; see
+> `ROADMAP.md` for what's planned.
 
 ## Platform Setup
 

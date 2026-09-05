@@ -1,6 +1,6 @@
 # Grant Library — Roadmap
 
-> Last updated: 2026-09-04 · Current stable: **v2.3.0** (live on Maven Central) · Next: **v2.4.0**, then **v2.5.0**, then **v2.6.0** (multi-platform: JS/Wasm shipped, macOS camera+microphone verified on real hardware, Windows planned)
+> Last updated: 2026-09-05 · Current stable: **v2.3.0** (live on Maven Central) · Next: **v2.4.0** — ships ahead of the original sequencing below with JS/Wasm (Tier 1) already in `grant-core`, since that work landed on `main` before this cut; the macOS camera/microphone bridge (Tier 2) also verified end-to-end, but ships unpublished (`grant-desktop` is Gradle-only, not in `create-grant-maven-bundle-auto.sh`'s `MODULES`). Then **v2.5.0** (Group UX), then **v2.6.0** (Windows Tier 2.5 — the only multi-platform scope still open).
 
 ---
 
@@ -127,6 +127,10 @@ just unit tests.
 
 ### v2.6.0 — Multi-platform expansion (JS/Wasm, macOS, Windows)
 
+**Tier 1 (JS/Wasm) and the `jvm()` half of Tier 2 (macOS camera/microphone) actually shipped in
+v2.4.0** — see the note at the top of that section above. What's left under this heading, and
+what actually defines v2.6.0's remaining scope, is **Tier 2.5 (Windows)**, not started.
+
 *Origin: a full-market survey found no general-purpose KMP permission library with working desktop or web support. The closest by reach, **Calf** (1642 ★), ships a `desktopMain` source set for permissions, but `launchMultiplePermissionRequest()` there is an empty function body — it compiles and does nothing. The rule this expansion follows throughout: **a platform ships only when its permission flow is real, verified on the actual OS, and covered by a test that would fail if the implementation regressed to a no-op** — never a silently-inert stub.*
 
 **Scope decisions:**
@@ -211,6 +215,16 @@ Zero blast radius on `grant-core`; nothing to undo if Health Connect's contract 
 ### v2.4.0 — Production & super-app readiness ✅
 
 *Origin: an audit asking whether the library holds up for production apps, super-apps, and advanced Bluetooth. The Bluetooth path turned out to be correct but over-asking; the blocker was somewhere else entirely.*
+
+**Note on scope vs. the sections below**: this release also carries `grant-core`'s new `js`,
+`wasmJs`, and minimal `jvm()` targets — see **Tier 1** and the `jvm()` half of **Tier 2** under
+the "v2.6.0" heading further down. That work was originally planned for v2.6.0, but landed on
+`main` before this version was cut, and Grant's version numbers come from the 9 published
+modules' `build.gradle.kts` fields, not from this roadmap's planning buckets — so it ships here,
+under 2.4.0, not held back to match the label it was written under. The real macOS TCC bridge
+(`grant-desktop`) is verified but stays **unpublished** — it's Gradle-only and deliberately absent
+from `create-grant-maven-bundle-auto.sh`'s `MODULES` array, so nothing about it changes what
+`grant-core:2.4.0` resolves to on Maven Central.
 
 **1. Multi-process apps got a silent no-op** ✅ *detected and logged*
 - [x] Every piece of state bridging a request to its result is `static` — hence **per-process**: `GrantRequestActivity`'s `pendingResults` and `guardOwner`, `PlatformConfig.activity`, the lifecycle-callback guard. The library manifest declares no `android:process`, so that Activity always launches in the **main** process.

@@ -6,6 +6,76 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.4.0] - 2026-09-05
+
+### ✨ Added
+
+- **`grant-core` now targets the browser** (`js { browser() }` + `wasmJs { browser() }`),
+  through a real `navigator.permissions`/`getUserMedia`/`Notification.requestPermission`/
+  `Geolocation` implementation shared by both targets via the `webMain` intermediate source
+  set — never a stub. Only `CAMERA`, `MICROPHONE`, `LOCATION`, `NOTIFICATION` have a browser
+  equivalent; every other `AppGrant` resolves to `GrantStatus.DENIED_ALWAYS` with a logged
+  reason. `wasmJs` is included because Compose Multiplatform Web targets it, not the classic
+  `js` backend. See `docs/MIGRATION_GUIDE.md` for the per-grant browser-API mapping.
+- **`AppGrant.BLUETOOTH_SCAN` and `AppGrant.BLUETOOTH_CONNECT`** — Android 12 splits these by
+  sensitivity (`BLUETOOTH_SCAN` is treated as location-capable, `BLUETOOTH_CONNECT` is not);
+  `AppGrant.BLUETOOTH` is unchanged for apps that need both. iOS keeps one handler for all
+  values — it has a single Bluetooth authorization. A `neverForLocation` advisory now warns
+  once when `BLUETOOTH_SCAN` is requested without the manifest opt-out flag.
+- **Multi-process detection and logging.** `GrantRequestActivity`'s fallback dialog host and its
+  request-bridging state are per-process; a `request()` issued from a secondary process
+  (`:miniapp`, `:webview`) now gets a logged, actionable warning pointing at `setLauncher()`
+  instead of silently timing out after 5 minutes with the permission actually granted.
+  Measured on a real Android 17 device: same tap, same result, only the caller's process
+  differs — main resolves in 2.8s, secondary times out.
+- **`AppGrant.APP_TRACKING`** (new opt-in `grant-tracking` module) — iOS App Tracking
+  Transparency via `ATTrackingManager`, isolated the same way `grant-contacts`/`grant-calendar`/
+  `grant-motion` isolate their frameworks. No-op reporting `GRANTED` on Android, which has no
+  runtime gate for cross-app tracking (`AD_ID` is install-time). Logs a warning if requested
+  while the app isn't foreground-active, since iOS spends the one-per-install ask silently in
+  that case.
+
+### 🐛 Fixed
+
+- **`SCHEDULE_EXACT_ALARM` was a silent no-op on Android.** It is *special app access*, not a
+  runtime permission — `requestPermissions()` can never grant it. `request()` now opens the
+  Alarms & reminders screen, the platform's real flow. The no-longer-granted status is now
+  `DENIED` rather than `DENIED_ALWAYS` (special app access has no permanent-denial state).
+- **`SCHEDULE_EXACT_ALARM` fabricated `GRANTED` on iOS 26.** iOS 26 introduced AlarmKit, which is
+  consent-gated — Grant previously reported `GRANTED` unconditionally, which was only correct
+  through iOS 25. Apps declaring `NSAlarmKitUsageDescription` now get an honest `DENIED_ALWAYS`
+  (AlarmKit is Swift-only; a custom handler can be registered via
+  `IosPermissionHandlerRegistry` for a real answer). Apps that don't declare the key see no
+  change.
+- **iOS 17+ write-only calendar access misreported as denied.** An app declaring only
+  `NSCalendarsWriteOnlyAccessUsageDescription` (the minimal-scope choice for an add-only app)
+  saw `DENIED_ALWAYS` before EventKit was ever consulted. That key is now accepted.
+- Android: an unowned `AtomicBoolean` launch guard let a request that lost a launch race free
+  the winner's guard, allowing a second `GrantRequestActivity` to launch over a live system
+  dialog; `SharedPreferencesGrantStore` moved its disk/binder I/O off the constructor and behind
+  `by lazy` (with a public `warmUp()`), since it was previously running on the main thread from
+  `Application.onCreate()`.
+
+### ⚠️ Compatibility note (not breaking)
+
+- **`AppGrant` enum ordinals shifted** — `BLUETOOTH_SCAN`/`BLUETOOTH_CONNECT` were inserted
+  after `BLUETOOTH` rather than appended, shifting the ordinal of the 8 values below them by 2.
+  Grant identifies permissions by `name`, never ordinal, so this affects nothing in normal use;
+  it matters only if you persisted a raw ordinal or mix modules compiled against different Grant
+  versions. See `docs/MIGRATION_GUIDE.md`.
+
+### 📝 Also in this release
+
+- `checkKotlinAbi`/`updateKotlinAbi` (KGP 2.4 built-in ABI validation) now covers 9 published
+  modules (`grant-tracking` joined the original 8).
+- CI (`ci.yml`, `ios.yml`, `code-quality.yml`) now gates every pull request into `main`, not
+  just pushes to it.
+- A macOS camera/microphone permission bridge for Compose Desktop apps (`grant-desktop`) was
+  built and verified end-to-end on real hardware, but ships **unpublished** — it's Gradle-only
+  and deliberately absent from the Maven Central bundle. See `ROADMAP.md`.
+
+---
+
 ## [2.3.0] - 2026-07-10
 
 ### ⚠️ Breaking (grant-compose only)
