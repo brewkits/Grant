@@ -1,6 +1,12 @@
 # Grant Library — Roadmap
 
-> Last updated: 2026-09-05 · Current stable: **v2.3.0** (live on Maven Central) · Next: **v2.4.0** — ships ahead of the original sequencing below with JS/Wasm (Tier 1) already in `grant-core`, since that work landed on `main` before this cut; the macOS camera/microphone bridge (Tier 2) also verified end-to-end, but ships unpublished (`grant-desktop` is Gradle-only, not in `create-grant-maven-bundle-auto.sh`'s `MODULES`). Then **v2.5.0** (Group UX), then **v2.6.0** (Windows Tier 2.5 — the only multi-platform scope still open).
+> Last updated: 2026-09-05 · Current stable: **v2.4.0** (confirmed live on Maven Central —
+> `maven-metadata.xml`'s `<latest>`/`<release>` both read 2.4.0) — shipped ahead of the original
+> sequencing below with JS/Wasm (Tier 1) already in `grant-core`, since that work landed on
+> `main` before this cut; the macOS camera/microphone bridge (Tier 2) also verified end-to-end,
+> but ships unpublished (`grant-desktop` is Gradle-only, not in
+> `create-grant-maven-bundle-auto.sh`'s `MODULES`). Next: **v2.5.0** (Group UX), then **v2.6.0**
+> (Windows Tier 2.5 — the only multi-platform scope still open).
 
 ---
 
@@ -276,6 +282,28 @@ from `create-grant-maven-bundle-auto.sh`'s `MODULES` array, so nothing about it 
   Stability section for the full note.
 
 ## ✅ Released
+
+### v2.4.0 (2026-09-05)
+- **Bluetooth granularity**: `AppGrant.BLUETOOTH_SCAN`/`BLUETOOTH_CONNECT` split from the
+  combined `BLUETOOTH`, plus a `neverForLocation` manifest advisory.
+- **Multi-process advisory**: detects and logs (does not silently time out) a `request()` from a
+  secondary process when `GrantRequestActivity`'s fallback dialog host is used without
+  `setLauncher()` — verified on a real Android 17 device.
+- **`AppGrant.APP_TRACKING`** (new opt-in `grant-tracking` module) — iOS App Tracking
+  Transparency, same framework-isolation pattern as `grant-contacts`/`grant-calendar`/etc.
+- **`grant-core` now targets the browser** (`js` + `wasmJs`) — real `navigator.permissions`
+  checks for Camera, Microphone, Location, Notification; 358/358 tests pass in real headless
+  Chrome. First KMP permission library with genuine (non-stub) browser support.
+- **Fixed**: `SCHEDULE_EXACT_ALARM` was a silent no-op on Android and a fabricated `GRANTED` on
+  iOS 26 (AlarmKit); iOS 17+ write-only calendar access was misreported as denied.
+- CI now gates every pull request (`ci.yml`/`ios.yml`/`code-quality.yml`), not just pushes to
+  `main`; CodeQL swept and clean (0 open alerts); GitHub Pages serving live Dokka docs at
+  [brewkits.dev/Grant](https://brewkits.dev/Grant/) for the first time.
+- Gradle bumped to 8.14.4 (ahead of Kotlin 2.5.0's minimum requirement); Kotlin 2.4.10, Koin
+  4.2.2, Robolectric 4.16.1 (all merged post-release, before Maven Central upload, so the
+  published artifacts already reflect them).
+- **Confirmed live on Maven Central 2026-09-05** — `maven-metadata.xml`'s `<latest>`/`<release>`
+  both read 2.4.0; `grant-core-jvm` and `grant-tracking` (both new this release) resolve.
 
 ### v2.3.0 (2026-07-10)
 - **Kotlin 2.4 toolchain** upgrade across all modules.

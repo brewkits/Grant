@@ -26,8 +26,8 @@ This guide helps you migrate from previous versions of Grant or other permission
 
 ## 🚀 Upgrading from Grant 2.3.0 to 2.4.0
 
-> **2.4.0 is not on Maven Central yet.** It is built and tested but unreleased; the coordinates
-> below will resolve once it ships. Until then, 2.3.0 remains the latest published version.
+> **2.4.0 is live on Maven Central** (confirmed via `maven-metadata.xml`: `<latest>`/`<release>`
+> both read 2.4.0). The coordinates below resolve now.
 
 ### Overview
 
