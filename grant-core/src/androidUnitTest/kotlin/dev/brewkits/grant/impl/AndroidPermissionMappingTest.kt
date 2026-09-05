@@ -21,7 +21,10 @@ import kotlin.test.assertTrue
  * Unit tests for Android-specific permission mapping logic.
  *
  * Verifies that AppGrant types translate to the correct Android Manifest permissions
- * across different SDK versions (API 21-35).
+ * across different SDK versions (API 26 minSdk through 35). The "legacy"/"old API" branches
+ * are pinned at API 26 (this library's actual minSdk), not an arbitrarily older level — a real
+ * device running Grant is never below 26, and Robolectric 4.16 dropped Android L (21/22)
+ * support, so pinning below minSdk bought nothing but fragility against Robolectric bumps.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(manifest = Config.NONE)
@@ -37,8 +40,8 @@ class AndroidPermissionMappingTest {
     }
 
     @Test
-    @Config(sdk = [Build.VERSION_CODES.LOLLIPOP])
-    fun `STORAGE maps to legacy READ_EXTERNAL_STORAGE on API 21`() {
+    @Config(sdk = [Build.VERSION_CODES.O])
+    fun `STORAGE maps to legacy READ_EXTERNAL_STORAGE on API 26 (minSdk)`() {
         val permissions = with(delegate) { AppGrant.STORAGE.toAndroidGrants() }
         assertEquals(listOf(Manifest.permission.READ_EXTERNAL_STORAGE), permissions)
     }
@@ -61,8 +64,8 @@ class AndroidPermissionMappingTest {
     }
 
     @Test
-    @Config(sdk = [Build.VERSION_CODES.LOLLIPOP])
-    fun `NOTIFICATION returns empty list on API 21`() {
+    @Config(sdk = [Build.VERSION_CODES.O])
+    fun `NOTIFICATION returns empty list on API 26 (minSdk)`() {
         val permissions = with(delegate) { AppGrant.NOTIFICATION.toAndroidGrants() }
         assertEquals(emptyList(), permissions)
     }
@@ -75,8 +78,8 @@ class AndroidPermissionMappingTest {
     }
 
     @Test
-    @Config(sdk = [Build.VERSION_CODES.LOLLIPOP])
-    fun `BLUETOOTH maps to LOCATION on API 21`() {
+    @Config(sdk = [Build.VERSION_CODES.O])
+    fun `BLUETOOTH maps to LOCATION on API 26 (minSdk)`() {
         val permissions = with(delegate) { AppGrant.BLUETOOTH.toAndroidGrants() }
         assertEquals(listOf(Manifest.permission.ACCESS_FINE_LOCATION), permissions)
     }
