@@ -9,7 +9,7 @@
 [![Maven Central](https://img.shields.io/maven-central/v/dev.brewkits/grant-core?style=flat-square&color=7F52FF&label=maven%20central)](https://central.sonatype.com/artifact/dev.brewkits/grant-core)
 [![CI](https://img.shields.io/github/actions/workflow/status/brewkits/Grant/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/brewkits/Grant/actions/workflows/ci.yml)
 [![CodeQL](https://img.shields.io/github/actions/workflow/status/brewkits/Grant/codeql.yml?branch=main&style=flat-square&label=CodeQL)](https://github.com/brewkits/Grant/security/code-scanning)
-[![Kotlin](https://img.shields.io/badge/kotlin-2.4.0-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](https://kotlinlang.org)
+[![Kotlin](https://img.shields.io/badge/kotlin-2.4.10-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](https://kotlinlang.org)
 [![Platforms](https://img.shields.io/badge/platforms-android%20%7C%20ios%20%7C%20js%20%7C%20wasm-555?style=flat-square)](https://kotlinlang.org/docs/multiplatform.html)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square)](LICENSE)
 
