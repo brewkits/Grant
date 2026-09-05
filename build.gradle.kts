@@ -31,7 +31,10 @@ dependencies {
     dokka(project(":grant-bluetooth"))
     dokka(project(":grant-location-always"))
     dokka(project(":grant-tracking"))
+    dokka(project(":grant-testing"))
     dokka(project(":grant-desktop"))
+    // grant-bom is deliberately absent — a pure Maven BOM (java-platform plugin) has no
+    // Kotlin code and no Dokka plugin applied.
 }
 
 dokka {

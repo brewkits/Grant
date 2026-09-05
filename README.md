@@ -63,30 +63,39 @@ fun CameraScreen(viewModel: CameraViewModel) {
 
 ## Installation
 
-Grant is published to Maven Central. Add the core module, plus only the optional modules you use:
+Grant is published to Maven Central. Add the core module, plus only the optional modules you use.
+A [BOM](#versioning-with-the-bom) keeps every module's version in sync without retyping it:
 
 ```kotlin
 // shared/build.gradle.kts
 kotlin {
     sourceSets {
         commonMain.dependencies {
-            implementation("dev.brewkits:grant-core:2.4.0")
+            implementation(platform("dev.brewkits:grant-bom:2.5.0")) // pins every dev.brewkits:grant-* line below
+            implementation("dev.brewkits:grant-core")
 
             // Optional
-            implementation("dev.brewkits:grant-compose:2.4.0")          // Compose dialogs (Material 3)
-            implementation("dev.brewkits:grant-core-koin:2.4.0")        // Koin DI integration
+            implementation("dev.brewkits:grant-compose")          // Compose dialogs (Material 3)
+            implementation("dev.brewkits:grant-core-koin")        // Koin DI integration
 
             // Optional per-permission modules. Omitting a module means its iOS
             // framework is never linked — no phantom NSUsageDescription keys.
-            implementation("dev.brewkits:grant-contacts:2.4.0")         // Contacts (iOS CNContactStore)
-            implementation("dev.brewkits:grant-calendar:2.4.0")         // Calendar (iOS EventKit)
-            implementation("dev.brewkits:grant-motion:2.4.0")           // Motion (iOS CoreMotion)
-            implementation("dev.brewkits:grant-bluetooth:2.4.0")        // Bluetooth (iOS CoreBluetooth)
-            implementation("dev.brewkits:grant-location-always:2.4.0")  // Background "always" location (iOS)
+            implementation("dev.brewkits:grant-contacts")         // Contacts (iOS CNContactStore)
+            implementation("dev.brewkits:grant-calendar")         // Calendar (iOS EventKit)
+            implementation("dev.brewkits:grant-motion")           // Motion (iOS CoreMotion)
+            implementation("dev.brewkits:grant-bluetooth")        // Bluetooth (iOS CoreBluetooth)
+            implementation("dev.brewkits:grant-location-always")  // Background "always" location (iOS)
+        }
+
+        commonTest.dependencies {
+            implementation("dev.brewkits:grant-testing") // FakeGrantManager and friends — see Testing below
         }
     }
 }
 ```
+
+No BOM? Every artifact above also resolves with an explicit version, e.g.
+`implementation("dev.brewkits:grant-core:2.5.0")`.
 
 **Android** needs no setup: Grant ships a self-contained transparent Activity, so `request()` opens the system dialog from anywhere. Prefer your own `ActivityResultLauncher`? Register it once with `grantManager.setLauncher(...)` and Grant uses it instead.
 
@@ -106,6 +115,42 @@ GrantLocationAlways.shared.initialize()  // if you added grant-location-always
 
 > [!NOTE]
 > **Migrating from v1.x?** Contacts, Calendar, Motion, Bluetooth, and background location are now opt-in modules: add the artifact and call `initialize()` on iOS. Android needs no code changes. Projects that also target Web/Desktop should isolate Grant behind a `mobileMain` source set — see [Dependency Management](docs/DEPENDENCY_MANAGEMENT.md).
+
+### Versioning with the BOM
+
+`grant-bom` is a Maven BOM (a Gradle `java-platform`, not a code module) that pins every other
+`dev.brewkits:grant-*` artifact to the same version. Add it once with `platform(...)` and every
+other Grant dependency in the same source set can drop its version string — one line to bump
+instead of nine, and no risk of accidentally mixing `grant-core:2.4.0` with `grant-tracking:2.3.0`
+in the same build (`AppGrant`'s enum ordinals are inlined at compile time, so a version mismatch
+across modules is exactly the kind of thing worth ruling out mechanically — see the
+[Migration Guide](docs/MIGRATION_GUIDE.md#compatibility-note-enum-ordinals-shifted)).
+
+### Testing
+
+`grant-testing` ships the fakes Grant's own test suite uses internally — `FakeGrantManager`,
+`FakeServiceManager`, `MultiGrantFakeManager`, and `FakeGrantStore` — as a `testImplementation`
+artifact, so testing code that depends on `GrantManager`/`ServiceManager` doesn't require writing
+a hand-rolled fake first:
+
+```kotlin
+class CameraViewModelTest {
+    @Test
+    fun `starts the camera once granted`() = runTest {
+        val manager = FakeGrantManager(mockStatus = GrantStatus.NOT_DETERMINED)
+        manager.configure(AppGrant.CAMERA, status = GrantStatus.GRANTED)
+
+        val viewModel = CameraViewModel(manager)
+        viewModel.onCaptureClick()
+
+        assertTrue(manager.requestedGrants.contains(AppGrant.CAMERA))
+    }
+}
+```
+
+Every call is recorded (`requestedGrants`, `checkStatusCalls`, `openSettingsCalled`,
+`capturedLauncher`), and `shouldThrow`/`simulatedDelayMs` let a test exercise error and latency
+paths without touching a real platform API.
 
 ## Usage
 
@@ -244,12 +289,13 @@ aspirational.
   Lint, and the API-surface check all run before a PR can land.
 - **[CodeQL](https://github.com/brewkits/Grant/security/code-scanning) runs on every push** and
   currently reports zero open alerts — every finding was triaged by hand, not just silenced.
-- **The public API surface is locked.** All 9 published modules use Kotlin's explicit-API mode
+- **The public API surface is locked.** All 10 Kotlin modules use Kotlin's explicit-API mode
   plus a committed ABI dump (`checkKotlinAbi`); a PR that changes the surface without
   regenerating the dump fails CI. Two breaking changes shipped unnoticed in v2.1.0 before this
-  gate existed — it hasn't happened since.
-- **Every published module ships a [CycloneDX](https://cyclonedx.org/) SBOM** — answer "what's
-  inside this dependency" without unpacking it.
+  gate existed — it hasn't happened since. (`grant-bom`, a Maven BOM, has no Kotlin surface to
+  lock — its POM's `<dependencyManagement>` block *is* the whole artifact.)
+- **Every published Kotlin module ships a [CycloneDX](https://cyclonedx.org/) SBOM** — answer
+  "what's inside this dependency" without unpacking it.
 - **Verified on real hardware, not just a simulator.** The Android 17 `ACCESS_LOCAL_NETWORK`
   mapping and the multi-process advisory in 2.4.0 were both confirmed on a physical device —
   the multi-process case specifically because a secondary-process request measured a real
@@ -267,6 +313,7 @@ aspirational.
 | `grant-compose` | 30 KB |
 | `grant-core-koin` | 7 KB |
 | `grant-contacts` · `grant-calendar` · `grant-motion` · `grant-bluetooth` · `grant-location-always` · `grant-tracking` | ~2 KB each |
+| `grant-testing` (test-only — see [Testing](#testing) below) | 20 KB |
 
 Download size is not app size. In a real R8-minified build (the demo, with
 `-allowaccessmodification`), Grant contributes **83 classes** out of 2,686 — the rest is
@@ -333,7 +380,7 @@ ceremony, not speed.
 | [Quick start](docs/getting-started/quick-start.md) | Request your first permission in five minutes |
 | [Architecture](docs/grant-core/ARCHITECTURE.md) | Concurrency, state machines, and the mutex flow |
 | [iOS setup](docs/platform-specific/ios/info-plist.md) | `Info.plist` configuration — read before shipping |
-| [Migration guide](docs/MIGRATION_GUIDE.md) | Upgrading to 2.4.0 (and from v1.x → 2.x) |
+| [Migration guide](docs/MIGRATION_GUIDE.md) | Upgrading to 2.5.0, to 2.4.0 (and from v1.x → 2.x) |
 | [Service checking](docs/grant-core/SERVICES.md) | Combining permission and hardware service checks |
 | [Support policy](SUPPORT.md) | Versioning, supported versions, platform support, and what Grant will not do |
 | [Manual injection](docs/MANUAL_INJECTION.md) | Using Grant without a DI framework |

@@ -30,7 +30,11 @@ jobs:
       # grep, not assumed); wiring that up is tracked separately rather than folded in here.
       # grant-desktop/desktop-harness have no Kover for a different reason: see grant-desktop's
       # build.gradle.kts comment (a coverage floor on a thin bridge whose real behavior only a
-      # signed .app against real TCC can exercise would measure the wrong thing).
+      # signed .app against real TCC can exercise would measure the wrong thing). grant-bom is
+      # a pure Maven BOM (java-platform plugin, no Kotlin compilation at all) and has no Kover
+      # plugin to apply. grant-testing DOES have a real floor (80%, see its build.gradle.kts) —
+      # unlike the iOS-only modules, its logic is plain Kotlin that runs on the JVM/Android
+      # target Kover actually measures, so the floor means something here.
       - name: Run KMP Coverage (Kover)
         run: >-
           ./gradlew
@@ -42,6 +46,7 @@ jobs:
           :grant-bluetooth:koverHtmlReport
           :grant-location-always:koverHtmlReport
           :grant-tracking:koverHtmlReport
+          :grant-testing:koverHtmlReport :grant-testing:koverVerify
 
       - name: Upload KMP Coverage Report
         uses: actions/upload-artifact@v4
@@ -56,3 +61,4 @@ jobs:
             grant-bluetooth/build/reports/kover/html
             grant-location-always/build/reports/kover/html
             grant-tracking/build/reports/kover/html
+            grant-testing/build/reports/kover/html

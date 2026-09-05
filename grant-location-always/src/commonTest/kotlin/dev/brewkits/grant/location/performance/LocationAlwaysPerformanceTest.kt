@@ -3,7 +3,7 @@ package dev.brewkits.grant.location.performance
 import dev.brewkits.grant.AppGrant
 import dev.brewkits.grant.GrantHandler
 import dev.brewkits.grant.GrantStatus
-import dev.brewkits.grant.location.fakes.FakeGrantManager
+import dev.brewkits.grant.testing.FakeGrantManager
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll

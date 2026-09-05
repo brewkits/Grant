@@ -5,8 +5,8 @@ import dev.brewkits.grant.GrantGroupHandler
 import dev.brewkits.grant.GrantHandler
 import dev.brewkits.grant.GrantStatus
 import dev.brewkits.grant.PlatformConfig
-import dev.brewkits.grant.fakes.FakeGrantManager
-import dev.brewkits.grant.fakes.MultiGrantFakeManager
+import dev.brewkits.grant.testing.FakeGrantManager
+import dev.brewkits.grant.testing.MultiGrantFakeManager
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle

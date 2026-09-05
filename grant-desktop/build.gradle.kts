@@ -15,7 +15,7 @@ plugins {
 }
 
 group = "dev.brewkits"
-version = "2.4.0"
+version = "2.5.0"
 
 kotlin {
     jvmToolchain(17)
@@ -97,7 +97,7 @@ publishing {
     publications.configureEach {
         (this as? MavenPublication)?.let {
             groupId = "dev.brewkits"
-            version = "2.4.0"
+            version = "2.5.0"
 
             pom {
                 name.set("KMP Grant Desktop")

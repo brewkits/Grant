@@ -10,8 +10,8 @@ import dev.brewkits.grant.LocationReadyStatus
 import dev.brewkits.grant.RawPermission
 import dev.brewkits.grant.ServiceStatus
 import dev.brewkits.grant.ServiceType
-import dev.brewkits.grant.fakes.FakeGrantManager
-import dev.brewkits.grant.fakes.FakeServiceManager
+import dev.brewkits.grant.testing.FakeGrantManager
+import dev.brewkits.grant.testing.FakeServiceManager
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope

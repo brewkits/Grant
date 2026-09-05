@@ -6,7 +6,7 @@ import app.cash.turbine.test
 import dev.brewkits.grant.AppGrant
 import dev.brewkits.grant.GrantGroupHandler
 import dev.brewkits.grant.GrantStatus
-import dev.brewkits.grant.fakes.MultiGrantFakeManager
+import dev.brewkits.grant.testing.MultiGrantFakeManager
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope

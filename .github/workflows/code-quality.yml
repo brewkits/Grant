@@ -40,7 +40,9 @@ jobs:
       # Every module with an androidTarget, so a lint issue introduced in any of them is
       # caught here rather than only in the module the previous version of this line happened
       # to name. grant-desktop has no androidTarget (jvm() + macosArm64 only) and is correctly
-      # absent; grant-tracking (v2.4.0, ATT) is new here.
+      # absent; grant-tracking (v2.4.0, ATT) and grant-testing (test-doubles module) are new
+      # here. grant-bom (java-platform, pure POM, no Kotlin/Android plugin at all) has no
+      # lintDebug task and is correctly absent too.
       - name: Run Android Lint
         run: >-
           ./gradlew
@@ -54,6 +56,7 @@ jobs:
           :grant-bluetooth:lintDebug
           :grant-location-always:lintDebug
           :grant-tracking:lintDebug
+          :grant-testing:lintDebug
 
       - name: Upload lint reports
         if: always()

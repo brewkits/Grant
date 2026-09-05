@@ -4,7 +4,7 @@ import android.Manifest
 import android.os.Build
 import dev.brewkits.grant.AppGrant
 import dev.brewkits.grant.InMemoryGrantStore
-import dev.brewkits.grant.fakes.FakeGrantManager
+import dev.brewkits.grant.testing.FakeGrantManager
 import io.mockk.every
 import io.mockk.mockkStatic
 import io.mockk.unmockkAll

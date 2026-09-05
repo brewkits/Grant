@@ -1,7 +1,7 @@
 package dev.brewkits.grant.impl
 
 import dev.brewkits.grant.*
-import dev.brewkits.grant.fakes.FakeGrantStore
+import dev.brewkits.grant.testing.FakeGrantStore
 import kotlinx.coroutines.test.runTest
 import kotlin.test.*
 

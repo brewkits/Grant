@@ -9,7 +9,7 @@ import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
 
 /**
- * Calls through the **real** [PlatformGrantDelegate] — not [dev.brewkits.grant.fakes.FakeGrantManager]
+ * Calls through the **real** [PlatformGrantDelegate] — not [dev.brewkits.grant.testing.FakeGrantManager]
  * — inside the headless-Chrome environment both `jsBrowserTest` and `wasmJsBrowserTest` run in
  * (this file lives in `webTest`, so it runs once per target), mirroring the rule CLAUDE.md
  * already holds iOS to: every method on the platform delegate needs at least one test that

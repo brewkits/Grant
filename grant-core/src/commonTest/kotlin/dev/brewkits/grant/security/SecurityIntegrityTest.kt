@@ -1,8 +1,8 @@
 package dev.brewkits.grant.security
 
 import dev.brewkits.grant.*
-import dev.brewkits.grant.fakes.FakeGrantManager
-import dev.brewkits.grant.fakes.MultiGrantFakeManager
+import dev.brewkits.grant.testing.FakeGrantManager
+import dev.brewkits.grant.testing.MultiGrantFakeManager
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest

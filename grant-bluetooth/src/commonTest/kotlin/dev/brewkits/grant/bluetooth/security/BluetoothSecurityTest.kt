@@ -4,7 +4,7 @@ import dev.brewkits.grant.AppGrant
 import dev.brewkits.grant.GrantHandler
 import dev.brewkits.grant.GrantStatus
 import dev.brewkits.grant.bluetooth.GrantBluetooth
-import dev.brewkits.grant.bluetooth.fakes.FakeGrantManager
+import dev.brewkits.grant.testing.FakeGrantManager
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope

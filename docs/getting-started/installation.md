@@ -36,20 +36,20 @@ Add the modules you need to your shared module's `commonMain` source set. Only
 kotlin {
     sourceSets {
         commonMain.dependencies {
-            implementation("dev.brewkits:grant-core:2.4.0")            // Required
+            implementation("dev.brewkits:grant-core:2.5.0")            // Required
 
-            implementation("dev.brewkits:grant-compose:2.4.0")         // Optional: Compose dialogs
-            implementation("dev.brewkits:grant-core-koin:2.4.0")       // Optional: Koin DI support
+            implementation("dev.brewkits:grant-compose:2.5.0")         // Optional: Compose dialogs
+            implementation("dev.brewkits:grant-core-koin:2.5.0")       // Optional: Koin DI support
 
             // Optional: add only the permission modules you actually use on iOS.
             // Omitting a module means its iOS framework is never linked — no phantom
             // NSUsageDescription keys, no App Store rejections.
-            implementation("dev.brewkits:grant-contacts:2.4.0")        // Optional: Contacts (iOS CNContactStore)
-            implementation("dev.brewkits:grant-calendar:2.4.0")        // Optional: Calendar (iOS EventKit)
-            implementation("dev.brewkits:grant-motion:2.4.0")          // Optional: Motion (iOS CoreMotion)
-            implementation("dev.brewkits:grant-bluetooth:2.4.0")       // Optional: Bluetooth (iOS CoreBluetooth)
-            implementation("dev.brewkits:grant-location-always:2.4.0") // Optional: background "always" location (iOS requestAlwaysAuthorization)
-            implementation("dev.brewkits:grant-tracking:2.4.0")        // Optional: App Tracking Transparency (iOS ATTrackingManager)
+            implementation("dev.brewkits:grant-contacts:2.5.0")        // Optional: Contacts (iOS CNContactStore)
+            implementation("dev.brewkits:grant-calendar:2.5.0")        // Optional: Calendar (iOS EventKit)
+            implementation("dev.brewkits:grant-motion:2.5.0")          // Optional: Motion (iOS CoreMotion)
+            implementation("dev.brewkits:grant-bluetooth:2.5.0")       // Optional: Bluetooth (iOS CoreBluetooth)
+            implementation("dev.brewkits:grant-location-always:2.5.0") // Optional: background "always" location (iOS requestAlwaysAuthorization)
+            implementation("dev.brewkits:grant-tracking:2.5.0")        // Optional: App Tracking Transparency (iOS ATTrackingManager)
         }
     }
 }

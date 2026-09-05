@@ -7,8 +7,8 @@ import dev.brewkits.grant.GrantHandler
 import dev.brewkits.grant.GrantStatus
 import dev.brewkits.grant.ServiceStatus
 import dev.brewkits.grant.ServiceType
-import dev.brewkits.grant.fakes.FakeGrantManager
-import dev.brewkits.grant.fakes.FakeServiceManager
+import dev.brewkits.grant.testing.FakeGrantManager
+import dev.brewkits.grant.testing.FakeServiceManager
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll

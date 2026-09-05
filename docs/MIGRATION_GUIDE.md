@@ -1,7 +1,7 @@
 # Migration Guide to Grant
 
-**Version:** 2.4.0
-**Last Updated:** September 4, 2026
+**Version:** 2.5.0
+**Last Updated:** September 5, 2026
 
 This guide helps you migrate from previous versions of Grant or other permission libraries.
 
@@ -9,18 +9,94 @@ This guide helps you migrate from previous versions of Grant or other permission
 
 ## 📚 Table of Contents
 
-1. [Upgrading from Grant 2.3.0 to 2.4.0](#upgrading-from-grant-230-to-240)
-2. [Upgrading from Grant 2.2.x to 2.3.0](#upgrading-from-grant-22x-to-230)
-3. [Upgrading from Grant 2.1.0 to 2.2.0](#upgrading-from-grant-210-to-220)
-4. [Upgrading from Grant 2.0.0 to 2.1.0](#upgrading-from-grant-200-to-210)
-5. [Upgrading from Grant 1.x to 2.0.0](#upgrading-from-grant-1x-to-200)
-6. [Upgrading from Grant 1.3.x to 1.4.2](#upgrading-from-grant-13x-to-142)
-7. [From moko-permissions](#from-moko-permissions)
-8. [From Google Accompanist](#from-google-accompanist)
-9. [From Custom Implementation](#from-custom-implementation)
-10. [From Native Android APIs](#from-native-android-apis)
-11. [Common Migration Patterns](#common-migration-patterns)
-12. [Troubleshooting](#troubleshooting)
+1. [Upgrading from Grant 2.4.0 to 2.5.0](#upgrading-from-grant-240-to-250)
+2. [Upgrading from Grant 2.3.0 to 2.4.0](#upgrading-from-grant-230-to-240)
+3. [Upgrading from Grant 2.2.x to 2.3.0](#upgrading-from-grant-22x-to-230)
+4. [Upgrading from Grant 2.1.0 to 2.2.0](#upgrading-from-grant-210-to-220)
+5. [Upgrading from Grant 2.0.0 to 2.1.0](#upgrading-from-grant-200-to-210)
+6. [Upgrading from Grant 1.x to 2.0.0](#upgrading-from-grant-1x-to-200)
+7. [Upgrading from Grant 1.3.x to 1.4.2](#upgrading-from-grant-13x-to-142)
+8. [From moko-permissions](#from-moko-permissions)
+9. [From Google Accompanist](#from-google-accompanist)
+10. [From Custom Implementation](#from-custom-implementation)
+11. [From Native Android APIs](#from-native-android-apis)
+12. [Common Migration Patterns](#common-migration-patterns)
+13. [Troubleshooting](#troubleshooting)
+
+---
+
+## 🚀 Upgrading from Grant 2.4.0 to 2.5.0
+
+> **2.5.0 is code-complete and staged for Maven Central; not yet published.** The coordinates
+> below will resolve once the upload is confirmed — see `ROADMAP.md`'s v2.5.0 note for status.
+
+### Overview
+
+**Nothing you have to change.** 2.5.0 is purely additive: two new, optional modules, and no
+change to any existing type, method, or behavior. The whole family (`grant-core` and every
+other module) bumps its version number together — Grant has always released in lock-step — but
+only `grant-testing` and `grant-bom` have new content.
+
+### 1. New: `grant-testing` — official test doubles
+
+`FakeGrantManager`, `FakeServiceManager`, `MultiGrantFakeManager`, and `FakeGrantStore` are now
+a first-class, `public`, ABI-locked artifact — the same fakes `grant-core` and five opt-in
+modules used to duplicate privately inside their own `commonTest` source sets, consolidated into
+one place you can depend on directly:
+
+```kotlin
+commonTest.dependencies {
+    implementation("dev.brewkits:grant-testing:2.5.0")
+}
+```
+
+```kotlin
+class CameraViewModelTest {
+    @Test
+    fun `starts the camera once granted`() = runTest {
+        val manager = FakeGrantManager(mockStatus = GrantStatus.NOT_DETERMINED)
+        manager.configure(AppGrant.CAMERA, status = GrantStatus.GRANTED)
+
+        val viewModel = CameraViewModel(manager)
+        viewModel.onCaptureClick()
+
+        assertTrue(manager.requestedGrants.contains(AppGrant.CAMERA))
+    }
+}
+```
+
+If you previously copied one of Grant's internal fakes into your own test sources, switch to
+this module's version instead — the API is the same shape, now with a committed ABI dump so it
+won't drift silently under you on a future patch release.
+
+### 2. New: `grant-bom` — one version to bump instead of nine
+
+A Maven BOM (Gradle `java-platform`, no Kotlin code) pinning every other published module to a
+matching version:
+
+```kotlin
+commonMain.dependencies {
+    implementation(platform("dev.brewkits:grant-bom:2.5.0"))
+    implementation("dev.brewkits:grant-core")        // no version — the BOM supplies it
+    implementation("dev.brewkits:grant-tracking")    // same
+}
+```
+
+Entirely optional — every artifact still resolves with an explicit version string too, exactly
+as before. See [Versioning with the BOM](../README.md#versioning-with-the-bom) for why this
+matters more than it looks: `AppGrant`'s enum ordinals are inlined at compile time, so mixing
+module versions in one build is a real (if narrow) risk the BOM rules out mechanically. `grant-
+desktop` is intentionally not in the BOM's constraints — it isn't on Maven Central.
+
+### Why the whole family bumped for two new modules
+
+Per `SUPPORT.md`'s own policy table, a new module is a minor-version change. `grant-testing` and
+`grant-bom` are new Maven coordinates that never existed before, so publishing them at the
+already-live `2.4.0` would have been legal (Maven Central's immutability rule is per-artifact,
+not per-family) but confusing: "2.4.0" would then describe two different module sets depending
+on when it was resolved, and `grant-bom:2.4.0` would pin a `grant-testing:2.4.0` that didn't
+exist when 2.4.0 first shipped. 2.5.0 avoids that ambiguity for a one-line cost — bump the
+version string, nothing else.
 
 ---
 

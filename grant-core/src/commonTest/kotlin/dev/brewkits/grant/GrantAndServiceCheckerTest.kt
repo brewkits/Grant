@@ -1,5 +1,7 @@
 package dev.brewkits.grant
 
+import dev.brewkits.grant.testing.FakeGrantManager
+import dev.brewkits.grant.testing.FakeServiceManager
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -257,50 +259,11 @@ class GrantAndServiceCheckerTest {
         grantStatus: GrantStatus,
         serviceStatus: ServiceStatus
     ): GrantAndServiceChecker {
-        val grantManager = FakeGrantManager(grantStatus)
-        val serviceManager = FakeServiceManager(serviceStatus)
+        // mockRequestResult = grantStatus (not the FakeGrantManager default of GRANTED):
+        // this checker's own tests expect request() to echo the same status checkStatus()
+        // reports, matching the single-value fake this replaced.
+        val grantManager = FakeGrantManager(mockStatus = grantStatus, mockRequestResult = grantStatus)
+        val serviceManager = FakeServiceManager(mockStatus = serviceStatus)
         return GrantAndServiceChecker(grantManager, serviceManager)
-    }
-}
-
-/**
- * Fake GrantManager for testing.
- */
-private class FakeGrantManager(
-    private val statusToReturn: GrantStatus
-) : GrantManager {
-    override suspend fun checkStatus(grant: GrantPermission): GrantStatus {
-        return statusToReturn
-    }
-
-    override suspend fun request(grant: GrantPermission): GrantStatus {
-        return statusToReturn
-    }
-
-    override suspend fun request(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus> {
-        return grants.associateWith { statusToReturn }
-    }
-
-    override fun openSettings() {
-        // No-op
-    }
-
-    override fun setLauncher(launcher: GrantLauncher) {
-        // No-op
-    }
-}
-
-/**
- * Fake ServiceManager for testing.
- */
-private class FakeServiceManager(
-    private val statusToReturn: ServiceStatus
-) : ServiceManager {
-    override suspend fun checkServiceStatus(service: ServiceType): ServiceStatus {
-        return statusToReturn
-    }
-
-    override suspend fun openServiceSettings(service: ServiceType): Boolean {
-        return true
     }
 }

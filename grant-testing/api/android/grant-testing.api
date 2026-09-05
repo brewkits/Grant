@@ -1,0 +1,87 @@
+public final class dev/brewkits/grant/testing/FakeGrantManager : dev/brewkits/grant/GrantManager {
+	public fun <init> ()V
+	public fun <init> (Ldev/brewkits/grant/GrantStatus;Ldev/brewkits/grant/GrantStatus;)V
+	public synthetic fun <init> (Ldev/brewkits/grant/GrantStatus;Ldev/brewkits/grant/GrantStatus;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun checkStatus (Ldev/brewkits/grant/GrantPermission;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun configure (Ldev/brewkits/grant/GrantPermission;Ldev/brewkits/grant/GrantStatus;Ldev/brewkits/grant/GrantStatus;)V
+	public static synthetic fun configure$default (Ldev/brewkits/grant/testing/FakeGrantManager;Ldev/brewkits/grant/GrantPermission;Ldev/brewkits/grant/GrantStatus;Ldev/brewkits/grant/GrantStatus;ILjava/lang/Object;)V
+	public final fun getCapturedLauncher ()Ldev/brewkits/grant/GrantLauncher;
+	public final fun getCheckStatusCalls ()Ljava/util/List;
+	public final fun getMockRequestResult ()Ldev/brewkits/grant/GrantStatus;
+	public final fun getMockStatus ()Ldev/brewkits/grant/GrantStatus;
+	public final fun getOpenSettingsCalled ()Z
+	public final fun getRequestCalled ()Z
+	public final fun getRequestedGrants ()Ljava/util/List;
+	public final fun getShouldThrow ()Ljava/lang/Exception;
+	public final fun getSimulatedDelayMs ()J
+	public fun openSettings ()V
+	public fun request (Ldev/brewkits/grant/GrantPermission;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun request (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun reset ()V
+	public final fun setCapturedLauncher (Ldev/brewkits/grant/GrantLauncher;)V
+	public fun setLauncher (Ldev/brewkits/grant/GrantLauncher;)V
+	public final fun setMockRequestResult (Ldev/brewkits/grant/GrantStatus;)V
+	public final fun setMockStatus (Ldev/brewkits/grant/GrantStatus;)V
+	public final fun setOpenSettingsCalled (Z)V
+	public final fun setRequestCalled (Z)V
+	public final fun setRequestResult (Ldev/brewkits/grant/GrantPermission;Ldev/brewkits/grant/GrantStatus;)V
+	public final fun setResult (Ldev/brewkits/grant/GrantPermission;Ldev/brewkits/grant/GrantStatus;)V
+	public final fun setShouldThrow (Ljava/lang/Exception;)V
+	public final fun setSimulatedDelayMs (J)V
+	public final fun setStatus (Ldev/brewkits/grant/GrantPermission;Ldev/brewkits/grant/GrantStatus;)V
+}
+
+public final class dev/brewkits/grant/testing/FakeGrantStore : dev/brewkits/grant/GrantStore {
+	public fun <init> ()V
+	public fun clear ()V
+	public fun clear (Ldev/brewkits/grant/AppGrant;)V
+	public fun getStatus (Ldev/brewkits/grant/AppGrant;)Ldev/brewkits/grant/GrantStatus;
+	public fun isRawPermissionRequested (Ljava/lang/String;)Z
+	public fun isRequestedBefore (Ldev/brewkits/grant/AppGrant;)Z
+	public fun markRawPermissionRequested (Ljava/lang/String;)V
+	public fun setRequested (Ldev/brewkits/grant/AppGrant;)V
+	public fun setStatus (Ldev/brewkits/grant/AppGrant;Ldev/brewkits/grant/GrantStatus;)V
+}
+
+public final class dev/brewkits/grant/testing/FakeServiceManager : dev/brewkits/grant/ServiceManager {
+	public fun <init> ()V
+	public fun <init> (Ldev/brewkits/grant/ServiceStatus;)V
+	public synthetic fun <init> (Ldev/brewkits/grant/ServiceStatus;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun checkServiceStatus (Ldev/brewkits/grant/ServiceType;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun getMockEnabled ()Z
+	public final fun getMockStatus ()Ldev/brewkits/grant/ServiceStatus;
+	public final fun getOpenServiceSettingsCalled ()Z
+	public final fun getServiceCheckCalls ()Ljava/util/List;
+	public final fun getShouldThrow ()Ljava/lang/Exception;
+	public final fun getSimulatedDelayMs ()J
+	public fun isServiceEnabled (Ldev/brewkits/grant/ServiceType;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun isServiceEnabledCalled ()Z
+	public fun openServiceSettings (Ldev/brewkits/grant/ServiceType;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun setMockEnabled (Z)V
+	public final fun setMockStatus (Ldev/brewkits/grant/ServiceStatus;)V
+	public final fun setOpenServiceSettingsCalled (Z)V
+	public final fun setServiceEnabledCalled (Z)V
+	public final fun setShouldThrow (Ljava/lang/Exception;)V
+	public final fun setSimulatedDelayMs (J)V
+}
+
+public final class dev/brewkits/grant/testing/MultiGrantFakeManager : dev/brewkits/grant/GrantManager {
+	public fun <init> ()V
+	public fun checkStatus (Ldev/brewkits/grant/GrantPermission;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun configure (Ldev/brewkits/grant/GrantPermission;Ldev/brewkits/grant/GrantStatus;Ldev/brewkits/grant/GrantStatus;)V
+	public static synthetic fun configure$default (Ldev/brewkits/grant/testing/MultiGrantFakeManager;Ldev/brewkits/grant/GrantPermission;Ldev/brewkits/grant/GrantStatus;Ldev/brewkits/grant/GrantStatus;ILjava/lang/Object;)V
+	public final fun getDelayMillis ()J
+	public final fun getOpenSettingsCalled ()Z
+	public final fun getRequestCount ()I
+	public final fun isRequestCalled (Ldev/brewkits/grant/GrantPermission;)Z
+	public fun openSettings ()V
+	public fun request (Ldev/brewkits/grant/GrantPermission;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun request (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun setDelayMillis (J)V
+	public fun setLauncher (Ldev/brewkits/grant/GrantLauncher;)V
+	public final fun setOpenSettingsCalled (Z)V
+	public final fun setRequestCount (I)V
+	public final fun setRequestResult (Ldev/brewkits/grant/GrantPermission;Ldev/brewkits/grant/GrantStatus;)V
+	public final fun setStatus (Ldev/brewkits/grant/GrantPermission;Ldev/brewkits/grant/GrantStatus;)V
+}
+
