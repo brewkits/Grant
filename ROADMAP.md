@@ -265,6 +265,15 @@ from `create-grant-maven-bundle-auto.sh`'s `MODULES` array, so nothing about it 
 - **Wear OS / Android TV** — minimal permission surface, sensor-only grants; `requestWithCustomUi()` examples for non-phone form factors.
 - **System pickers as a first-class API** — the Android Photo Picker (`PICK_IMAGES`) needs no runtime permission at all, and Android 17 extends the same idea to the local network: adopting a system-mediated device picker skips the `ACCESS_LOCAL_NETWORK` prompt entirely. Contact Picker follows the same shape. The platform direction is clear — **pickers are replacing permissions** — so the win is an `AppGrant`-level surface that transparently chooses picker-vs-permission per API level, rather than three separate recipes. Recipes already shipped at `docs/recipes/photo-picker-fallback.md` and in the Contact Picker guidance.
 - **iOS XCTest snapshot tests** for the `GrantDialog` Compose UI.
+- **`iosX64`'s test suite has never actually executed, here or in CI** — only its klib compiles.
+  `runs-on: macos-latest` in `ios.yml` is Apple Silicon (confirmed directly from that job's own
+  run log: `iosX64Test` is Kotlin/Native-disabled with `"cannot run on the current host
+  (macos-aarch64)"`), and no job here targets GitHub's one remaining hosted x86 Mac image,
+  `macos-15-intel` — which is itself the *last* one, retiring with the rest of Intel-Mac hosted
+  runners in Fall 2027. Closing this means adding that job before then; after, `iosX64` test
+  execution isn't available from GitHub-hosted runners at all — the same pressure that already
+  made `grant-compose` drop the `iosX64` target outright in 2.3.0. See `CLAUDE.md`'s API Surface
+  Stability section for the full note.
 
 ## ✅ Released
 

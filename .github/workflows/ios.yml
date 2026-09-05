@@ -56,6 +56,15 @@ jobs:
       # forward-looking reason. Keeping this list current matters: on Android these modules'
       # commonTest suites run against a documented no-op (see each module's GrantXxx.initialize()),
       # so their real, platform-specific logic is ONLY exercised here.
+      #
+      # iosSimulatorArm64Test only — not iosX64Test. `runs-on: macos-latest` is Apple Silicon
+      # (confirmed from this exact job's own past run logs: "Task 'iosX64Test' ... cannot run on
+      # the current host (macos-aarch64)"), so iosX64Test is Kotlin/Native-disabled here the same
+      # way it is on every contributor's Apple Silicon machine. That target's *test suite* has
+      # never actually executed anywhere in this project — only its klib compiles (checkKotlinAbi
+      # below covers that). GitHub's last hosted x86 Mac image, `macos-15-intel`, could close this
+      # gap but is itself scheduled to retire in Fall 2027 and isn't used by any job here yet; see
+      # CLAUDE.md for the full note before adding one.
       - name: Run iOS Tests
         run: >-
           ./gradlew
