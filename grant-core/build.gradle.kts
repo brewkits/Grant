@@ -187,12 +187,29 @@ android {
     }
 }
 
+// Maven Central rejects a `jar`-packaged artifact with no javadoc jar (confirmed the hard way:
+// the v2.4.0 upload failed Sonatype's Publisher Portal validation on exactly this — 83/84
+// components passed, only `grant-core-jvm` failed with "Javadocs must be provided but not found
+// in entries"). The other 8 published modules' AAR/klib artifacts don't need one — this project
+// never had a jar-packaged JVM artifact before the jvm() target landed in 2.4.0, so the gap was
+// invisible until then. Real Dokka HTML output, not an empty stub, reusing the plugin already
+// applied to this module.
+val dokkaJavadocJar by tasks.registering(Jar::class) {
+    dependsOn(tasks.named("dokkaGeneratePublicationHtml"))
+    archiveClassifier.set("javadoc")
+    from(layout.buildDirectory.dir("dokka/html"))
+}
+
 publishing {
     repositories {
         maven {
             name = "MavenCentralLocal"
             url = uri(layout.buildDirectory.dir("maven-central-staging"))
         }
+    }
+
+    publications.named("jvm", MavenPublication::class) {
+        artifact(dokkaJavadocJar)
     }
 
     publications.configureEach {
