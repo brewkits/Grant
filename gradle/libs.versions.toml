@@ -10,7 +10,7 @@ androidx-lifecycle = "2.9.6"
 composeMultiplatform = "1.11.1"
 kotlin = "2.4.0"
 
-koin = "4.1.1"
+koin = "4.2.2"
 kotlinx-coroutines = "1.11.0"
 jna = "5.19.1"
 mockk = "1.14.11"
