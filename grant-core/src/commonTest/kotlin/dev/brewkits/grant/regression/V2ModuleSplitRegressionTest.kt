@@ -169,8 +169,8 @@ class V2ModuleSplitRegressionTest {
         manager.mockRequestResult = GrantStatus.GRANTED
 
         var callbackCount = 0
-        val handlers = optionalPermissions.map { grant ->
-            GrantHandler(manager, grant, testScope).also { h -> h.request { callbackCount++ } }
+        optionalPermissions.forEach { grant ->
+            GrantHandler(manager, grant, testScope).request { callbackCount++ }
         }
         advanceUntilIdle()
 

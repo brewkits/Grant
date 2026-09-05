@@ -3,7 +3,8 @@ package dev.brewkits.grant.desktop
 import com.sun.jna.Library
 import com.sun.jna.Native
 import dev.brewkits.grant.utils.GrantLogger
-import java.io.File
+import java.nio.file.Files
+import java.nio.file.attribute.PosixFilePermissions
 
 private const val TAG = "GrantDesktopBridge"
 
@@ -64,7 +65,14 @@ internal object NativeBridgeLoader {
         }
 
         return try {
-            val tempFile = File.createTempFile("libGrantDesktopBridge", ".dylib")
+            // File.createTempFile() defaults to world-readable permissions on POSIX systems
+            // (CodeQL java/local-temp-file-or-directory-information-disclosure) — this is
+            // macOS-only code (see resourcePathForCurrentPlatform), so an explicit
+            // owner-only-rwx POSIX attribute is always safe to request here, unlike code that
+            // also has to run on Windows.
+            val ownerOnly = PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------"))
+            val tempPath = Files.createTempFile("libGrantDesktopBridge", ".dylib", ownerOnly)
+            val tempFile = tempPath.toFile()
             tempFile.deleteOnExit()
             resourceStream.use { input -> tempFile.outputStream().use { output -> input.copyTo(output) } }
             Native.load(tempFile.absolutePath, GrantDesktopBridgeLibrary::class.java)

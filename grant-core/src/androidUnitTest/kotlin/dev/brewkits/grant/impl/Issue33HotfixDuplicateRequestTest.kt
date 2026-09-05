@@ -88,7 +88,6 @@ class Issue33HotfixDuplicateRequestTest {
         delegate.setLauncher(object : dev.brewkits.grant.GrantLauncher {
             override fun launch(permissions: List<String>, onResult: (Map<String, Boolean>) -> Unit) {
                 // Simulate granting whatever is already in the shadow
-                val app = org.robolectric.Shadows.shadowOf(context as android.app.Application)
                 val results = permissions.associateWith { 
                     androidx.core.content.ContextCompat.checkSelfPermission(context, it) == android.content.pm.PackageManager.PERMISSION_GRANTED 
                 }
@@ -126,7 +125,6 @@ class Issue33HotfixDuplicateRequestTest {
             override fun launch(permissions: List<String>, onResult: (Map<String, Boolean>) -> Unit) {
                 launcherCallCount.incrementAndGet()
                 // Simulate granting whatever is already in the shadow
-                val app = org.robolectric.Shadows.shadowOf(context as android.app.Application)
                 val results = permissions.associateWith { 
                     androidx.core.content.ContextCompat.checkSelfPermission(context, it) == android.content.pm.PackageManager.PERMISSION_GRANTED 
                 }

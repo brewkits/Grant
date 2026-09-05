@@ -10,11 +10,15 @@ import kotlin.test.assertTrue
 class GrantPermissionTest {
 
     @Test
-    fun `AppGrant implements GrantPermission`() {
-        val camera = AppGrant.CAMERA
+    fun `AppGrant can be used as GrantPermission via the sealed interface`() {
+        // `camera is GrantPermission` would be a compile-time-guaranteed tautology (AppGrant
+        // already declares `: GrantPermission`) — CodeQL correctly flagged the original version
+        // of this test as a useless type test. What's actually worth pinning is that assigning
+        // an AppGrant to a GrantPermission-typed reference and calling through the interface
+        // dispatches correctly, not just that the `is` check trivially passes.
+        val permission: GrantPermission = AppGrant.CAMERA
 
-        assertTrue(camera is GrantPermission, "AppGrant should implement GrantPermission")
-        assertEquals("CAMERA", camera.identifier)
+        assertEquals("CAMERA", permission.identifier)
     }
 
     @Test

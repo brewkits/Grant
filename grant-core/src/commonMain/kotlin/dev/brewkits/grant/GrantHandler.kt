@@ -237,7 +237,6 @@ public class GrantHandler(
     public fun refreshStatus() {
         scope.launch {
             val newStatus = grantManager.checkStatus(grant)
-            val oldStatus = _status.value
             _status.value = newStatus
 
             // Auto-complete flow if status became satisfied while a dialog was showing.

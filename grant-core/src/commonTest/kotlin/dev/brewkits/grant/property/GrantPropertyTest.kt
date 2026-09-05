@@ -19,10 +19,10 @@ class GrantPropertyTest {
             mockGrantManager.mockRequestResult = status
             val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, this)
             
-            // Should finish flow and invoke callback if applicable
-            var callbackInvoked = false
-            handler.request { callbackInvoked = true }
-            
+            // Should finish flow and invoke callback if applicable. The callback's firing is
+            // deliberately not asserted here (see below) — only that requesting doesn't crash.
+            handler.request { }
+
             advanceUntilIdle()
             
             // Just assert it doesn't crash and status is updated correctly.

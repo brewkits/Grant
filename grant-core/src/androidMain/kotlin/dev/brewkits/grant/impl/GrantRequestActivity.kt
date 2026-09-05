@@ -3,6 +3,7 @@ package dev.brewkits.grant.impl
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.result.ActivityResultLauncher
@@ -142,7 +143,14 @@ public class GrantRequestActivity : ComponentActivity() {
         // by a different, still-live request (see the KDoc on guardOwner).
         viewModel.requestId?.let { guardOwner.compareAndSet(it, null) }
         finish()
-        overridePendingTransition(0, 0)
+        // overridePendingTransition() is deprecated since API 34 in favor of
+        // overrideActivityTransition(), which minSdk 26 can't call unconditionally.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, 0, 0)
+        } else {
+            @Suppress("DEPRECATION")
+            overridePendingTransition(0, 0)
+        }
     }
 
     private fun setResult(requestId: String, result: GrantResult) {
