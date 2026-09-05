@@ -1,13 +1,19 @@
 name: Code Quality
 
-# Cost control: build workflows run only when code lands on main (i.e. on merge),
-# not on every branch push or pull request. macOS runners bill at a 10x minute
-# multiplier, so per-PR runs were the bulk of the spend. Use the Actions tab's
-# "Run workflow" button (workflow_dispatch) to validate a branch on demand.
+# Gates every PR into main, not just pushes to it. This repo is PUBLIC, so GitHub-hosted
+# Actions runners are unmetered — see ci.yml's comment for the full reasoning (an earlier
+# version of this file cited "cost control" as the reason PRs were unguarded; that did not
+# apply here).
 on:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
   workflow_dispatch:
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   lint:
@@ -31,8 +37,23 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      # Every module with an androidTarget, so a lint issue introduced in any of them is
+      # caught here rather than only in the module the previous version of this line happened
+      # to name. grant-desktop has no androidTarget (jvm() + macosArm64 only) and is correctly
+      # absent; grant-tracking (v2.4.0, ATT) is new here.
       - name: Run Android Lint
-        run: ./gradlew :demo:lintDebug :grant-core:lintDebug :grant-compose:lintDebug :grant-bluetooth:lintDebug :grant-location-always:lintDebug
+        run: >-
+          ./gradlew
+          :demo:lintDebug
+          :grant-core:lintDebug
+          :grant-compose:lintDebug
+          :grant-core-koin:lintDebug
+          :grant-contacts:lintDebug
+          :grant-calendar:lintDebug
+          :grant-motion:lintDebug
+          :grant-bluetooth:lintDebug
+          :grant-location-always:lintDebug
+          :grant-tracking:lintDebug
 
       - name: Upload lint reports
         if: always()
