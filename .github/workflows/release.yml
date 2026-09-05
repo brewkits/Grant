@@ -41,35 +41,44 @@ jobs:
         # ios.yml gates the API surface on macOS.
         run: ./gradlew build allTests -x checkKotlinAbi
 
-      - name: Create GitHub Release
+      # No `files:` list here on purpose. This used to glob every module's build/libs/*.jar,
+      # which includes KMP's internal per-target "-metadata.jar" variants (not something a
+      # consumer downloads — they get the library from Maven Central) — 31 of them landed as
+      # noise on the v2.4.0 release before this was caught and cleaned up by hand. The release
+      # itself (tag, title, body) is created manually as part of the release process (see
+      # CLAUDE.md's Publishing section); this step's only remaining job is to fill in
+      # `generate_release_notes` as a fallback if that manual step is ever skipped — it does not
+      # overwrite a body that's already there.
+      - name: Ensure a GitHub Release exists for this tag
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: |
-            grant-core/build/libs/*.jar
-            grant-compose/build/libs/*.jar
-            grant-core-koin/build/libs/*.jar
-            grant-contacts/build/libs/*.jar
-            grant-calendar/build/libs/*.jar
-            grant-motion/build/libs/*.jar
-            grant-bluetooth/build/libs/*.jar
-            grant-location-always/build/libs/*.jar
           generate_release_notes: true
           draft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create Maven Central Bundle
-        if: startsWith(github.ref, 'refs/tags/')
-        run: ./create-grant-maven-bundle-auto.sh
-        env:
-          GPG_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
-          GPG_PASSPHRASE: ${{ secrets.SIGNING_PASSWORD }}
-
-      - name: Upload Maven Bundle Artifact
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: actions/upload-artifact@v4
-        with:
-          name: maven-central-bundle
-          path: maven-central-artifacts/
+      # Disabled: this always failed. `create-grant-maven-bundle-auto.sh` calls `gpg --detach-sign`
+      # against a key already present in the *local* keyring — it never imported one from
+      # `SIGNING_KEY_ID`/`SIGNING_PASSWORD` (both were empty; no such secrets exist in this repo),
+      # so every run since at least v1.3.0 hit "No GPG key found" and failed here, silently, with
+      # nobody the wiser because the manual release process (this same script, run by hand, from a
+      # machine with the real private key in its keyring) was what actually shipped every version.
+      # Re-enabling this for real automation means deciding to store a private signing key in
+      # GitHub Secrets — a deliberate security trade-off for a maintainer to make, not something
+      # to wire up implicitly. Until that decision is made, the manual script + a human uploading
+      # to central.sonatype.com is the release path; see CLAUDE.md's Publishing section.
+      # - name: Create Maven Central Bundle
+      #   if: startsWith(github.ref, 'refs/tags/')
+      #   run: ./create-grant-maven-bundle-auto.sh
+      #   env:
+      #     GPG_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
+      #     GPG_PASSPHRASE: ${{ secrets.SIGNING_PASSWORD }}
+      #
+      # - name: Upload Maven Bundle Artifact
+      #   if: startsWith(github.ref, 'refs/tags/')
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: maven-central-bundle
+      #     path: maven-central-artifacts/
