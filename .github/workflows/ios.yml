@@ -1,13 +1,22 @@
 name: iOS Build
 
-# Cost control: build workflows run only when code lands on main (i.e. on merge),
-# not on every branch push or pull request. macOS runners bill at a 10x minute
-# multiplier, so per-PR runs were the bulk of the spend. Use the Actions tab's
-# "Run workflow" button (workflow_dispatch) to validate a branch on demand.
+# Gates every PR into main, not just pushes to it. This repo is PUBLIC, so GitHub-hosted
+# Actions runners — including macOS, at any wall-clock length — are unmetered: there is no
+# minute quota to protect here (the 10x macOS multiplier only draws down a private repo's
+# paid/included quota; public repos are unlimited on GitHub-hosted runners). An earlier
+# version of this comment cited "cost control" as the reason PRs were not gated — that
+# reasoning did not apply to this repo and left every PR's Apple-target surface, including the
+# klib ABI dumps, unverified until after merge.
 on:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
   workflow_dispatch:
+
+concurrency:
+  group: ios-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-ios:
@@ -39,15 +48,43 @@ jobs:
       - name: Build iOS Framework
         run: ./gradlew :grant-core:linkDebugFrameworkIosArm64 :grant-core:linkDebugFrameworkIosSimulatorArm64
 
+      # Every module with a real iosTest suite, not just the three that had one when this line
+      # was first written. grant-contacts and grant-motion are listed even though — as of this
+      # change — they have no iosTest files yet (PR #77 adds them): calling the test task on a
+      # module with none still succeeds with zero tests run, so this line does not need editing
+      # again the moment that PR merges. grant-tracking (ATT, PR #75) is listed for the same
+      # forward-looking reason. Keeping this list current matters: on Android these modules'
+      # commonTest suites run against a documented no-op (see each module's GrantXxx.initialize()),
+      # so their real, platform-specific logic is ONLY exercised here.
       - name: Run iOS Tests
-        run: ./gradlew :grant-core:iosSimulatorArm64Test :grant-bluetooth:iosSimulatorArm64Test :grant-location-always:iosSimulatorArm64Test
+        run: >-
+          ./gradlew
+          :grant-core:iosSimulatorArm64Test
+          :grant-bluetooth:iosSimulatorArm64Test
+          :grant-location-always:iosSimulatorArm64Test
+          :grant-calendar:iosSimulatorArm64Test
+          :grant-contacts:iosSimulatorArm64Test
+          :grant-motion:iosSimulatorArm64Test
+          :grant-tracking:iosSimulatorArm64Test
 
       - name: Build Compose iOS Framework
         run: ./gradlew :grant-compose:linkDebugFrameworkIosArm64 :grant-compose:linkDebugFrameworkIosSimulatorArm64 || true
 
+      # New in v2.4.0 (macOS Tier 2, PR #72). This is the ONLY CI job that can build it — the
+      # macosArm64 shared-library target is Kotlin/Native cross-compiled to Apple, which only a
+      # macOS host can do (ci.yml's Linux job builds this module's jvmMain/jvmTest half only).
+      # jvmTest includes NativeBridgeAbiProbeTest, which reads the real AVFoundation
+      # authorization status through the built dylib on this runner — the actual ABI-safety
+      # check documented in ROADMAP.md v2.6.0, not a stub.
+      - name: Build and test grant-desktop (macOS)
+        run: ./gradlew :grant-desktop:build -x checkKotlinAbi
+
       # Runs here, not in ci.yml: the klib dumps cover the three Apple targets, which
       # only a macOS runner can compile. Fails the build when the public API surface
       # drifts from the committed api/*.api dumps — regenerate with ./gradlew updateKotlinAbi.
+      # No per-module listing needed: this aggregates every module with abiValidation at the
+      # root, including grant-tracking and grant-desktop automatically (verified with
+      # `./gradlew checkKotlinAbi --dry-run` before relying on that instead of naming modules).
       - name: Check public API surface (ABI)
         run: ./gradlew checkKotlinAbi
 

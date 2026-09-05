@@ -1,13 +1,25 @@
 name: CI
 
-# Cost control: build workflows run only when code lands on main (i.e. on merge),
-# not on every branch push or pull request. macOS runners bill at a 10x minute
-# multiplier, so per-PR runs were the bulk of the spend. Use the Actions tab's
-# "Run workflow" button (workflow_dispatch) to validate a branch on demand.
+# Gates every PR into main, not just pushes to it. This repo is PUBLIC, so GitHub-hosted
+# Actions runners — including macOS, at any wall-clock length — are unmetered: there is no
+# minute quota to protect here (confirmed against GitHub's own billing docs: the 10x macOS
+# multiplier only draws down a private repo's paid/included quota; public repos are unlimited
+# on GitHub-hosted runners). An earlier version of this comment cited "cost control" as the
+# reason PRs were not gated — that reasoning did not apply to this repo and left every PR
+# merged into main unverified by CI; the only gate was a local build run by hand.
 on:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
   workflow_dispatch:
+
+# Cancel a superseded run when new commits land on the same PR/branch — no cost impact on a
+# public repo, but keeps the Actions tab and PR checks list readable instead of accumulating
+# stale in-flight runs for commits nobody cares about anymore.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-and-test:
@@ -33,11 +45,22 @@ jobs:
 
       # -x checkKotlinAbi: the ABI check is wired into `check` (and so into `build`), but its
       # klib dumps cover the Apple targets, which Kotlin/Native cannot compile on a Linux
-      # runner. ios.yml runs checkKotlinAbi on macOS against both surfaces.
+      # runner. ios.yml runs checkKotlinAbi on macOS against every module's surface, including
+      # grant-tracking and grant-desktop's — that task aggregates automatically at the root
+      # (verified: `./gradlew checkKotlinAbi --dry-run` lists every module with abiValidation,
+      # with no per-module listing required here).
       - name: Build grant-core
         run: ./gradlew :grant-core:build -x checkKotlinAbi
 
-      - name: Run tests (all modules)
+      # Aggregates every test task the Linux host can run across every module, including ones
+      # this workflow never names explicitly — verified with `./gradlew allTests --dry-run`
+      # before relying on it: grant-core's jsBrowserTest/wasmJsBrowserTest/jvmTest,
+      # grant-desktop's jvmTest (its own host-detection branches safely to "no bridge" off
+      # macOS), and grant-tracking's Android-side tests are all pulled in by this one line
+      # with no per-target wiring. Apple/iOS test tasks are absent from the aggregation on a
+      # Linux host (KGP disables targets the host cannot build), not silently skipped —
+      # ios.yml is what verifies those.
+      - name: Run tests (all modules, all Linux-buildable targets)
         run: ./gradlew allTests
 
       - name: Build grant-compose
@@ -46,11 +69,42 @@ jobs:
       - name: Build grant-core-koin
         run: ./gradlew :grant-core-koin:build -x checkKotlinAbi
 
+      - name: Build grant-contacts
+        run: ./gradlew :grant-contacts:build -x checkKotlinAbi
+
+      - name: Build grant-calendar
+        run: ./gradlew :grant-calendar:build -x checkKotlinAbi
+
+      - name: Build grant-motion
+        run: ./gradlew :grant-motion:build -x checkKotlinAbi
+
       - name: Build grant-bluetooth
         run: ./gradlew :grant-bluetooth:build -x checkKotlinAbi
 
       - name: Build grant-location-always
         run: ./gradlew :grant-location-always:build -x checkKotlinAbi
+
+      # New in v2.4.0 (App Tracking Transparency, PR #75). Android target only here — grant-tracking
+      # also declares iosArm64/iosX64/iosSimulatorArm64, which this Linux host cannot cross-compile;
+      # ios.yml's root checkKotlinAbi and its iOS test step cover the Apple side.
+      - name: Build grant-tracking
+        run: ./gradlew :grant-tracking:build -x checkKotlinAbi
+
+      # New in v2.4.0 (macOS Tier 2, PR #72). Only the jvmMain compile + jvmTest are Linux-buildable
+      # here — the macosArm64 shared-library target is Kotlin/Native cross-compiled to Apple, which
+      # only a macOS host can do; KGP disables that target on Linux rather than failing the build,
+      # so this step is a real (if partial) signal, not a no-op. ios.yml builds the full target set.
+      - name: Build grant-desktop (JVM side)
+        run: ./gradlew :grant-desktop:build -x checkKotlinAbi
+
+      # desktop-harness is the manual Tier-2 verification harness (see its build.gradle.kts —
+      # deliberately unpublished, not part of MODULES in create-grant-maven-bundle-auto.sh). It
+      # is pure JVM + Compose Desktop, so compiling it needs no macOS host even though *running*
+      # it to see a real TCC dialog does. A compile check here catches a broken reference to
+      # grant-core/grant-desktop's API on every PR instead of only when someone next runs it by
+      # hand on a Mac.
+      - name: Compile desktop-harness
+        run: ./gradlew :desktop-harness:compileKotlin
 
       - name: Build demo app
         run: ./gradlew :demo:assembleDebug
