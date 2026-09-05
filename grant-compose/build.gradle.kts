@@ -169,3 +169,21 @@ tasks.named<org.cyclonedx.gradle.CycloneDxTask>("cyclonedxBom") {
     setIncludeConfigs(listOf("releaseRuntimeClasspath"))
     notCompatibleWithConfigurationCache("CycloneDX 1.4 resolves configurations at execution time")
 }
+
+// No kover `verify { minBound(...) }` here, deliberately — and this is the reasoning, so the
+// absence is not read as an oversight and "fixed" with an arbitrary number.
+//
+// Measured 2026-09-04: 13/221 lines, of which 178 of the uncovered ones are `@Composable`
+// bodies. Kover instruments JVM/Android bytecode, and a composable body only executes under a
+// UI-test host (Compose UI test / instrumented), which this module has no runner for. So the
+// percentage here reports "how much of this module is not a composable", not how well it is
+// tested.
+//
+// A floor set to the current 5% would gate nothing. A floor set higher would be unreachable
+// without a UI-test host, and the cheapest way to satisfy it would be tests written to move the
+// number — which is exactly how this module ended up with a single `assertNotNull(AppGrant.CAMERA)`
+// placeholder whose own comment said it existed to "contribute to coverage".
+//
+// What guards this module instead: the ABI dump in api/ pins the public surface, and
+// GrantDialogKindTest covers the state->dialog decision — the one piece of real branching logic,
+// extracted out of the composables precisely so it could be tested without a host.
