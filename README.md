@@ -7,11 +7,13 @@
 **Type-safe permission management for Kotlin Multiplatform — Android, iOS & Browser**
 
 [![Maven Central](https://img.shields.io/maven-central/v/dev.brewkits/grant-core?style=flat-square&color=7F52FF&label=maven%20central)](https://central.sonatype.com/artifact/dev.brewkits/grant-core)
+[![CI](https://img.shields.io/github/actions/workflow/status/brewkits/Grant/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/brewkits/Grant/actions/workflows/ci.yml)
+[![CodeQL](https://img.shields.io/github/actions/workflow/status/brewkits/Grant/codeql.yml?branch=main&style=flat-square&label=CodeQL)](https://github.com/brewkits/Grant/security/code-scanning)
 [![Kotlin](https://img.shields.io/badge/kotlin-2.4.0-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](https://kotlinlang.org)
 [![Platforms](https://img.shields.io/badge/platforms-android%20%7C%20ios%20%7C%20js%20%7C%20wasm-555?style=flat-square)](https://kotlinlang.org/docs/multiplatform.html)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square)](LICENSE)
 
-[Documentation](docs/README.md) · [Quick start](docs/getting-started/quick-start.md) · [Why Grant?](#why-grant) · [Demo app](docs/demo/DEMO_GUIDE.md)
+[Documentation](docs/README.md) · [API reference](https://brewkits.dev/Grant/) · [Quick start](docs/getting-started/quick-start.md) · [Why Grant?](#why-grant) · [Demo app](docs/demo/DEMO_GUIDE.md)
 
 </div>
 
@@ -233,14 +235,38 @@ Most KMP permission libraries are thin wrappers around the native APIs. Grant is
 | Android 14 partial access | ✅ | partial | ✅ |
 | Custom permissions | ✅ | limited | limited |
 
+## Engineering rigor
+
+Every claim below is enforced by CI or was checked by hand on real hardware — nothing here is
+aspirational.
+
+- **Every pull request is gated**, not just merges to `main` — build, full test suite, Android
+  Lint, and the API-surface check all run before a PR can land.
+- **[CodeQL](https://github.com/brewkits/Grant/security/code-scanning) runs on every push** and
+  currently reports zero open alerts — every finding was triaged by hand, not just silenced.
+- **The public API surface is locked.** All 9 published modules use Kotlin's explicit-API mode
+  plus a committed ABI dump (`checkKotlinAbi`); a PR that changes the surface without
+  regenerating the dump fails CI. Two breaking changes shipped unnoticed in v2.1.0 before this
+  gate existed — it hasn't happened since.
+- **Every published module ships a [CycloneDX](https://cyclonedx.org/) SBOM** — answer "what's
+  inside this dependency" without unpacking it.
+- **Verified on real hardware, not just a simulator.** The Android 17 `ACCESS_LOCAL_NETWORK`
+  mapping and the multi-process advisory in 2.4.0 were both confirmed on a physical device —
+  the multi-process case specifically because a secondary-process request measured a real
+  120-second timeout with the permission silently granted underneath it, a class of bug a
+  simulator-only test suite would never have caught.
+- **The browser target runs against real Chrome**, not a fake: 358/358 tests pass in headless
+  Chrome for both the `js` and `wasmJs` targets, including the Firefox `permissions.query()`
+  fallback path.
+
 ## Size and supply chain
 
 | Artifact | Release AAR |
 |---|---|
-| `grant-core` | 292 KB |
-| `grant-compose` | 32 KB |
-| `grant-core-koin` | 8 KB |
-| `grant-contacts` · `grant-calendar` · `grant-motion` · `grant-bluetooth` · `grant-location-always` | 4 KB each |
+| `grant-core` | 293 KB |
+| `grant-compose` | 30 KB |
+| `grant-core-koin` | 7 KB |
+| `grant-contacts` · `grant-calendar` · `grant-motion` · `grant-bluetooth` · `grant-location-always` · `grant-tracking` | ~2 KB each |
 
 Download size is not app size. In a real R8-minified build (the demo, with
 `-allowaccessmodification`), Grant contributes **83 classes** out of 2,686 — the rest is
@@ -316,7 +342,10 @@ ceremony, not speed.
 
 ## Contributing
 
-Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). Run `./gradlew :grant-core:allTests` before submitting a PR.
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) and the
+[Code of Conduct](CODE_OF_CONDUCT.md). New to the codebase? Start with an issue labeled
+[`good first issue`](https://github.com/brewkits/Grant/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
+Run `./gradlew :grant-core:allTests` before submitting a PR.
 
 ## License
 
