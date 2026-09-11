@@ -29,6 +29,7 @@ public class dev/brewkits/grant/AppGrant : java/lang/Enum, dev/brewkits/grant/Gr
 	public static final field READ_CONTACTS Ldev/brewkits/grant/AppGrant;
 	public static final field SCHEDULE_EXACT_ALARM Ldev/brewkits/grant/AppGrant;
 	public static final field STORAGE Ldev/brewkits/grant/AppGrant;
+	public static final field USE_FULL_SCREEN_INTENT Ldev/brewkits/grant/AppGrant;
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
 	public fun getIdentifier ()Ljava/lang/String;
 	public fun getRequiresBackgroundUpgrade ()Z

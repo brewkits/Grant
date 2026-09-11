@@ -815,6 +815,24 @@ val localNetworkGrant = GrantHandler(grantManager, AppGrant.LOCAL_NETWORK, scope
 val alarmGrant = GrantHandler(grantManager, AppGrant.SCHEDULE_EXACT_ALARM, scope)
 ```
 
+### Full-Screen Intent (`USE_FULL_SCREEN_INTENT`, Android 14+)
+- **Android**: `USE_FULL_SCREEN_INTENT` — a normal (install-time) permission through API 33;
+  **API 34 (Android 14)** turned it into the same *special app access* shape as
+  [Exact Alarms](#exact-alarms-schedule_exact_alarm) for apps that are not a default dialer or
+  alarm app. `request()` opens the "Full screen notifications" settings screen rather than a
+  system dialog — `requestPermissions()` cannot grant this. The unresolved status is `DENIED`
+  (no permanent-denial state; the toggle stays in Settings forever), and `request()` returns as
+  soon as Settings opens — re-read on resume with `GrantHandler.onReturnFromSettings()` or
+  `refreshStatus()`. No-op (`GRANTED`) below API 34.
+- **iOS**: no-op (`GRANTED`) — no separate authorization exists beyond the standard
+  [Notifications](#notifications) one.
+- **Use cases**: incoming-call UIs, alarm/timer apps, and anything else that needs to cover the
+  lock screen with a heads-up notification.
+
+```kotlin
+val fullScreenIntentGrant = GrantHandler(grantManager, AppGrant.USE_FULL_SCREEN_INTENT, scope)
+```
+
 ### App Tracking Transparency (iOS)
 - **iOS**: `NSUserTrackingUsageDescription`, via `ATTrackingManager` — needs the optional
   `grant-tracking` module (linking `AppTrackingTransparency.framework` makes Apple require the

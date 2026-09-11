@@ -74,6 +74,7 @@ open enum class dev.brewkits.grant/AppGrant : dev.brewkits.grant/GrantPermission
     enum entry READ_CONTACTS // dev.brewkits.grant/AppGrant.READ_CONTACTS|null[0]
     enum entry SCHEDULE_EXACT_ALARM // dev.brewkits.grant/AppGrant.SCHEDULE_EXACT_ALARM|null[0]
     enum entry STORAGE // dev.brewkits.grant/AppGrant.STORAGE|null[0]
+    enum entry USE_FULL_SCREEN_INTENT // dev.brewkits.grant/AppGrant.USE_FULL_SCREEN_INTENT|null[0]
 
     final val entries // dev.brewkits.grant/AppGrant.entries|#static{}entries[0]
         final fun <get-entries>(): kotlin.enums/EnumEntries<dev.brewkits.grant/AppGrant> // dev.brewkits.grant/AppGrant.entries.<get-entries>|<get-entries>#static(){}[0]

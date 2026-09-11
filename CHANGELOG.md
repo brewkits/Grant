@@ -6,7 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [2.5.0] - Unreleased
+## [Unreleased]
+
+### ✨ Added
+
+- **`AppGrant.USE_FULL_SCREEN_INTENT`** — the same special-app-access shape as
+  `SCHEDULE_EXACT_ALARM`: a normal (install-time) permission through Android 13, turned into a
+  special-access one on **Android 14 (API 34)** for apps that are not a default dialer or alarm
+  app. `request()` opens the dedicated "Full screen notifications" settings screen — there is no
+  `requestPermissions()` dialog for it — and an unresolved status reports `DENIED`, never
+  `DENIED_ALWAYS`, since the toggle has no permanent-denial state. No-op (`GRANTED`) below API 34
+  and on iOS, which has no separate authorization for it. `AppGrant` now covers 24 permissions.
+
+### 📝 Notes (version/release TBD by the maintainer)
+
+- Not yet assigned a version number or bumped in any `build.gradle.kts` — per this project's
+  `SUPPORT.md` table a new `AppGrant` value is a minor bump, and the family versions in lock-step
+  only when a release is actually being cut (see `CLAUDE.md`'s Publishing section).
+
+## [2.5.0] - 2026-09-05
 
 ### ✨ Added
 

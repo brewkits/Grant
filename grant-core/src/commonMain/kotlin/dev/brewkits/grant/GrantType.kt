@@ -275,7 +275,29 @@ public enum class AppGrant : GrantPermission {
      * status with no prompt shown, and the ask is silently spent. Request it from a screen the
      * user is actually looking at.
      */
-    APP_TRACKING;
+    APP_TRACKING,
+
+    /**
+     * Permission to launch a full-screen intent from a notification — the heads-up,
+     * lock-screen-covering UI used by incoming calls and alarms.
+     *
+     * - **Android**: `USE_FULL_SCREEN_INTENT`. A normal (install-time) permission through API 33
+     *   — declaring it in the manifest was enough, no runtime state to check. **Android 14+
+     *   (API 34)** made it a special-access permission for apps that are not a default dialer or
+     *   alarm app: freshly-installed apps no longer get it automatically, and the OS exposes
+     *   [`NotificationManager.canUseFullScreenIntent()`](https://developer.android.com/reference/android/app/NotificationManager#canUseFullScreenIntent())
+     *   plus a dedicated Settings screen (`Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT`) to
+     *   check and grant it — the same special-access shape as [SCHEDULE_EXACT_ALARM], with no
+     *   `requestPermissions()` dialog. No-op (always `GRANTED`) below API 34.
+     * - **iOS**: No-op (always `GRANTED`) — iOS has no equivalent concept; a
+     *   `UNNotificationInterruptionLevel.critical`/`.timeSensitive` local/push notification needs
+     *   no separate authorization beyond the standard [NOTIFICATION] one.
+     *
+     * Like [SCHEDULE_EXACT_ALARM], a denial here reports [dev.brewkits.grant.GrantStatus.DENIED]
+     * rather than `DENIED_ALWAYS`: the toggle has no permanent-denial state, stays available in
+     * Settings forever, and re-requesting simply reopens that same screen.
+     */
+    USE_FULL_SCREEN_INTENT;
 
     /**
      * Unique identifier for this permission.

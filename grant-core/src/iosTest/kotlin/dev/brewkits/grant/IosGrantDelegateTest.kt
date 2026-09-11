@@ -411,6 +411,20 @@ class IosGrantDelegateTest {
     }
 
     @Test
+    fun `request USE_FULL_SCREEN_INTENT does not deadlock on simulator`() = kotlinx.coroutines.test.runTest {
+        // USE_FULL_SCREEN_INTENT is Android-only (gated on API 34+); iOS has no separate
+        // authorization for it beyond the standard NOTIFICATION one, so it is always GRANTED.
+        val result = withTimeout(3_000L) { delegate.request(AppGrant.USE_FULL_SCREEN_INTENT) }
+        assertTrue(result in validStatuses, "request(USE_FULL_SCREEN_INTENT) must complete and return a valid status")
+    }
+
+    @Test
+    fun `checkStatus USE_FULL_SCREEN_INTENT reports GRANTED on iOS`() = kotlinx.coroutines.test.runTest {
+        val status = withTimeout(3_000L) { delegate.checkStatus(AppGrant.USE_FULL_SCREEN_INTENT) }
+        assertTrue(status == GrantStatus.GRANTED, "USE_FULL_SCREEN_INTENT is a no-op on iOS and must report GRANTED, got $status")
+    }
+
+    @Test
     fun `request batch of permissions does not deadlock`() = kotlinx.coroutines.test.runTest {
         val grants = listOf(
             AppGrant.SCHEDULE_EXACT_ALARM,

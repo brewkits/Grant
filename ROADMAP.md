@@ -1,18 +1,38 @@
 # Grant Library — Roadmap
 
-> Last updated: 2026-09-05 · Current stable: **v2.4.0** (confirmed live on Maven Central —
-> `maven-metadata.xml`'s `<latest>`/`<release>` both read 2.4.0) — shipped ahead of the original
-> sequencing below with JS/Wasm (Tier 1) already in `grant-core`, since that work landed on
-> `main` before this cut; the macOS camera/microphone bridge (Tier 2) also verified end-to-end,
-> but ships unpublished (`grant-desktop` is Gradle-only, not in
-> `create-grant-maven-bundle-auto.sh`'s `MODULES`). Next: **v2.5.0** (Testing support + BOM —
-> `grant-testing` and `grant-bom`, code-complete and awaiting Maven Central publish), then
-> **v2.6.0** (Group UX), then **v2.7.0** (Windows Tier 2.5 — the only multi-platform scope still
-> open).
+> Last updated: 2026-09-11 · Current stable: **v2.5.0** (confirmed live on Maven Central —
+> `maven-metadata.xml`'s `<latest>`/`<release>` both read 2.5.0; see `grant-testing`/`grant-bom`'s
+> own section below for that release's contents). JS/Wasm (Tier 1) and the macOS camera/
+> microphone bridge (Tier 2, unpublished — `grant-desktop` is Gradle-only, not in
+> `create-grant-maven-bundle-auto.sh`'s `MODULES`) shipped a version earlier, in v2.4.0, ahead of
+> the original sequencing below. Next up, version TBD: `AppGrant.USE_FULL_SCREEN_INTENT` (see the
+> **Unreleased** section immediately below — code-complete, not yet assigned a version), then
+> **Group UX** (v2.6.0 below) and **Windows Tier 2.5** (v2.7.0 below, the only multi-platform
+> scope still open) — those labels are planning buckets, not commitments, and have already moved
+> once before (see this file's own v2.4.0/v2.5.0 history) when other work landed first.
 
 ---
 
 ## 🛠️ In Progress / Upcoming
+
+### Unreleased — `AppGrant.USE_FULL_SCREEN_INTENT`
+
+*Origin: an audit asking a "top 1% mobile PM/BA/SA/principal" review of what real permission-library functionality Grant was still missing (issue tracker had nothing open on this). `NEARBY_WIFI_DEVICES`/`LOCAL_NETWORK`/`SCHEDULE_EXACT_ALARM` already cover Android's other recent special-access permissions; `USE_FULL_SCREEN_INTENT` (API 34) was the one with zero references anywhere in this repo, and it clones `SCHEDULE_EXACT_ALARM`'s exact shape — a real, low-risk win rather than a guess.*
+
+- [x] **Android**: `USE_FULL_SCREEN_INTENT` — normal (install-time) through API 33; API 34 makes
+  it special app access (`NotificationManager.canUseFullScreenIntent()` +
+  `Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT`), same shape as `SCHEDULE_EXACT_ALARM`
+  with no `requestPermissions()` dialog. `DENIED`, never `DENIED_ALWAYS`, on refusal — no
+  permanent-denial state exists for special app access.
+- [x] **iOS**: no-op `GRANTED` — no separate authorization exists beyond `NOTIFICATION`.
+- [x] Tests: `FullScreenIntentRequestTest` (Robolectric, mirrors `ExactAlarmRequestTest`) and two
+  new cases in `IosGrantDelegateTest` per CLAUDE.md's "every `PlatformGrantDelegate` method needs
+  a real-delegate, `withTimeout`-wrapped test" rule. ABI dumps regenerated (`AppGrant` now covers
+  24 permissions).
+- [ ] **Not yet assigned a version number.** Per `SUPPORT.md`, a new `AppGrant` value is a minor
+  bump, but this project's `build.gradle.kts` version fields only move in lock-step when the
+  maintainer is actually cutting a release (see `CLAUDE.md`'s Publishing section) — left at 2.5.0
+  deliberately rather than guessing whether this ships alone or bundled with other work.
 
 ### v2.4.1 — Pre-publish device verification
 
