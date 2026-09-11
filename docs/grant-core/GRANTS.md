@@ -629,6 +629,22 @@ val galleryGrant = GrantHandler(
 )
 ```
 
+> **Letting the user add more photos after `PARTIAL_GRANTED` (Android 14+).** There is no
+> separate picker API for this — [Android's own guidance](https://developer.android.com/about/versions/14/changes/partial-photo-video-access)
+> is to simply call `request()`/`requestSuspend()` again for the same grant; the system re-shows
+> the exact same "select more photos / allow all" dialog it showed the first time, because the
+> request still includes `READ_MEDIA_VISUAL_USER_SELECTED` alongside `READ_MEDIA_IMAGES`/
+> `READ_MEDIA_VIDEO` (see `toAndroidGrants()`). Put this behind an explicit UI action (a "Manage
+> photo access" button) rather than calling it automatically — Android's guidance is explicit
+> that the user shouldn't be surprised by the system dialog reappearing on its own:
+> ```kotlin
+> Button(onClick = { galleryGrant.requestSuspend { /* updated PARTIAL_GRANTED or GRANTED */ } }) {
+>     Text("Manage photo access")
+> }
+> ```
+> No iOS equivalent is wired up here; the analogous API there is
+> [`PHPhotoLibrary.presentLimitedLibraryPicker(from:)`](https://developer.apple.com/documentation/photokit/phphotolibrary/presentlimitedlibrarypicker(from:)).
+
 ### Gallery — save only (`GALLERY_ADD_ONLY`)
 - **Android**: no permission on API 29+ (scoped storage lets an app insert into its own
   `MediaStore` collections), so this reports `GRANTED` with **no prompt at all**;
@@ -908,6 +924,24 @@ requests [`AppGrant.LOCATION`](#location) through Grant at runtime.
 Other normal/install-time permissions (e.g. `INTERNET`, `ACCESS_NETWORK_STATE`,
 `VIBRATE`, `WAKE_LOCK`) follow the same rule: declare them in the manifest; Grant
 does not request them.
+
+Two more are worth naming explicitly, since they're not install-time permissions and are the
+most common "does Grant do X?" questions this library gets:
+
+**Biometrics (Face ID / Touch ID / Android `BiometricPrompt`).** Not a consent-and-remember
+permission at all — there's no `NSUsageDescription`-style prompt gating first use, no persistent
+grant to check later, and no `DENIED_ALWAYS`/Settings-guide state: `BiometricPrompt.authenticate()`
+and `LocalAuthentication`'s `LAContext.evaluatePolicy` just ask "does this credential match, right
+now," every single time. `GrantStatus`'s whole model (a status you check once and remember) does
+not fit that shape, so this is out of scope by design, not an oversight.
+
+**Screen recording (Android `MediaProjectionManager`).** `createScreenCaptureIntent()` returns an
+`Intent` resolved via `startActivityForResult`/`ActivityResultContracts.StartActivityForResult`,
+not `ActivityResultContracts.RequestPermission` — a one-shot, per-invocation user consent with no
+persistent "granted" state to read back later (there is no `checkSelfPermission` equivalent), so
+it does not fit `GrantManager`'s `checkStatus()`/`request()` shape either. The closest precedent
+in this codebase is Windows' `ServiceManager`-only, `AppGrant`-free design for the same reason
+(see `ROADMAP.md`'s Tier 2.5 notes).
 
 ## 📚 References
 

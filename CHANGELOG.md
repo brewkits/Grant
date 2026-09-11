@@ -17,6 +17,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `requestPermissions()` dialog for it — and an unresolved status reports `DENIED`, never
   `DENIED_ALWAYS`, since the toggle has no permanent-denial state. No-op (`GRANTED`) below API 34
   and on iOS, which has no separate authorization for it. `AppGrant` now covers 24 permissions.
+- **`GrantHandler.autoRefreshOnForeground()`** — opt-in subscription to the platform's "app
+  returned to foreground" signal that calls `refreshStatus()` automatically, so a permission
+  changed from Settings while the app stayed alive is picked up without the host wiring a
+  lifecycle observer to `onReturnFromSettings()` itself. Real only on iOS today
+  (`UIApplicationDidBecomeActiveNotification`) — Android, `jvm`, and `js`/`wasmJs` log once and
+  return an inert handle, since the highest-value case this closes (a grant changing behind a
+  live process) is narrower on those platforms. Returns an `AutoCloseable`; closing it (or
+  letting the owning `CoroutineScope` complete) unsubscribes.
+
+### 📝 Documentation
+
+- **Gallery re-selection (Android 14+).** Clarified that letting a user add more photos after
+  `PARTIAL_GRANTED` needs no new API — [Android's own guidance](https://developer.android.com/about/versions/14/changes/partial-photo-video-access)
+  is to call `request()`/`requestSuspend()` again for the same grant, which already works today
+  since `toAndroidGrants()` includes `READ_MEDIA_VISUAL_USER_SELECTED`. (An earlier internal note
+  referenced a `MediaStore.ACTION_USER_SELECT_IMAGES_FOR_APP` intent for this — that constant does
+  not exist in the Android SDK, verified directly against the API 37.1 platform jar; corrected
+  before any code was written against it.)
+- **Two "why not covered" entries added**: biometrics (`BiometricPrompt`/`LocalAuthentication` —
+  a one-shot credential check with no persistent grant state, not a `GrantStatus` shape at all)
+  and screen recording (`MediaProjectionManager` — a one-shot `startActivityForResult` consent,
+  same shape mismatch that already keeps Windows `ServiceManager`-only).
 
 ### 📝 Notes (version/release TBD by the maintainer)
 

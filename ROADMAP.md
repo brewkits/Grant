@@ -15,10 +15,11 @@
 
 ## 🛠️ In Progress / Upcoming
 
-### Unreleased — `AppGrant.USE_FULL_SCREEN_INTENT`
+### Unreleased — permission-library functionality audit
 
-*Origin: an audit asking a "top 1% mobile PM/BA/SA/principal" review of what real permission-library functionality Grant was still missing (issue tracker had nothing open on this). `NEARBY_WIFI_DEVICES`/`LOCAL_NETWORK`/`SCHEDULE_EXACT_ALARM` already cover Android's other recent special-access permissions; `USE_FULL_SCREEN_INTENT` (API 34) was the one with zero references anywhere in this repo, and it clones `SCHEDULE_EXACT_ALARM`'s exact shape — a real, low-risk win rather than a guess.*
+*Origin: an audit asking a "top 1% mobile PM/BA/SA/principal" review of what real permission-library functionality Grant was still missing (issue tracker had nothing open on this). Ranked findings, highest priority first; items below are what's landed so far.*
 
+**1. `AppGrant.USE_FULL_SCREEN_INTENT`** ✅ *shipped*
 - [x] **Android**: `USE_FULL_SCREEN_INTENT` — normal (install-time) through API 33; API 34 makes
   it special app access (`NotificationManager.canUseFullScreenIntent()` +
   `Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT`), same shape as `SCHEDULE_EXACT_ALARM`
@@ -29,10 +30,70 @@
   new cases in `IosGrantDelegateTest` per CLAUDE.md's "every `PlatformGrantDelegate` method needs
   a real-delegate, `withTimeout`-wrapped test" rule. ABI dumps regenerated (`AppGrant` now covers
   24 permissions).
-- [ ] **Not yet assigned a version number.** Per `SUPPORT.md`, a new `AppGrant` value is a minor
-  bump, but this project's `build.gradle.kts` version fields only move in lock-step when the
-  maintainer is actually cutting a release (see `CLAUDE.md`'s Publishing section) — left at 2.5.0
-  deliberately rather than guessing whether this ships alone or bundled with other work.
+
+**2. `GrantHandler.autoRefreshOnForeground()`** ✅ *shipped, iOS-only real signal*
+- [x] Closes the gap where a `GrantHandler` goes stale after the user changes a grant from
+  Settings without going through Grant's own settings-guide flow (which already calls
+  `refreshStatus()`) — real on iOS (`UIApplicationDidBecomeActiveNotification`, verified with an
+  actual posted notification in `GrantHandlerForegroundIosTest`, not a fake).
+- [x] **Deliberately not implemented on Android** after checking, not guessing: revoking a
+  runtime permission from Settings kills the app's process in most cases (the same reason
+  `SharedPreferencesGrantStore` exists — Issue #55), so a fresh `GrantHandler` already re-reads
+  correct status on the next launch. The narrower case this leaves open — *granting* a
+  previously-denied permission from Settings while the app stays alive in the background — is
+  already covered for `GrantDialog` users (its settings-guide flow calls `refreshStatus()` after
+  `openSettings()`); an app on `requestWithCustomUi()` would still need to call
+  `onReturnFromSettings()` itself. Revisit if that turns out to be a real pain point.
+- [x] `jvm`/`js`/`wasmJs`: honest no-op stubs, same discipline as `APP_TRACKING`'s Android side —
+  `AppForegroundSignal.isSupported == false`, logged once via `GrantHandler`, never fabricated.
+- [x] Shape: a method returning `AutoCloseable`, not a constructor flag — keeps `GrantHandler`'s
+  five-parameter, ABI-locked constructor untouched and gives the caller explicit control over the
+  subscription's lifetime (closing the returned handle, or letting the owning `scope` complete).
+
+**3. Gallery re-selection (Android 14+)** — *no code needed; doc-only, and a self-correction*
+- [x] Investigated as a candidate feature (a wrapper for re-opening the "select more photos"
+  picker once already `PARTIAL_GRANTED`) and found there is **no dedicated API for this at all**:
+  [Android's own guidance](https://developer.android.com/about/versions/14/changes/partial-photo-video-access)
+  is to call `request()`/`requestSuspend()` again for the same grant, and that already works
+  today since `toAndroidGrants()` already includes `READ_MEDIA_VISUAL_USER_SELECTED`.
+- [x] **Corrected before any code was written**: an earlier pass through this audit cited
+  `MediaStore.ACTION_USER_SELECT_IMAGES_FOR_APP` as the API to wrap. That constant does not
+  exist — verified directly against the API 37.1 platform jar's compiled `MediaStore.class`
+  (`javap`), not just recalled. Documented the real (simpler) mechanism in `GRANTS.md`'s Gallery
+  section instead of shipping a wrapper around a nonexistent intent.
+
+**4. Two "why not covered" doc entries added** ✅
+- [x] Biometrics (`BiometricPrompt`/`LocalAuthentication`) and screen recording
+  (`MediaProjectionManager`) — both real "does Grant do X?" questions, both a shape mismatch with
+  `GrantStatus`'s check-once-remember-later model, documented in `GRANTS.md` rather than left for
+  every reader to wonder about.
+
+**5. Not started, needs the maintainer's call before any code** — see the four remaining rows the
+audit table.
+
+**5a. iOS Reminders (`grant-reminders`)** — new module needed, not free inside `grant-calendar`.
+Verified against this project's own precedent (`grant-location-always`'s isolation rationale):
+Apple's static scanner keys on *selector presence in the compiled binary*, not on which
+`Info.plist` keys are declared, so adding `requestFullAccessToReminders` calls into
+`grant-calendar` would make Apple require `NSRemindersFullAccessUsageDescription` from every
+calendar-only consumer — the exact regression `grant-location-always` was built to avoid for
+`requestAlwaysAuthorization`. Needs its own opt-in module.
+
+**5b. Health Connect (Android) / HealthKit (iOS)** — still blocked on the architecture decision
+this file's own "v2.8.0 — Newest-OS permission coverage" section above already describes in
+detail (Option A vs. B), plus a new, harder blocker found for HealthKit specifically:
+`HKHealthStore.authorizationStatus(for:)` deliberately never reveals *read* authorization (Apple
+hides it so apps can't infer a user's health conditions from a denial) — `GrantStatus`'s
+check-and-remember model cannot represent that state honestly, so `checkStatus()` would be
+permanently stuck at `NOT_DETERMINED` for any read-only HealthKit type. This strengthens rather
+than changes the existing recommendation: defer both platforms, start from a real consumer ask.
+
+**5c. Speech Recognition / HomeKit (iOS)** — same opt-in-module shape as Contacts/Calendar/Motion,
+genuinely real gaps, but niche: zero issues have ever asked for either.
+
+None of 5a–5c are started. Each is a new *published* Maven artifact (5a, 5c) or an explicit
+architecture pick with lasting public-API consequences (5b) — bigger commitments than a
+same-session engineering call, put to the maintainer rather than assumed.
 
 ### v2.4.1 — Pre-publish device verification
 

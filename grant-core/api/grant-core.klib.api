@@ -309,6 +309,7 @@ final class dev.brewkits.grant/GrantHandler { // dev.brewkits.grant/GrantHandler
     final val status // dev.brewkits.grant/GrantHandler.status|{}status[0]
         final fun <get-status>(): kotlinx.coroutines.flow/StateFlow<dev.brewkits.grant/GrantStatus> // dev.brewkits.grant/GrantHandler.status.<get-status>|<get-status>(){}[0]
 
+    final fun autoRefreshOnForeground(): kotlin/AutoCloseable // dev.brewkits.grant/GrantHandler.autoRefreshOnForeground|autoRefreshOnForeground(){}[0]
     final fun onDismiss() // dev.brewkits.grant/GrantHandler.onDismiss|onDismiss(){}[0]
     final fun onRationaleConfirmed() // dev.brewkits.grant/GrantHandler.onRationaleConfirmed|onRationaleConfirmed(){}[0]
     final fun onReturnFromSettings() // dev.brewkits.grant/GrantHandler.onReturnFromSettings|onReturnFromSettings(){}[0]
