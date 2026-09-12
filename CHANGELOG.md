@@ -39,6 +39,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   a one-shot credential check with no persistent grant state, not a `GrantStatus` shape at all)
   and screen recording (`MediaProjectionManager` — a one-shot `startActivityForResult` consent,
   same shape mismatch that already keeps Windows `ServiceManager`-only).
+- **Fixed a wrong `AppGrant.STORAGE` iOS claim** in `GrantType.kt`'s KDoc and `GRANTS.md`: both
+  said iOS treats it as a no-op that's always `GRANTED`. It does not — `handlerFor()` maps
+  `STORAGE` to the same photo-library handler as `GALLERY`, so it needs
+  `NSPhotoLibraryUsageDescription` and shows a real system dialog, confirmed against a live
+  build during this session's manual demo testing. Doc-only fix; no behavior changed.
+- **README**: documented `autoRefreshOnForeground()` (added earlier in this Unreleased section
+  but previously had zero README presence).
+
+### 🧪 Testing
+
+- Pinned `AppForegroundSignal`'s "honest no-op" contract with an explicit
+  `isSupported == false` test on Android, `jvm`, and browser (`webTest`, shared by `js`/`wasmJs`)
+  — previously only implied by `GrantHandlerTest`'s cross-platform `autoRefreshOnForeground`
+  tests, never asserted directly.
+- **`grant-core-koin`**: added `GrantPlatformModuleAndroidTest` (Robolectric-backed, real
+  `Context`), closing the 0%-covered `GrantPlatformModule_androidKt` gap called out in that
+  module's `build.gradle.kts`. Line coverage for the module rose from the 50% floor set at
+  2.5.0 — floor left unchanged since raising it is a separate, deliberate decision.
 
 ### 📝 Notes (version/release TBD by the maintainer)
 

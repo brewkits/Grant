@@ -772,8 +772,10 @@ val motionGrant = GrantHandler(
 ```
 
 ### Storage
-- **Android only**: `READ_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE`
-- **iOS**: N/A (uses sandboxed storage)
+- **Android**: `READ_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE`
+- **iOS**: no separate sandbox concept, so this maps to the same photo library handler as
+  `GALLERY` — real `NSPhotoLibraryUsageDescription` prompt, not a no-op. Prefer
+  `GALLERY_IMAGES_ONLY` / `GALLERY_VIDEO_ONLY` / `GALLERY_ADD_ONLY` if narrower scope fits.
 - **Use cases**: File access, downloads
 
 ```kotlin

@@ -265,6 +265,29 @@ fun startTracking() {
 }
 ```
 
+### Catch grants changed from Settings (iOS)
+
+A user can leave your app running in the background, flip a permission in Settings, and come
+back — a `GrantHandler` constructed before that trip goes stale with no signal to catch it.
+`autoRefreshOnForeground()` subscribes to the real foreground signal where one exists (iOS's
+`UIApplicationDidBecomeActiveNotification`) and calls `refreshStatus()` for you on every
+transition:
+
+```kotlin
+class CameraViewModel(grantManager: GrantManager, scope: CoroutineScope) {
+    val cameraGrant = GrantHandler(grantManager, AppGrant.CAMERA, scope)
+    private val foregroundHandle = cameraGrant.autoRefreshOnForeground()
+
+    override fun onCleared() {
+        foregroundHandle.close() // also closes automatically when `scope`'s Job completes
+    }
+}
+```
+
+Android, `jvm`, and browser have no equivalent OS-wide signal today, so the call is a documented
+no-op there (logged once, not silently swallowed) — call `refreshStatus()` or
+`onReturnFromSettings()` yourself from whatever lifecycle hook your platform offers instead.
+
 ## Why Grant?
 
 Most KMP permission libraries are thin wrappers around the native APIs. Grant is built around the failure modes those wrappers hit in production:

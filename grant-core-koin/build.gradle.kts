@@ -63,6 +63,15 @@ kotlin {
             implementation(libs.kotlin.test)
             implementation(libs.koin.test)
         }
+
+        val androidUnitTest by getting {
+            dependencies {
+                implementation(libs.kotlin.test)
+                implementation(libs.koin.test)
+                implementation(libs.robolectric)
+                implementation(libs.androidx.test.core)
+            }
+        }
     }
 }
 
@@ -70,20 +79,19 @@ kotlin {
 //
 // Unlike the iOS-only opt-in modules, this module's content — GrantModule.kt (commonMain) and
 // GrantPlatformModule.android.kt — compiles to JVM/Android bytecode Kover can actually measure.
-// Measured 2026-09-11 via `./gradlew :grant-core-koin:koverXmlReport` (exact LINE counters, not
+// Measured 2026-09-12 via `./gradlew :grant-core-koin:koverXmlReport` (exact LINE counters, not
 // the HTML report's Instruction% column, which reads higher and is easy to misread as Line%):
-// 50% line coverage (8/16). GrantModuleKt — exercised by GrantDiTest's three Koin-resolution
-// tests — is at 88.2% instruction coverage; GrantPlatformModule_androidKt is at 0% — its
-// `single { }` needs a real Android Context, which no test in this module currently provides.
-// That 0% is a real gap, not an untestable one (see grant-tracking's build.gradle.kts for what
-// an untestable-K/N module's Kover config looks like by contrast) — closing it means adding a
-// Robolectric-backed test that supplies a Context, not excluding the class. Floor set at the
-// measured line coverage so a regression is caught.
+// 87.5% line coverage (14/16), up from 50% (8/16) after adding
+// `GrantPlatformModuleAndroidTest` (Robolectric, real Android `Context`), which closed the
+// `GrantPlatformModule_androidKt` gap from 0% to 100% (6/6) — its `single { }` needed a real
+// `Context`, which no test in this module previously provided. GrantModuleKt sits at 8/10 lines
+// (the 2 misses are exercised only by resolution paths not currently under test). Floor set at
+// the measured line coverage so a regression is caught.
 kover {
     reports {
         verify {
             rule {
-                minBound(50)
+                minBound(87)
             }
         }
     }

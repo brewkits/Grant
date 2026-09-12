@@ -65,7 +65,10 @@ public enum class AppGrant : GrantPermission {
      * Access to shared external storage.
      *
      * - **Android**: `READ_EXTERNAL_STORAGE` / `WRITE_EXTERNAL_STORAGE`.
-     * - **iOS**: No-op (always GRANTED due to sandbox architecture).
+     * - **iOS**: no separate sandbox concept, so this maps to the same photo library handler as
+     *   [GALLERY] — `NSPhotoLibraryUsageDescription` and a real system dialog, not a no-op.
+     *   If your app only needs images/videos, prefer [GALLERY_IMAGES_ONLY] / [GALLERY_VIDEO_ONLY]
+     *   (or [GALLERY_ADD_ONLY] for write-only) for the same reason as [GALLERY]'s Android note.
      */
     STORAGE,
 
