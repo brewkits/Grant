@@ -379,6 +379,7 @@ ceremony, not speed.
 | Calendar (read-only) | ✅ | ✅ | `AppGrant.READ_CALENDAR` |
 | Motion / Activity | ✅ | ✅ | Simulator-aware (safe mock on Simulator) |
 | Schedule Exact Alarm | ✅ | ✅ | Android 12+ `SCHEDULE_EXACT_ALARM` |
+| Full-Screen Intent | ✅ | ✅ | `AppGrant.USE_FULL_SCREEN_INTENT` — Android 14+ special access, same shape as Exact Alarm; no-op on iOS |
 | Nearby Wi-Fi Devices | ✅ | ✅ | `NEARBY_WIFI_DEVICES` (API 33+); no-op on iOS |
 | Local Network | ✅ | ✅ | Android 17+ `ACCESS_LOCAL_NETWORK`; no-op below API 37 and on iOS (OS auto-prompts) |
 | App Tracking Transparency | ✅ | ✅ | `AppGrant.APP_TRACKING` — iOS `ATTrackingManager` (requires the optional `grant-tracking` module); Android has no runtime gate for cross-app tracking, so this honestly reports `GRANTED` rather than prompting |

@@ -175,7 +175,7 @@ class GrantHandlerTest {
     }
 
     /**
-     * `AppForegroundSignal` is a real OS hook only on iOS (see `IosGrantHandlerForegroundTest`
+     * `AppForegroundSignal` is a real OS hook only on iOS (see `GrantHandlerForegroundIosTest`
      * for that behavior). Here — running against whatever platform's `actual` this test target
      * compiles against — the contract under test is just "the public API is safe to use and
      * inert to double-close", which holds on every target regardless of whether the underlying

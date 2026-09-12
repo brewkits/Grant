@@ -69,8 +69,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   tests, never asserted directly.
 - **`grant-core-koin`**: added `GrantPlatformModuleAndroidTest` (Robolectric-backed, real
   `Context`), closing the 0%-covered `GrantPlatformModule_androidKt` gap called out in that
-  module's `build.gradle.kts`. Line coverage for the module rose from the 50% floor set at
-  2.5.0 — floor left unchanged since raising it is a separate, deliberate decision.
+  module's `build.gradle.kts`. Line coverage rose from 50% (8/16, set at 2.5.0) to 87.5%
+  (14/16); the Kover floor was raised from 50 to 87 to match.
 
 ### 📝 Notes (version/release TBD by the maintainer)
 

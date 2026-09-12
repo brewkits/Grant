@@ -13,6 +13,7 @@ import org.robolectric.annotation.Config
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertNotNull
+import kotlin.test.assertSame
 
 /**
  * Exercises `grantPlatformModule`'s `single { }` with a real Android [Context], which is what
@@ -57,8 +58,6 @@ class GrantPlatformModuleAndroidTest : KoinTest {
 
         val first = getKoin().get<PlatformGrantDelegate>()
         val second = getKoin().get<PlatformGrantDelegate>()
-        assertNotNull(first)
-        assertNotNull(second)
-        assert(first === second) { "grantPlatformModule's single { } must not create a new delegate per resolution" }
+        assertSame(first, second, "grantPlatformModule's single { } must not create a new delegate per resolution")
     }
 }
