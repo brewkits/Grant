@@ -1,6 +1,6 @@
 # Grant Library — Roadmap
 
-> Last updated: 2026-09-11 · Current stable: **v2.5.0** (confirmed live on Maven Central —
+> Last updated: 2026-09-12 · Current stable: **v2.5.0** (confirmed live on Maven Central —
 > `maven-metadata.xml`'s `<latest>`/`<release>` both read 2.5.0; see `grant-testing`/`grant-bom`'s
 > own section below for that release's contents). JS/Wasm (Tier 1) and the macOS camera/
 > microphone bridge (Tier 2, unpublished — `grant-desktop` is Gradle-only, not in
@@ -67,6 +67,17 @@
   (`MediaProjectionManager`) — both real "does Grant do X?" questions, both a shape mismatch with
   `GrantStatus`'s check-once-remember-later model, documented in `GRANTS.md` rather than left for
   every reader to wonder about.
+
+**4a. `AppGrant.STORAGE` partial-access misclassification** ✅ *fixed*
+- [x] Found during this session's pre-publish doc audit: `STORAGE`'s KDoc wrongly claimed iOS
+  treats it as a no-op always-`GRANTED` value — it actually shares `GALLERY`'s photo-library
+  handler (real `NSPhotoLibraryUsageDescription` dialog). Chasing that doc error down to the
+  Android side surfaced a real bug: `isGalleryRead()` (which routes a "Select photos"-only grant
+  to `PARTIAL_GRANTED`) omitted `STORAGE`, even though `STORAGE.toAndroidGrants()` shares
+  `GALLERY`'s exact API 34+ permission set — so a `STORAGE` request left at "Select photos" was
+  reported `DENIED`/`DENIED_ALWAYS` instead of `PARTIAL_GRANTED`. Same defect class as the 2.3.0
+  gallery/location partial-access bugs. Fixed with a failing-test repro first; both platforms'
+  docs corrected to state `STORAGE` is a legacy `GALLERY` alias.
 
 **5. Not started, needs the maintainer's call before any code** — see the four remaining rows the
 audit table.
