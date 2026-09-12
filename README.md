@@ -367,7 +367,7 @@ ceremony, not speed.
 | Gallery (images only) | ✅ | ✅ | `AppGrant.GALLERY_IMAGES_ONLY` |
 | Gallery (video only) | ✅ | ✅ | `AppGrant.GALLERY_VIDEO_ONLY` |
 | Gallery (save only) | ✅ | ✅ | `AppGrant.GALLERY_ADD_ONLY` — no prompt at all on Android 10+; `PHAccessLevelAddOnly` on iOS |
-| Storage (legacy) | ✅ | ✅ | Pre-API 33 fallback |
+| Storage (legacy) | ✅ | ✅ | `AppGrant.STORAGE` — legacy alias for Gallery (full); same permissions, same `PARTIAL_GRANTED` behavior on both platforms |
 | Location (when in use) | ✅ | ✅ | GPS service check; "Approximate"-only → `PARTIAL_GRANTED` |
 | Location (always) | ✅ | ✅ | Android two-step background flow handled |
 | Notifications | ✅ | ✅ | Android 13+ and legacy flows |
