@@ -1,7 +1,7 @@
 # Migration Guide to Grant
 
-**Version:** 2.5.0
-**Last Updated:** September 5, 2026
+**Version:** 2.6.0
+**Last Updated:** September 12, 2026
 
 This guide helps you migrate from previous versions of Grant or other permission libraries.
 
@@ -9,26 +9,74 @@ This guide helps you migrate from previous versions of Grant or other permission
 
 ## 📚 Table of Contents
 
-1. [Upgrading from Grant 2.4.0 to 2.5.0](#upgrading-from-grant-240-to-250)
-2. [Upgrading from Grant 2.3.0 to 2.4.0](#upgrading-from-grant-230-to-240)
-3. [Upgrading from Grant 2.2.x to 2.3.0](#upgrading-from-grant-22x-to-230)
-4. [Upgrading from Grant 2.1.0 to 2.2.0](#upgrading-from-grant-210-to-220)
-5. [Upgrading from Grant 2.0.0 to 2.1.0](#upgrading-from-grant-200-to-210)
-6. [Upgrading from Grant 1.x to 2.0.0](#upgrading-from-grant-1x-to-200)
-7. [Upgrading from Grant 1.3.x to 1.4.2](#upgrading-from-grant-13x-to-142)
-8. [From moko-permissions](#from-moko-permissions)
-9. [From Google Accompanist](#from-google-accompanist)
-10. [From Custom Implementation](#from-custom-implementation)
-11. [From Native Android APIs](#from-native-android-apis)
-12. [Common Migration Patterns](#common-migration-patterns)
-13. [Troubleshooting](#troubleshooting)
+1. [Upgrading from Grant 2.5.0 to 2.6.0](#upgrading-from-grant-250-to-260)
+2. [Upgrading from Grant 2.4.0 to 2.5.0](#upgrading-from-grant-240-to-250)
+3. [Upgrading from Grant 2.3.0 to 2.4.0](#upgrading-from-grant-230-to-240)
+4. [Upgrading from Grant 2.2.x to 2.3.0](#upgrading-from-grant-22x-to-230)
+5. [Upgrading from Grant 2.1.0 to 2.2.0](#upgrading-from-grant-210-to-220)
+6. [Upgrading from Grant 2.0.0 to 2.1.0](#upgrading-from-grant-200-to-210)
+7. [Upgrading from Grant 1.x to 2.0.0](#upgrading-from-grant-1x-to-200)
+8. [Upgrading from Grant 1.3.x to 1.4.2](#upgrading-from-grant-13x-to-142)
+9. [From moko-permissions](#from-moko-permissions)
+10. [From Google Accompanist](#from-google-accompanist)
+11. [From Custom Implementation](#from-custom-implementation)
+12. [From Native Android APIs](#from-native-android-apis)
+13. [Common Migration Patterns](#common-migration-patterns)
+14. [Troubleshooting](#troubleshooting)
+
+---
+
+## 🚀 Upgrading from Grant 2.5.0 to 2.6.0
+
+### Overview
+
+**Nothing you have to change.** 2.6.0 is purely additive: one new permission, one new opt-in
+method, and one bug fix that only changes behavior for a case that was already wrong. The whole
+family bumps its version number together, as always.
+
+### 1. New: `AppGrant.USE_FULL_SCREEN_INTENT`
+
+Android 14+ special-app-access permission gating full-screen (heads-up, lock-screen-covering)
+notifications — incoming calls, alarms, timers:
+
+```kotlin
+val fullScreenIntentGrant = GrantHandler(grantManager, AppGrant.USE_FULL_SCREEN_INTENT, scope)
+```
+
+Same shape as `SCHEDULE_EXACT_ALARM`: normal (install-time) through API 33, special access on
+API 34+ with no `requestPermissions()` dialog — `request()` opens the dedicated Settings screen
+instead. No-op (`GRANTED`) below API 34 and on iOS. See `GRANTS.md`'s Full-Screen Intent section.
+
+### 2. New: `GrantHandler.autoRefreshOnForeground()`
+
+Opt-in subscription to the platform's "app returned to foreground" signal — real on iOS today
+(`UIApplicationDidBecomeActiveNotification`), an inert no-op elsewhere:
+
+```kotlin
+val foregroundHandle = cameraGrant.autoRefreshOnForeground()
+// later, e.g. in onCleared():
+foregroundHandle.close()
+```
+
+Closes the gap where a `GrantHandler` goes stale after the user changes a grant from Settings
+while the app stays alive in the background. See the README's "Catch grants changed from
+Settings" section.
+
+### 3. Fixed: `AppGrant.STORAGE` partial-access misclassification (Android)
+
+If your app requests `AppGrant.STORAGE` on Android 14+ and a user leaves "Select photos" (partial
+access) selected, `checkStatus()`/`request()` now correctly report `GrantStatus.PARTIAL_GRANTED`
+instead of `DENIED`/`DENIED_ALWAYS`. No code change needed on your side — this only affects
+apps that already handle `PARTIAL_GRANTED`, whose UI will now show correctly instead of
+incorrectly routing users to a rationale/settings-guide dialog for a grant they already gave.
+New code should prefer `AppGrant.GALLERY` over the legacy `STORAGE` alias regardless.
 
 ---
 
 ## 🚀 Upgrading from Grant 2.4.0 to 2.5.0
 
-> **2.5.0 is code-complete and staged for Maven Central; not yet published.** The coordinates
-> below will resolve once the upload is confirmed — see `ROADMAP.md`'s v2.5.0 note for status.
+> **2.5.0 is confirmed live on Maven Central** — `maven-metadata.xml`'s `<latest>`/`<release>`
+> both read 2.5.0.
 
 ### Overview
 
