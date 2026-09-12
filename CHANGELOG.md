@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [Unreleased]
+## [2.6.0] - 2026-09-12
 
 ### ✨ Added
 
@@ -72,11 +72,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   module's `build.gradle.kts`. Line coverage rose from 50% (8/16, set at 2.5.0) to 87.5%
   (14/16); the Kover floor was raised from 50 to 87 to match.
 
-### 📝 Notes (version/release TBD by the maintainer)
+### 📝 Notes
 
-- Not yet assigned a version number or bumped in any `build.gradle.kts` — per this project's
-  `SUPPORT.md` table a new `AppGrant` value is a minor bump, and the family versions in lock-step
-  only when a release is actually being cut (see `CLAUDE.md`'s Publishing section).
+- Whole family bumps to 2.6.0 together (this project releases in lock-step) per `SUPPORT.md`'s
+  "new permission, new API → minor" policy — see `CLAUDE.md`'s Publishing section.
 
 ## [2.5.0] - 2026-09-05
 

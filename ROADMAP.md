@@ -1,21 +1,19 @@
 # Grant Library — Roadmap
 
-> Last updated: 2026-09-12 · Current stable: **v2.5.0** (confirmed live on Maven Central —
-> `maven-metadata.xml`'s `<latest>`/`<release>` both read 2.5.0; see `grant-testing`/`grant-bom`'s
-> own section below for that release's contents). JS/Wasm (Tier 1) and the macOS camera/
-> microphone bridge (Tier 2, unpublished — `grant-desktop` is Gradle-only, not in
-> `create-grant-maven-bundle-auto.sh`'s `MODULES`) shipped a version earlier, in v2.4.0, ahead of
-> the original sequencing below. Next up, version TBD: `AppGrant.USE_FULL_SCREEN_INTENT` (see the
-> **Unreleased** section immediately below — code-complete, not yet assigned a version), then
-> **Group UX** (v2.6.0 below) and **Windows Tier 2.5** (v2.7.0 below, the only multi-platform
-> scope still open) — those labels are planning buckets, not commitments, and have already moved
-> once before (see this file's own v2.4.0/v2.5.0 history) when other work landed first.
+> Last updated: 2026-09-12 · Current stable: **v2.6.0** (`AppGrant.USE_FULL_SCREEN_INTENT` +
+> `GrantHandler.autoRefreshOnForeground()` — see the **v2.6.0** section immediately below).
+> JS/Wasm (Tier 1) and the macOS camera/microphone bridge (Tier 2, unpublished — `grant-desktop`
+> is Gradle-only, not in `create-grant-maven-bundle-auto.sh`'s `MODULES`) shipped a version
+> earlier, in v2.4.0, ahead of the original sequencing below. Next up: **Group UX** (v2.7.0
+> below) and **Windows Tier 2.5** (v2.8.0 below, the only multi-platform scope still open) —
+> those labels are planning buckets, not commitments, and have already moved twice now (see this
+> file's own v2.4.0/v2.5.0/v2.6.0 history) when other work landed first.
 
 ---
 
 ## 🛠️ In Progress / Upcoming
 
-### Unreleased — permission-library functionality audit
+### v2.6.0 — permission-library functionality audit ✅ *shipped*
 
 *Origin: an audit asking a "top 1% mobile PM/BA/SA/principal" review of what real permission-library functionality Grant was still missing (issue tracker had nothing open on this). Ranked findings, highest priority first; items below are what's landed so far.*
 
@@ -91,8 +89,8 @@ calendar-only consumer — the exact regression `grant-location-always` was buil
 `requestAlwaysAuthorization`. Needs its own opt-in module.
 
 **5b. Health Connect (Android) / HealthKit (iOS)** — still blocked on the architecture decision
-this file's own "v2.8.0 — Newest-OS permission coverage" section above already describes in
-detail (Option A vs. B), plus a new, harder blocker found for HealthKit specifically:
+this file's own "v2.9.0 — Newest-OS permission coverage" section further down already describes
+in detail (Option A vs. B), plus a new, harder blocker found for HealthKit specifically:
 `HKHealthStore.authorizationStatus(for:)` deliberately never reveals *read* authorization (Apple
 hides it so apps can't infer a user's health conditions from a denial) — `GrantStatus`'s
 check-and-remember model cannot represent that state honestly, so `checkStatus()` would be
@@ -234,7 +232,7 @@ just unit tests.
 
 **Versioning note**: `grant-testing:2.5.0` and `grant-bom:2.5.0` are artifacts that have never been published before, so per-GAV Maven Central immutability is not the deciding factor here — the family-wide minor bump follows this project's own lock-step versioning convention (one `VERSION` value drives every module's `build.gradle.kts`) and `SUPPORT.md`'s "new module → minor" rule instead. See `docs/MIGRATION_GUIDE.md`'s 2.4.0 → 2.5.0 section for the consumer-facing summary — it is additive-only, no existing type or method changed.
 
-### v2.6.0 — Group UX
+### v2.7.0 — Group UX
 
 **1. Opt-in pre-request rationale for groups**
 - [ ] A single "priming" dialog that explains a whole `GrantGroupHandler` set **before** any system prompt fires, instead of the current per-permission rationale shown **after** a refusal.
@@ -244,11 +242,11 @@ just unit tests.
 
 *Origin: an external evaluation proposed this alongside "permission funnel analytics" and "atomic batch requests". Those two already ship — `GrantEventListener` (v2.1.0) and `GrantGroupHandler` respectively — and the merged pre-request rationale was the one genuinely new idea in the proposal. That an expert reviewer missed both shipped features was itself the finding: `GrantGroupHandler` appeared **zero** times in the README and `GrantEventListener` only once, buried inside a code sample. Both now have their own Features bullet and Usage section.*
 
-### v2.7.0 — Multi-platform expansion (JS/Wasm, macOS, Windows)
+### v2.8.0 — Multi-platform expansion (JS/Wasm, macOS, Windows)
 
 **Tier 1 (JS/Wasm) and the `jvm()` half of Tier 2 (macOS camera/microphone) actually shipped in
 v2.4.0** — see the note at the top of that section above. What's left under this heading, and
-what actually defines v2.7.0's remaining scope, is **Tier 2.5 (Windows)**, not started.
+what actually defines v2.8.0's remaining scope, is **Tier 2.5 (Windows)**, not started.
 
 *Origin: a full-market survey found no general-purpose KMP permission library with working desktop or web support. The closest by reach, **Calf** (1642 ★), ships a `desktopMain` source set for permissions, but `launchMultiplePermissionRequest()` there is an empty function body — it compiles and does nothing. The rule this expansion follows throughout: **a platform ships only when its permission flow is real, verified on the actual OS, and covered by a test that would fail if the implementation regressed to a no-op** — never a silently-inert stub.*
 
@@ -293,7 +291,7 @@ what actually defines v2.7.0's remaining scope, is **Tier 2.5 (Windows)**, not s
 
 **Explicitly out of scope, with reasons** (so it isn't re-litigated by assumption): Linux desktop (no reliable cross-environment signal), watchOS/tvOS (different problem shape, stays in Backlog below), standalone Kotlin/Native `macosArm64`/`macosX64` klib target (can't be consumed by a Compose Desktop app — this is what `grant-desktop`'s `.dylib`-over-JNA approach sidesteps).
 
-### v2.8.0 — Newest-OS permission coverage
+### v2.9.0 — Newest-OS permission coverage
 
 *Origin: an audit of coverage against the newest OS releases, grounded in a connected Android 17 (API 37) device (`pm list permissions -d`, `pm grant`) and the iOS 26.5 SDK/runtime rather than recall. It produced three defect fixes (shipped in #70 and #74) and one genuine gap, below.*
 
@@ -337,10 +335,12 @@ Zero blast radius on `grant-core`; nothing to undo if Health Connect's contract 
 
 **Note on scope vs. the sections below**: this release also carries `grant-core`'s new `js`,
 `wasmJs`, and minimal `jvm()` targets — see **Tier 1** and the `jvm()` half of **Tier 2** under
-the "v2.6.0" heading further down. That work was originally planned for v2.6.0, but landed on
-`main` before this version was cut, and Grant's version numbers come from the 9 published
-modules' `build.gradle.kts` fields, not from this roadmap's planning buckets — so it ships here,
-under 2.4.0, not held back to match the label it was written under. The real macOS TCC bridge
+the "v2.8.0" heading further down (originally planned as "v2.6.0" when this note was written;
+renumbered twice since as other work — v2.5.0's testing/BOM, then v2.6.0's permission-library
+audit — landed ahead of it). That work landed on `main` before this version (2.4.0) was cut, and
+Grant's version numbers come from the 11 published modules' `build.gradle.kts` fields, not from
+this roadmap's planning buckets — so it ships here, under 2.4.0, not held back to match the label
+it was written under. The real macOS TCC bridge
 (`grant-desktop`) is verified but stays **unpublished** — it's Gradle-only and deliberately absent
 from `create-grant-maven-bundle-auto.sh`'s `MODULES` array, so nothing about it changes what
 `grant-core:2.4.0` resolves to on Maven Central.
@@ -379,7 +379,7 @@ from `create-grant-maven-bundle-auto.sh`'s `MODULES` array, so nothing about it 
 *Not committed to a version yet — pulled into a milestone when a consumer actually asks.*
 
 - **Opt-in Handler Registration DSL** (from PR #39 by @RoryKelly) — a `GrantFactory.create { }` block with per-permission `expect/actual` registration (`location()`, `camera()`, …) so K/N DCE can strip *any* unused handler. Five modules are isolated today (`grant-contacts`, `grant-calendar`, `grant-motion`, `grant-bluetooth`, `grant-location-always`); the frameworks still un-strippable from `grant-core` are **CoreLocation** (when-in-use), **Photos**, and **AVFoundation**. Would stay backward compatible — no-arg `create()` keeps registering everything.
-- **macOS** moved out of this list into v2.6.0 above (camera slice shipped via `grant-desktop`, a JVM/Compose Desktop module — not an `appleMain`/Kotlin-Native-target refactor; that approach was evaluated and superseded, see v2.6.0's Tier 2 notes).
+- **macOS** moved out of this list into v2.8.0 above (camera slice shipped via `grant-desktop`, a JVM/Compose Desktop module — not an `appleMain`/Kotlin-Native-target refactor; that approach was evaluated and superseded, see v2.8.0's Tier 2 notes).
 - **watchOS / tvOS targets** — watchOS wants motion + location, but the UIKit-dependent files (`PlatformGrantDelegate.ios.kt`, `PlatformServiceDelegate.ios.kt`, `SimulatorDetector.kt`) must stay iOS-only, so this would still need an `appleMain` split. Each new target also multiplies the publish matrix: the `MODULES` array in `create-grant-maven-bundle-auto.sh`, the eight version bumps, and the bundle's signature-count check all scale with it.
 - **Wear OS / Android TV** — minimal permission surface, sensor-only grants; `requestWithCustomUi()` examples for non-phone form factors.
 - **System pickers as a first-class API** — the Android Photo Picker (`PICK_IMAGES`) needs no runtime permission at all, and Android 17 extends the same idea to the local network: adopting a system-mediated device picker skips the `ACCESS_LOCAL_NETWORK` prompt entirely. Contact Picker follows the same shape. The platform direction is clear — **pickers are replacing permissions** — so the win is an `AppGrant`-level surface that transparently chooses picker-vs-permission per API level, rather than three separate recipes. Recipes already shipped at `docs/recipes/photo-picker-fallback.md` and in the Contact Picker guidance.
@@ -395,6 +395,32 @@ from `create-grant-maven-bundle-auto.sh`'s `MODULES` array, so nothing about it 
   Stability section for the full note.
 
 ## ✅ Released
+
+### v2.6.0 (2026-09-12)
+- **`AppGrant.USE_FULL_SCREEN_INTENT`** — Android 14+ special-app-access permission for
+  heads-up/lock-screen-covering notifications (incoming calls, alarms), same shape as
+  `SCHEDULE_EXACT_ALARM`. No-op `GRANTED` on iOS and below API 34. `AppGrant` now covers 24
+  permissions.
+- **`GrantHandler.autoRefreshOnForeground()`** — opt-in subscription to the platform's "app
+  returned to foreground" signal, real on iOS today (`UIApplicationDidBecomeActiveNotification`).
+- **Fixed**: `AppGrant.STORAGE` misclassified Android 14+ "Select photos" partial access as
+  `DENIED`/`DENIED_ALWAYS` instead of `PARTIAL_GRANTED` — `isGalleryRead()` omitted `STORAGE`
+  despite it sharing `GALLERY`'s exact permission mapping. Same defect class as 2.3.0's
+  gallery/location partial-access bugs.
+- Doc corrections: `AppGrant.STORAGE`'s KDoc/`GRANTS.md` wrongly claimed iOS treats it as an
+  always-`GRANTED` no-op; gallery re-selection (Android 14+) documented as needing no new API.
+- `grant-core-koin` line coverage 50% → 87.5%; Kover floor raised to match.
+
+### v2.5.0 (2026-09-05)
+- **`grant-testing` module** — official test doubles (`FakeGrantManager`, `FakeServiceManager`,
+  `MultiGrantFakeManager`, `FakeGrantStore`), consolidated from seven near-duplicate `internal`
+  copies previously living inside `grant-core`'s and five opt-in modules' own `commonTest`
+  source sets.
+- **`grant-bom` module** — a Maven BOM (Gradle `java-platform`) pinning every published Kotlin
+  module to a matching version.
+- Purely additive: no existing type, method, or behavior changed.
+- **Confirmed live on Maven Central 2026-09-05** — `maven-metadata.xml`'s `<latest>`/`<release>`
+  both read 2.5.0.
 
 ### v2.4.0 (2026-09-05)
 - **Bluetooth granularity**: `AppGrant.BLUETOOTH_SCAN`/`BLUETOOTH_CONNECT` split from the
