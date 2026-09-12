@@ -173,4 +173,33 @@ class GrantHandlerTest {
         val result1 = deferred1.await()
         assertEquals(GrantStatus.GRANTED, result1)
     }
+
+    /**
+     * `AppForegroundSignal` is a real OS hook only on iOS (see `GrantHandlerForegroundIosTest`
+     * for that behavior). Here — running against whatever platform's `actual` this test target
+     * compiles against — the contract under test is just "the public API is safe to use and
+     * inert to double-close", which holds on every target regardless of whether the underlying
+     * signal is real.
+     */
+    @Test
+    fun `autoRefreshOnForeground returns a handle that is safe to close twice`() = testScope.runTest {
+        val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, this)
+
+        val handle = handler.autoRefreshOnForeground()
+        handle.close()
+        handle.close() // must not throw
+    }
+
+    @Test
+    fun `autoRefreshOnForeground handle is inert after the owning scope completes`() = testScope.runTest {
+        val job = Job()
+        val scope = CoroutineScope(coroutineContext + job)
+        val handler = GrantHandler(mockGrantManager, AppGrant.CAMERA, scope)
+
+        handler.autoRefreshOnForeground()
+        job.complete()
+        job.join()
+        // No assertion beyond "this completes without throwing" -- the scope-completion cleanup
+        // path (invokeOnCompletion) must not crash when the Job finishes before an explicit close().
+    }
 }

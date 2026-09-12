@@ -6,7 +6,79 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [2.5.0] - Unreleased
+## [Unreleased]
+
+### ✨ Added
+
+- **`AppGrant.USE_FULL_SCREEN_INTENT`** — the same special-app-access shape as
+  `SCHEDULE_EXACT_ALARM`: a normal (install-time) permission through Android 13, turned into a
+  special-access one on **Android 14 (API 34)** for apps that are not a default dialer or alarm
+  app. `request()` opens the dedicated "Full screen notifications" settings screen — there is no
+  `requestPermissions()` dialog for it — and an unresolved status reports `DENIED`, never
+  `DENIED_ALWAYS`, since the toggle has no permanent-denial state. No-op (`GRANTED`) below API 34
+  and on iOS, which has no separate authorization for it. `AppGrant` now covers 24 permissions.
+- **`GrantHandler.autoRefreshOnForeground()`** — opt-in subscription to the platform's "app
+  returned to foreground" signal that calls `refreshStatus()` automatically, so a permission
+  changed from Settings while the app stayed alive is picked up without the host wiring a
+  lifecycle observer to `onReturnFromSettings()` itself. Real only on iOS today
+  (`UIApplicationDidBecomeActiveNotification`) — Android, `jvm`, and `js`/`wasmJs` log once and
+  return an inert handle, since the highest-value case this closes (a grant changing behind a
+  live process) is narrower on those platforms. Returns an `AutoCloseable`; closing it (or
+  letting the owning `CoroutineScope` complete) unsubscribes.
+
+### 🐛 Fixed
+
+- **`AppGrant.STORAGE` reported DENIED/DENIED_ALWAYS instead of `PARTIAL_GRANTED` on Android 14+
+  "Select photos".** `STORAGE.toAndroidGrants()` maps to the exact same `[IMAGES, VIDEO,
+  USER_SELECTED]` set as `GALLERY` on API 34+ (they share one `when` branch), but the internal
+  `isGalleryRead()` check that routes a USER_SELECTED-only grant to `PARTIAL_GRANTED` only
+  listed `GALLERY`/`GALLERY_IMAGES_ONLY`/`GALLERY_VIDEO_ONLY` — `STORAGE` fell through to
+  `classifyDenial()` instead, misclassifying a real partial grant as denied. Same defect class
+  as the 2.3.0 gallery/location partial-access bugs. Found while auditing `STORAGE`'s docs (see
+  below), confirmed with a failing-test repro before fixing. Regression tests added to
+  `PlatformGrantDelegateGalleryFullAccessTest`.
+
+### 📝 Documentation
+
+- **Gallery re-selection (Android 14+).** Clarified that letting a user add more photos after
+  `PARTIAL_GRANTED` needs no new API — [Android's own guidance](https://developer.android.com/about/versions/14/changes/partial-photo-video-access)
+  is to call `request()`/`requestSuspend()` again for the same grant, which already works today
+  since `toAndroidGrants()` includes `READ_MEDIA_VISUAL_USER_SELECTED`. (An earlier internal note
+  referenced a `MediaStore.ACTION_USER_SELECT_IMAGES_FOR_APP` intent for this — that constant does
+  not exist in the Android SDK, verified directly against the API 37.1 platform jar; corrected
+  before any code was written against it.)
+- **Two "why not covered" entries added**: biometrics (`BiometricPrompt`/`LocalAuthentication` —
+  a one-shot credential check with no persistent grant state, not a `GrantStatus` shape at all)
+  and screen recording (`MediaProjectionManager` — a one-shot `startActivityForResult` consent,
+  same shape mismatch that already keeps Windows `ServiceManager`-only).
+- **Corrected `AppGrant.STORAGE`'s KDoc and `GRANTS.md` entry** on both platforms: iOS was wrongly
+  documented as a no-op that's always `GRANTED` (it isn't — see above, it needs
+  `NSPhotoLibraryUsageDescription` and shows a real dialog); Android was documented as
+  `READ_EXTERNAL_STORAGE`/`WRITE_EXTERNAL_STORAGE` only, missing the API 33+ `READ_MEDIA_*`
+  behavior and wrongly implying write access is ever requested (`STORAGE` never requests write
+  access on either platform). Both docs now state plainly that `STORAGE` is a legacy alias for
+  `GALLERY` and point new code at `GALLERY` instead.
+- **README**: documented `autoRefreshOnForeground()` (added earlier in this Unreleased section
+  but previously had zero README presence).
+
+### 🧪 Testing
+
+- Pinned `AppForegroundSignal`'s "honest no-op" contract with an explicit
+  `isSupported == false` test on Android, `jvm`, and browser (`webTest`, shared by `js`/`wasmJs`)
+  — previously only implied by `GrantHandlerTest`'s cross-platform `autoRefreshOnForeground`
+  tests, never asserted directly.
+- **`grant-core-koin`**: added `GrantPlatformModuleAndroidTest` (Robolectric-backed, real
+  `Context`), closing the 0%-covered `GrantPlatformModule_androidKt` gap called out in that
+  module's `build.gradle.kts`. Line coverage rose from 50% (8/16, set at 2.5.0) to 87.5%
+  (14/16); the Kover floor was raised from 50 to 87 to match.
+
+### 📝 Notes (version/release TBD by the maintainer)
+
+- Not yet assigned a version number or bumped in any `build.gradle.kts` — per this project's
+  `SUPPORT.md` table a new `AppGrant` value is a minor bump, and the family versions in lock-step
+  only when a release is actually being cut (see `CLAUDE.md`'s Publishing section).
+
+## [2.5.0] - 2026-09-05
 
 ### ✨ Added
 

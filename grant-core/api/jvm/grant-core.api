@@ -22,6 +22,7 @@ public class dev/brewkits/grant/AppGrant : java/lang/Enum, dev/brewkits/grant/Gr
 	public static final field READ_CONTACTS Ldev/brewkits/grant/AppGrant;
 	public static final field SCHEDULE_EXACT_ALARM Ldev/brewkits/grant/AppGrant;
 	public static final field STORAGE Ldev/brewkits/grant/AppGrant;
+	public static final field USE_FULL_SCREEN_INTENT Ldev/brewkits/grant/AppGrant;
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
 	public fun getIdentifier ()Ljava/lang/String;
 	public fun getRequiresBackgroundUpgrade ()Z
@@ -197,6 +198,7 @@ public final class dev/brewkits/grant/GrantGroupUiState {
 public final class dev/brewkits/grant/GrantHandler {
 	public fun <init> (Ldev/brewkits/grant/GrantManager;Ldev/brewkits/grant/GrantPermission;Lkotlinx/coroutines/CoroutineScope;Ldev/brewkits/grant/SavedStateDelegate;Ldev/brewkits/grant/GrantEventListener;)V
 	public synthetic fun <init> (Ldev/brewkits/grant/GrantManager;Ldev/brewkits/grant/GrantPermission;Lkotlinx/coroutines/CoroutineScope;Ldev/brewkits/grant/SavedStateDelegate;Ldev/brewkits/grant/GrantEventListener;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun autoRefreshOnForeground ()Ljava/lang/AutoCloseable;
 	public final fun getState ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getStatus ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun onDismiss ()V

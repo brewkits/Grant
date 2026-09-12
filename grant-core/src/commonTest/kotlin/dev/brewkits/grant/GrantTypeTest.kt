@@ -9,7 +9,7 @@ class GrantTypeTest {
     @Test
     fun testAllGrantTypesExist() {
         val grants = AppGrant.entries
-        assertEquals(23, grants.size, "Expected 23 grant types")
+        assertEquals(24, grants.size, "Expected 24 grant types")
     }
 
     @Test
@@ -39,6 +39,7 @@ class GrantTypeTest {
         assertTrue(grants.contains(AppGrant.NEARBY_WIFI_DEVICES), "NEARBY_WIFI_DEVICES grant should exist")
         assertTrue(grants.contains(AppGrant.LOCAL_NETWORK), "LOCAL_NETWORK grant should exist")
         assertTrue(grants.contains(AppGrant.GALLERY_ADD_ONLY), "GALLERY_ADD_ONLY grant should exist")
+        assertTrue(grants.contains(AppGrant.USE_FULL_SCREEN_INTENT), "USE_FULL_SCREEN_INTENT grant should exist")
     }
 
     @Test

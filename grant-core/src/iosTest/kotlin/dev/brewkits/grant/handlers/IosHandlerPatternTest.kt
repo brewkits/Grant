@@ -126,7 +126,9 @@ private object IosHandlerDispatchValidator {
         AppGrant.SCHEDULE_EXACT_ALARM -> stubHandler("EXACT_ALARM")
 
         AppGrant.NEARBY_WIFI_DEVICES,
-        AppGrant.LOCAL_NETWORK        -> stubHandler("ALWAYS_GRANTED")
+        AppGrant.LOCAL_NETWORK,
+        // Android-only concept (API 34+); iOS has no separate authorization for it.
+        AppGrant.USE_FULL_SCREEN_INTENT -> stubHandler("ALWAYS_GRANTED")
     }
 
     private fun stubHandler(name: String) = object : PermissionHandler {

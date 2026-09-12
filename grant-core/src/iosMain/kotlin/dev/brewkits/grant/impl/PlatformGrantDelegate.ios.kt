@@ -316,7 +316,10 @@ public actual class PlatformGrantDelegate(
         AppGrant.NEARBY_WIFI_DEVICES,
         // iOS has no API to query or explicitly request local-network authorization — the
         // OS prompts on the first LAN access when NSLocalNetworkUsageDescription is present.
-        AppGrant.LOCAL_NETWORK        -> AlwaysGrantedHandler
+        AppGrant.LOCAL_NETWORK,
+        // Android-only concept (full-screen intent from a notification, gated on API 34+).
+        // iOS has no separate authorization for it beyond the standard NOTIFICATION one.
+        AppGrant.USE_FULL_SCREEN_INTENT -> AlwaysGrantedHandler
     }
 
     private fun getOptionalHandler(grant: AppGrant, moduleName: String, initCode: String): PermissionHandler {

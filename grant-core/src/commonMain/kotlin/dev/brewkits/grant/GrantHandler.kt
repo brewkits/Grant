@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -261,6 +262,42 @@ public class GrantHandler(
      */
     public fun onReturnFromSettings() {
         refreshStatus()
+    }
+
+    /**
+     * Subscribes this handler to the platform's "app returned to foreground" signal and calls
+     * [refreshStatus] automatically on it — the same effect as calling [onReturnFromSettings]
+     * yourself on every resume, without wiring a lifecycle observer up to it by hand.
+     *
+     * **Real only on iOS today.** iOS can change photo, location, and other grants from Settings
+     * while the app stays alive in the background, so a handler constructed before that trip has
+     * no way to notice on its own. On Android, `jvm`, and `js`/`wasmJs` this logs once and the
+     * returned handle is inert: [dev.brewkits.grant.AppForegroundSignal] never fires there. That
+     * is a real, if narrower, gap on Android specifically — *revoking* a permission from Settings
+     * kills the app process there in most cases (so a fresh `GrantHandler` already re-reads
+     * correct status on the next launch), but *granting* a previously-denied one does not, and
+     * an app not using the built-in `GrantDialog` (whose settings-guide flow already calls
+     * [refreshStatus] after [dev.brewkits.grant.GrantManager.openSettings]) would still need to
+     * call [onReturnFromSettings] itself for that case.
+     *
+     * **Opt-in and additive** — nothing calls this for you, and the default flow is unchanged
+     * without it. Close the returned handle when this handler's owner is done with it (a
+     * ViewModel's `onCleared()`, for instance); letting [scope] complete does this automatically
+     * as a safety net, so a leaked handle is not a leaked subscription.
+     */
+    public fun autoRefreshOnForeground(): AutoCloseable {
+        if (!AppForegroundSignal.isSupported) {
+            GrantLogger.i(
+                TAG,
+                "autoRefreshOnForeground() has no real OS signal to subscribe to on this " +
+                    "platform yet (iOS only for now) -- call refreshStatus() or " +
+                    "onReturnFromSettings() yourself instead.",
+            )
+        }
+        val token = AppForegroundSignal.addListener { refreshStatus() }
+        val handle = AutoCloseable { AppForegroundSignal.removeListener(token) }
+        scope.coroutineContext[Job]?.invokeOnCompletion { handle.close() }
+        return handle
     }
 
     /**

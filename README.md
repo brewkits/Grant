@@ -53,7 +53,7 @@ fun CameraScreen(viewModel: CameraViewModel) {
 - **iOS crash guard** — validates `Info.plist` keys before requesting, turning the classic `SIGABRT` production crash into a clear error.
 - **Android process-death recovery** — a request in flight survives system-initiated process death via `SavedStateHandle`, with no timeouts.
 - **Deadlock-free by construction** — reentrant locking plus a `withTimeout` test policy that converts silent deadlocks into failing tests.
-- **23 built-in permissions** — Camera, Gallery (incl. Android 14 partial access and a save-only mode that never prompts), Location (incl. "Approximate"-only), Bluetooth, Local Network (Android 17), App Tracking Transparency (iOS), and more — plus `RawPermission` for anything the library doesn't ship yet.
+- **24 built-in permissions** — Camera, Gallery (incl. Android 14 partial access and a save-only mode that never prompts), Location (incl. "Approximate"-only), Bluetooth, Local Network (Android 17), App Tracking Transparency (iOS), Full-Screen Intent (Android 14+), and more — plus `RawPermission` for anything the library doesn't ship yet.
 - **Browser target** (`grant-core` only) — real `navigator.permissions`/`getUserMedia`/`Notification`/`Geolocation` checks for Camera, Microphone, Location, and Notification on `js` and `wasmJs`, the latter specifically for Compose Multiplatform Web. Every other grant honestly reports unsupported rather than a fabricated `GRANTED`.
 - **Permission groups as one unit** — `GrantGroupHandler` requests several permissions in a single batch, drives one `StateFlow` for the whole group, and fires `onAllGranted` only when every one is satisfied.
 - **Funnel analytics** — attach an optional `GrantEventListener` to any handler and observe every stage: requested, granted, denied, rationale shown, settings guide shown, settings opened.
@@ -265,6 +265,29 @@ fun startTracking() {
 }
 ```
 
+### Catch grants changed from Settings (iOS)
+
+A user can leave your app running in the background, flip a permission in Settings, and come
+back — a `GrantHandler` constructed before that trip goes stale with no signal to catch it.
+`autoRefreshOnForeground()` subscribes to the real foreground signal where one exists (iOS's
+`UIApplicationDidBecomeActiveNotification`) and calls `refreshStatus()` for you on every
+transition:
+
+```kotlin
+class CameraViewModel(grantManager: GrantManager, scope: CoroutineScope) {
+    val cameraGrant = GrantHandler(grantManager, AppGrant.CAMERA, scope)
+    private val foregroundHandle = cameraGrant.autoRefreshOnForeground()
+
+    override fun onCleared() {
+        foregroundHandle.close() // also closes automatically when `scope`'s Job completes
+    }
+}
+```
+
+Android, `jvm`, and browser have no equivalent OS-wide signal today, so the call is a documented
+no-op there (logged once, not silently swallowed) — call `refreshStatus()` or
+`onReturnFromSettings()` yourself from whatever lifecycle hook your platform offers instead.
+
 ## Why Grant?
 
 Most KMP permission libraries are thin wrappers around the native APIs. Grant is built around the failure modes those wrappers hit in production:
@@ -331,7 +354,7 @@ ceremony, not speed.
 
 ## Supported permissions
 
-23 built-in permissions across Camera, Microphone, Gallery (read and save-only), Storage, Location, Notifications, Bluetooth (combined, or scan-only / connect-only separately), Contacts, Calendar, Motion, Exact Alarms, Nearby Wi-Fi, Local Network, and App Tracking Transparency — anything else via `RawPermission`.
+24 built-in permissions across Camera, Microphone, Gallery (read and save-only), Storage, Location, Notifications, Bluetooth (combined, or scan-only / connect-only separately), Contacts, Calendar, Motion, Exact Alarms, Full-Screen Intent, Nearby Wi-Fi, Local Network, and App Tracking Transparency — anything else via `RawPermission`.
 
 <details>
 <summary><strong>Full permission matrix</strong></summary>
@@ -344,7 +367,7 @@ ceremony, not speed.
 | Gallery (images only) | ✅ | ✅ | `AppGrant.GALLERY_IMAGES_ONLY` |
 | Gallery (video only) | ✅ | ✅ | `AppGrant.GALLERY_VIDEO_ONLY` |
 | Gallery (save only) | ✅ | ✅ | `AppGrant.GALLERY_ADD_ONLY` — no prompt at all on Android 10+; `PHAccessLevelAddOnly` on iOS |
-| Storage (legacy) | ✅ | ✅ | Pre-API 33 fallback |
+| Storage (legacy) | ✅ | ✅ | `AppGrant.STORAGE` — legacy alias for Gallery (full); same permissions, same `PARTIAL_GRANTED` behavior on both platforms |
 | Location (when in use) | ✅ | ✅ | GPS service check; "Approximate"-only → `PARTIAL_GRANTED` |
 | Location (always) | ✅ | ✅ | Android two-step background flow handled |
 | Notifications | ✅ | ✅ | Android 13+ and legacy flows |
@@ -356,6 +379,7 @@ ceremony, not speed.
 | Calendar (read-only) | ✅ | ✅ | `AppGrant.READ_CALENDAR` |
 | Motion / Activity | ✅ | ✅ | Simulator-aware (safe mock on Simulator) |
 | Schedule Exact Alarm | ✅ | ✅ | Android 12+ `SCHEDULE_EXACT_ALARM` |
+| Full-Screen Intent | ✅ | ✅ | `AppGrant.USE_FULL_SCREEN_INTENT` — Android 14+ special access, same shape as Exact Alarm; no-op on iOS |
 | Nearby Wi-Fi Devices | ✅ | ✅ | `NEARBY_WIFI_DEVICES` (API 33+); no-op on iOS |
 | Local Network | ✅ | ✅ | Android 17+ `ACCESS_LOCAL_NETWORK`; no-op below API 37 and on iOS (OS auto-prompts) |
 | App Tracking Transparency | ✅ | ✅ | `AppGrant.APP_TRACKING` — iOS `ATTrackingManager` (requires the optional `grant-tracking` module); Android has no runtime gate for cross-app tracking, so this honestly reports `GRANTED` rather than prompting |

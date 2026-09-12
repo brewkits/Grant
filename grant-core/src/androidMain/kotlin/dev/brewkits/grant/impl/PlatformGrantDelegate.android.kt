@@ -321,7 +321,8 @@ public actual class PlatformGrantDelegate(
         ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
 
     private fun AppGrant.isGalleryRead(): Boolean =
-        this == AppGrant.GALLERY || this == AppGrant.GALLERY_IMAGES_ONLY || this == AppGrant.GALLERY_VIDEO_ONLY
+        this == AppGrant.GALLERY || this == AppGrant.STORAGE ||
+            this == AppGrant.GALLERY_IMAGES_ONLY || this == AppGrant.GALLERY_VIDEO_ONLY
 
     public actual suspend fun request(grant: GrantPermission): GrantStatus {
         return getMutexFor(grant.identifier).withLock {
@@ -369,6 +370,12 @@ public actual class PlatformGrantDelegate(
         // screen, so that is what "requesting" means here.
         if (grant == AppGrant.SCHEDULE_EXACT_ALARM && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             return requestExactAlarmAccess(currentStatus)
+        }
+
+        // USE_FULL_SCREEN_INTENT is the same shape as SCHEDULE_EXACT_ALARM above: special app
+        // access on API 34+, no requestPermissions() dialog exists for it at all.
+        if (grant == AppGrant.USE_FULL_SCREEN_INTENT && Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            return requestFullScreenIntentAccess(currentStatus)
         }
 
         val allPossiblePermissions = when (grant) {
@@ -693,6 +700,36 @@ public actual class PlatformGrantDelegate(
         }
     }
 
+    /**
+     * Sends the user to the "Full screen notifications" special-access screen, the platform's
+     * actual request flow for [AppGrant.USE_FULL_SCREEN_INTENT] — see the call site in
+     * [requestInternal] for why `requestPermissions()` cannot work for it. Mirrors
+     * [requestExactAlarmAccess] exactly, including the "unchanged status, re-read on resume"
+     * contract.
+     */
+    private fun requestFullScreenIntentAccess(currentStatus: GrantStatus): GrantStatus {
+        store.setRequested(AppGrant.USE_FULL_SCREEN_INTENT)
+        statusCacheMap.remove(AppGrant.USE_FULL_SCREEN_INTENT.identifier)
+
+        return try {
+            val intent = android.content.Intent(
+                android.provider.Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
+                android.net.Uri.fromParts("package", context.packageName, null)
+            ).apply { addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK) }
+            context.startActivity(intent)
+            GrantLogger.i(
+                TAG,
+                "Opened the full-screen-intent settings screen. Re-read the status when your " +
+                    "app resumes (GrantHandler.onReturnFromSettings()); this call cannot " +
+                    "observe the user's choice itself.",
+            )
+            currentStatus
+        } catch (e: Exception) {
+            GrantLogger.e(TAG, "Could not open the full-screen-intent settings screen", e)
+            currentStatus
+        }
+    }
+
     public actual fun openSettings() {
         try {
             val intent = android.content.Intent(
@@ -729,6 +766,19 @@ public actual class PlatformGrantDelegate(
                     notificationStatusCache = status to SystemClock.elapsedRealtime()
                     status
                 } else null
+            }
+            AppGrant.USE_FULL_SCREEN_INTENT -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? android.app.NotificationManager
+                    // DENIED, deliberately not DENIED_ALWAYS — same reasoning as
+                    // SCHEDULE_EXACT_ALARM above: special app access has no permanent-denial
+                    // state, the toggle stays in Settings forever, and re-requesting reopens the
+                    // exact same screen (see requestFullScreenIntentAccess()). DENIED_ALWAYS
+                    // would instead route through the settings-guide's openSettings(), which
+                    // lands on the app-details page — no such toggle lives there.
+                    if (notificationManager != null && notificationManager.canUseFullScreenIntent()) GrantStatus.GRANTED
+                    else if (store.isRequestedBefore(grant)) GrantStatus.DENIED else GrantStatus.NOT_DETERMINED
+                } else GrantStatus.GRANTED
             }
             else -> null
         }
@@ -842,6 +892,14 @@ public actual class PlatformGrantDelegate(
             AppGrant.APP_TRACKING -> emptyList()
             AppGrant.LOCAL_NETWORK ->
                 if (Build.VERSION.SDK_INT >= 37 && targetSdkVersion >= 37) listOf(ACCESS_LOCAL_NETWORK)
+                else emptyList()
+            // A normal (install-time) permission through API 33; API 34 turned it into special
+            // access with no requestPermissions() dialog at all — see requestInternal()'s
+            // dedicated branch and getGrantStatusOverride() for the real check/request flow.
+            // Kept here (as SCHEDULE_EXACT_ALARM is) for callers that introspect the mapping.
+            AppGrant.USE_FULL_SCREEN_INTENT ->
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+                    listOf(Manifest.permission.USE_FULL_SCREEN_INTENT)
                 else emptyList()
         }
     }
