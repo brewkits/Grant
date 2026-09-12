@@ -321,7 +321,8 @@ public actual class PlatformGrantDelegate(
         ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
 
     private fun AppGrant.isGalleryRead(): Boolean =
-        this == AppGrant.GALLERY || this == AppGrant.GALLERY_IMAGES_ONLY || this == AppGrant.GALLERY_VIDEO_ONLY
+        this == AppGrant.GALLERY || this == AppGrant.STORAGE ||
+            this == AppGrant.GALLERY_IMAGES_ONLY || this == AppGrant.GALLERY_VIDEO_ONLY
 
     public actual suspend fun request(grant: GrantPermission): GrantStatus {
         return getMutexFor(grant.identifier).withLock {

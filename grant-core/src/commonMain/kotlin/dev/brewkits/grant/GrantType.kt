@@ -62,13 +62,19 @@ public enum class AppGrant : GrantPermission {
     GALLERY_ADD_ONLY,
 
     /**
-     * Access to shared external storage.
+     * Access to shared external storage — a legacy alias that requests the exact same
+     * permissions as [GALLERY] on every Android version and iOS; kept for apps migrating from
+     * an older storage-permission model. Never requests write access on either platform.
      *
-     * - **Android**: `READ_EXTERNAL_STORAGE` / `WRITE_EXTERNAL_STORAGE`.
+     * - **Android**: same mapping as [GALLERY] — `READ_MEDIA_IMAGES` + `READ_MEDIA_VIDEO`
+     *   (API 33+, with Android 14+ "Partial Access" reporting [GrantStatus.PARTIAL_GRANTED])
+     *   or `READ_EXTERNAL_STORAGE` below that.
      * - **iOS**: no separate sandbox concept, so this maps to the same photo library handler as
      *   [GALLERY] — `NSPhotoLibraryUsageDescription` and a real system dialog, not a no-op.
-     *   If your app only needs images/videos, prefer [GALLERY_IMAGES_ONLY] / [GALLERY_VIDEO_ONLY]
-     *   (or [GALLERY_ADD_ONLY] for write-only) for the same reason as [GALLERY]'s Android note.
+     *
+     * If your app only needs images/videos, prefer [GALLERY] (or [GALLERY_IMAGES_ONLY] /
+     * [GALLERY_VIDEO_ONLY] / [GALLERY_ADD_ONLY] for narrower scope) — new code should not
+     * reach for this alias.
      */
     STORAGE,
 

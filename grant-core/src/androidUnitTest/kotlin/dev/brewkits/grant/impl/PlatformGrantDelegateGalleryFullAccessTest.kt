@@ -18,7 +18,7 @@ import kotlin.test.assertEquals
 
 /**
  * Regression tests for the 2.3.0 gallery full-access misclassification (found via the Lam
- * gallery P0, 2026-07-09).
+ * gallery P0, 2026-07-09), plus the related STORAGE/isGalleryRead() gap found in this session.
  *
  * On API 34+, `GALLERY.toAndroidGrants()` includes `READ_MEDIA_VISUAL_USER_SELECTED` so the
  * system dialog offers "Select photos" — but full access must be judged on the REQUIRED
@@ -137,6 +137,30 @@ class PlatformGrantDelegateGalleryFullAccessTest {
         grant(Manifest.permission.ACCESS_FINE_LOCATION)
 
         assertEquals(GrantStatus.GRANTED, delegate.checkStatus(AppGrant.LOCATION))
+    }
+
+    // ── STORAGE partial access (isGalleryRead() previously omitted STORAGE) ──
+    //
+    // AppGrant.STORAGE.toAndroidGrants() maps to the exact same [IMAGES, VIDEO,
+    // USER_SELECTED] set as AppGrant.GALLERY on API 34+ (they share one `when` branch), but
+    // isGalleryRead() only listed GALLERY/GALLERY_IMAGES_ONLY/GALLERY_VIDEO_ONLY — so a user
+    // who picked "Select photos" for a STORAGE request fell through to classifyDenial()
+    // instead of being reported PARTIAL_GRANTED, misclassifying a real partial grant as
+    // DENIED/DENIED_ALWAYS. Same defect class as the two bugs already regression-tested above.
+
+    @Test
+    fun `STORAGE with USER_SELECTED alone is PARTIAL access`() = runTest {
+        grant(USER_SELECTED)
+
+        assertEquals(GrantStatus.PARTIAL_GRANTED, delegate.checkStatus(AppGrant.STORAGE))
+    }
+
+    @Test
+    fun `STORAGE with IMAGES and VIDEO granted is FULL access`() = runTest {
+        grant(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO)
+        store.setRequested(AppGrant.STORAGE)
+
+        assertEquals(GrantStatus.GRANTED, delegate.checkStatus(AppGrant.STORAGE))
     }
 
     @Test

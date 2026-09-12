@@ -26,6 +26,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   live process) is narrower on those platforms. Returns an `AutoCloseable`; closing it (or
   letting the owning `CoroutineScope` complete) unsubscribes.
 
+### 🐛 Fixed
+
+- **`AppGrant.STORAGE` reported DENIED/DENIED_ALWAYS instead of `PARTIAL_GRANTED` on Android 14+
+  "Select photos".** `STORAGE.toAndroidGrants()` maps to the exact same `[IMAGES, VIDEO,
+  USER_SELECTED]` set as `GALLERY` on API 34+ (they share one `when` branch), but the internal
+  `isGalleryRead()` check that routes a USER_SELECTED-only grant to `PARTIAL_GRANTED` only
+  listed `GALLERY`/`GALLERY_IMAGES_ONLY`/`GALLERY_VIDEO_ONLY` — `STORAGE` fell through to
+  `classifyDenial()` instead, misclassifying a real partial grant as denied. Same defect class
+  as the 2.3.0 gallery/location partial-access bugs. Found while auditing `STORAGE`'s docs (see
+  below), confirmed with a failing-test repro before fixing. Regression tests added to
+  `PlatformGrantDelegateGalleryFullAccessTest`.
+
 ### 📝 Documentation
 
 - **Gallery re-selection (Android 14+).** Clarified that letting a user add more photos after
@@ -39,11 +51,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   a one-shot credential check with no persistent grant state, not a `GrantStatus` shape at all)
   and screen recording (`MediaProjectionManager` — a one-shot `startActivityForResult` consent,
   same shape mismatch that already keeps Windows `ServiceManager`-only).
-- **Fixed a wrong `AppGrant.STORAGE` iOS claim** in `GrantType.kt`'s KDoc and `GRANTS.md`: both
-  said iOS treats it as a no-op that's always `GRANTED`. It does not — `handlerFor()` maps
-  `STORAGE` to the same photo-library handler as `GALLERY`, so it needs
-  `NSPhotoLibraryUsageDescription` and shows a real system dialog, confirmed against a live
-  build during this session's manual demo testing. Doc-only fix; no behavior changed.
+- **Corrected `AppGrant.STORAGE`'s KDoc and `GRANTS.md` entry** on both platforms: iOS was wrongly
+  documented as a no-op that's always `GRANTED` (it isn't — see above, it needs
+  `NSPhotoLibraryUsageDescription` and shows a real dialog); Android was documented as
+  `READ_EXTERNAL_STORAGE`/`WRITE_EXTERNAL_STORAGE` only, missing the API 33+ `READ_MEDIA_*`
+  behavior and wrongly implying write access is ever requested (`STORAGE` never requests write
+  access on either platform). Both docs now state plainly that `STORAGE` is a legacy alias for
+  `GALLERY` and point new code at `GALLERY` instead.
 - **README**: documented `autoRefreshOnForeground()` (added earlier in this Unreleased section
   but previously had zero README presence).
 

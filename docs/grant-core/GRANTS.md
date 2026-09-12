@@ -772,10 +772,15 @@ val motionGrant = GrantHandler(
 ```
 
 ### Storage
-- **Android**: `READ_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE`
+
+A legacy alias — requests the exact same permissions as `GALLERY` on every platform, never
+write access. New code should reach for `GALLERY` (or `GALLERY_IMAGES_ONLY` /
+`GALLERY_VIDEO_ONLY` / `GALLERY_ADD_ONLY` for narrower scope) instead.
+
+- **Android**: same mapping as `GALLERY` — `READ_MEDIA_IMAGES` + `READ_MEDIA_VIDEO` (API 33+,
+  Android 14+ "Select photos" reports `PARTIAL_GRANTED`) or `READ_EXTERNAL_STORAGE` below that.
 - **iOS**: no separate sandbox concept, so this maps to the same photo library handler as
-  `GALLERY` — real `NSPhotoLibraryUsageDescription` prompt, not a no-op. Prefer
-  `GALLERY_IMAGES_ONLY` / `GALLERY_VIDEO_ONLY` / `GALLERY_ADD_ONLY` if narrower scope fits.
+  `GALLERY` — real `NSPhotoLibraryUsageDescription` prompt, not a no-op.
 - **Use cases**: File access, downloads
 
 ```kotlin
