@@ -5,6 +5,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import platform.Foundation.NSNotificationCenter
 import platform.UIKit.UIApplicationDidBecomeActiveNotification
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -16,6 +17,20 @@ import kotlin.test.assertEquals
  * nothing about the subscription.
  */
 class GrantHandlerForegroundIosTest {
+
+    /**
+     * Tracked so [tearDown] can close it even if a test's own assertion throws first. Without
+     * this, a failed assertion would leak the observer on the real, process-global
+     * `NSNotificationCenter.defaultCenter` — [AutoCloseable.close] is idempotent (see
+     * `AppForegroundSignal.removeListener`'s KDoc), so closing an already-closed or never-opened
+     * handle here is always safe.
+     */
+    private var handle: AutoCloseable? = null
+
+    @AfterTest
+    fun tearDown() {
+        handle?.close()
+    }
 
     private fun postDidBecomeActive() {
         NSNotificationCenter.defaultCenter.postNotificationName(
@@ -31,7 +46,7 @@ class GrantHandlerForegroundIosTest {
         advanceUntilIdle() // let the init{} block's own checkStatus() land first
         val callsBeforePost = manager.checkStatusCalls.size
 
-        val handle = handler.autoRefreshOnForeground()
+        handle = handler.autoRefreshOnForeground()
         postDidBecomeActive()
         advanceUntilIdle()
 
@@ -41,7 +56,6 @@ class GrantHandlerForegroundIosTest {
             "posting UIApplicationDidBecomeActiveNotification must trigger exactly one more " +
                 "checkStatus() call via refreshStatus()",
         )
-        handle.close()
     }
 
     @Test
@@ -50,8 +64,8 @@ class GrantHandlerForegroundIosTest {
         val handler = GrantHandler(manager, AppGrant.CAMERA, this)
         advanceUntilIdle()
 
-        val handle = handler.autoRefreshOnForeground()
-        handle.close()
+        handle = handler.autoRefreshOnForeground()
+        handle?.close()
         val callsAfterClose = manager.checkStatusCalls.size
 
         postDidBecomeActive()
