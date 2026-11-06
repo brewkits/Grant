@@ -21,9 +21,14 @@ Status: local artifact preparation and automated verification passed; no Central
   independent Maven/BOM consumer, native loading and Compose `.app` creation.
 - Full repository `./gradlew build allTests checkKotlinAbi` completed successfully in 10m 51s
   (1,654 actionable tasks: 543 executed, 1,111 up-to-date).
-- Android Lint emitted Kotlin metadata compatibility diagnostics (metadata 2.4.0 versus
-  analyzer expectation 2.2.0) despite Gradle's successful exit. Do not interpret this as a
-  clean Android static-analysis result; investigate the lint/toolchain pairing before release.
+- The first full run exposed Android Lint's metadata mismatch (2.4.0 versus 2.2.0). Fixed by
+  pinning `android.experimental.lint.version=9.5.1`, without changing AGP. All 11 Android
+  modules then passed `lint` with 0 errors (68 warnings remain); no metadata incompatibility
+  diagnostics remained. A forced `:grant-core:lintDebug` rerun also passed under JDK 17.
+  [Android documents this independent Lint upgrade mechanism](https://developer.android.com/jetpack/androidx/releases/compose-runtime).
+- Publication's negative check passed: omitting the Windows input directory is rejected even
+  after a successful staged build. The positive check validates the bundled DLL against the
+  explicitly selected CI input.
 - Shell syntax checks and `git diff --check` passed.
 
 ## Windows native and packaged-consumer evidence
@@ -81,9 +86,9 @@ consent requests for the packaged consumer.
 - Developer ID signed/notarized distribution and native library validation.
 - Native callback cancellation/concurrency/shutdown guarantees. The existing blocking
   native request has no timeout and is not made interruptible by coroutine cancellation.
-- Signed release-bundle/signature validation and clean Android static analysis. Full local
-  build/tests/ABI passed, but lint metadata diagnostics remain. Only Desktop-relevant Maven
-  artifacts were staged; no complete signed release bundle was produced.
+- Signed release-bundle/signature validation. Full local build/tests/ABI and the corrected
+  Android Lint checks passed. Only Desktop-relevant Maven artifacts were staged; no complete
+  signed release bundle was produced.
 - Interactive Windows Settings/toggle changes, Windows ARM64 JVM, Linux and Intel macOS support.
 
 These remain release gates, not successful tests. No public artifact, GitHub release, or

@@ -21,6 +21,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Upgraded Android Lint independently to 9.5.1 so it can analyze Kotlin 2.4 metadata without
+  changing the Android Gradle plugin.
 - Clarified the unpublished Desktop module in 2.6.0 and restored mixed mobile/Desktop/Web
   dependency setup (`mobileMain`), addressing #88.
 
