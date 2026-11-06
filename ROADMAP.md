@@ -1,5 +1,11 @@
 # Grant Library — Roadmap
 
+> **2026-11-06 development update:** `2.7.0-alpha01` prepares the macOS Apple Silicon
+> Desktop preview for publication, adds its BOM constraint and capability query, and verifies
+> a separate staged-Maven consumer. Not uploaded to Central; manual consent and distribution
+> gates remain open. See [validation evidence](docs/DESKTOP_PREVIEW_VALIDATION.md).
+> The roadmap/version notes below describe the earlier release plan.
+
 > Last updated: 2026-09-12 · Current stable: **v2.6.0** (`AppGrant.USE_FULL_SCREEN_INTENT` +
 > `GrantHandler.autoRefreshOnForeground()` — see the **v2.6.0** section immediately below).
 > JS/Wasm (Tier 1) and the macOS camera/microphone bridge (Tier 2, unpublished — `grant-desktop`

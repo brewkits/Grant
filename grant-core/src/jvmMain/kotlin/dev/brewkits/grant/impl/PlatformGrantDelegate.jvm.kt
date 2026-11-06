@@ -67,8 +67,9 @@ public actual class PlatformGrantDelegate(
         }
         GrantLogger.w(
             TAG,
-            "openSettings() has no effect without the grant-desktop module. Add it and call " +
-                "GrantDesktop.initialize() to open System Settings' Privacy & Security pane.",
+            "openSettings() has no registered desktop settings opener. The experimental " +
+                "grant-desktop macOS bridge must be available and initialized. " +
+                "See docs/DEPENDENCY_MANAGEMENT.md#desktop-and-web-projects.",
         )
     }
 
@@ -77,8 +78,8 @@ public actual class PlatformGrantDelegate(
             TAG,
             "$op('$identifier'): no handler registered in DesktopPermissionHandlerRegistry. " +
                 "Reporting DENIED_ALWAYS rather than a status this platform cannot actually " +
-                "provide. Add the grant-desktop module and call GrantDesktop.initialize() for " +
-                "real macOS support.",
+                "provide. See grant-desktop/README.md for the experimental macOS bridge " +
+                "and its supported platforms.",
         )
     }
 }

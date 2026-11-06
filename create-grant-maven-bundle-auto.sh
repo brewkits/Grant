@@ -10,14 +10,13 @@
 
 set -e
 
-VERSION="2.6.0"
+VERSION="2.7.0-alpha01"
 GROUP_PATH="dev/brewkits"
 BUNDLE_NAME="grant-v${VERSION}-bundle.jar"
 OUTPUT_DIR="maven-central-artifacts/v${VERSION}"
 
 # Every published library module. Keep in sync with settings.gradle.kts
-# (the `demo` module is intentionally excluded — it is not published; `grant-desktop` and
-# `desktop-harness` are likewise excluded — see their own build.gradle.kts headers).
+# demo and desktop-harness are applications, not published libraries.
 MODULES=(
     grant-core
     grant-compose
@@ -30,6 +29,7 @@ MODULES=(
     grant-tracking
     grant-testing
     grant-bom
+    grant-desktop
 )
 
 echo "=========================================="
@@ -38,6 +38,12 @@ echo "Grant Library v${VERSION}"
 echo "Modules: ${#MODULES[@]}"
 echo "=========================================="
 echo ""
+
+# Desktop carries a macOS arm64 native library; other hosts must never ship an empty bridge.
+if [ "$(uname -s)" != "Darwin" ] || [ "$(uname -m)" != "arm64" ]; then
+    echo "Desktop publication requires an Apple Silicon Mac."
+    exit 1
+fi
 
 # Pre-flight checks
 echo "🔍 Pre-flight checks..."

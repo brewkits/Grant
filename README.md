@@ -114,12 +114,28 @@ GrantLocationAlways.shared.initialize()  // if you added grant-location-always
 > **2.3.0 — `grant-compose` no longer ships an `iosX64` target.** Compose Multiplatform 1.11 stopped publishing iosX64 artifacts. All other modules keep iosX64; Intel-Mac-simulator consumers of `grant-compose` should stay on 2.2.3. Details in the [Migration Guide](docs/MIGRATION_GUIDE.md).
 
 > [!NOTE]
-> **Migrating from v1.x?** Contacts, Calendar, Motion, Bluetooth, and background location are now opt-in modules: add the artifact and call `initialize()` on iOS. Android needs no code changes. Projects that also target Web/Desktop should isolate Grant behind a `mobileMain` source set — see [Dependency Management](docs/DEPENDENCY_MANAGEMENT.md).
+> **Migrating from v1.x?** Contacts, Calendar, Motion, Bluetooth, and background location are now opt-in modules: add the artifact and call `initialize()` on iOS. Android needs no code changes. Projects that also target Web/Desktop should isolate mobile-only Grant modules behind a `mobileMain` source set — see [Dependency Management](docs/DEPENDENCY_MANAGEMENT.md#desktop-and-web-projects).
+
+### Desktop and Web projects
+
+`grant-desktop:2.6.0` is not published to Maven Central and is excluded from that version's BOM.
+The next **2.7.0-alpha01 preview is in development**, with Desktop publication and BOM wiring.
+It has not been uploaded to Central. See the [Desktop preview guide](grant-desktop/README.md).
+Its current native bridge supports camera and microphone on **macOS Apple Silicon only**.
+
+`grant-core` and `grant-testing` have published JVM and browser variants. On JVM,
+`grant-core` alone returns `DENIED_ALWAYS` for permissions without a registered desktop
+handler; it does not display native permission prompts. `grant-compose`, `grant-core-koin`,
+and the optional permission modules currently target Android/iOS only.
+
+For mixed mobile/Desktop/Web projects, keep mobile-only dependencies in `mobileMain`.
+See [Desktop/Web dependency setup](docs/DEPENDENCY_MANAGEMENT.md#desktop-and-web-projects)
+for a complete source-set example and the experimental macOS development path.
 
 ### Versioning with the BOM
 
 `grant-bom` is a Maven BOM (a Gradle `java-platform`, not a code module) that pins every other
-`dev.brewkits:grant-*` artifact to the same version. Add it once with `platform(...)` and every
+published `dev.brewkits:grant-*` artifact to the same version (`grant-desktop` is excluded in 2.6.0; included in the upcoming preview). Add it once with `platform(...)` and every
 other Grant dependency in the same source set can drop its version string — one line to bump
 instead of nine, and no risk of accidentally mixing `grant-core:2.4.0` with `grant-tracking:2.3.0`
 in the same build (`AppGrant`'s enum ordinals are inlined at compile time, so a version mismatch
