@@ -7,7 +7,10 @@ import kotlinx.coroutines.runBlocking
 import java.io.File
 
 fun main(args: Array<String>) {
-    if ("--demo" in args) { desktopDemo(); return }
+    if ("--demo" in args) {
+        desktopDemo()
+        return
+    }
     val output = args.firstOrNull { it.startsWith("--out=") }?.removePrefix("--out=")
     try {
         val windows = System.getProperty("os.name").startsWith("Windows")
@@ -39,8 +42,12 @@ fun main(args: Array<String>) {
                 check(manager.checkStatus(AppGrant.CONTACTS) == GrantStatus.DENIED_ALWAYS)
                 appendLine("UNSUPPORTED_CONTACTS=DENIED_ALWAYS")
                 // Explicit opt-in only: ordinary smoke verification never prompts for consent.
-                if ("--request-camera" in args && GrantDesktop.isSupported(AppGrant.CAMERA)) appendLine("CAMERA_REQUEST=${manager.request(AppGrant.CAMERA)}")
-                if ("--request-mic" in args && GrantDesktop.isSupported(AppGrant.MICROPHONE)) appendLine("MICROPHONE_REQUEST=${manager.request(AppGrant.MICROPHONE)}")
+                if ("--request-camera" in args && GrantDesktop.isSupported(AppGrant.CAMERA)) {
+                    appendLine("CAMERA_REQUEST=${manager.request(AppGrant.CAMERA)}")
+                }
+                if ("--request-mic" in args && GrantDesktop.isSupported(AppGrant.MICROPHONE)) {
+                    appendLine("MICROPHONE_REQUEST=${manager.request(AppGrant.MICROPHONE)}")
+                }
                 appendLine("RESULT=PASS")
             }
         }

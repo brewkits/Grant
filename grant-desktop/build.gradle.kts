@@ -128,6 +128,10 @@ val verifyDesktopPublication by tasks.registering {
             System.getProperty("os.arch") in listOf("aarch64", "arm64")) {
             "Publish grant-desktop from an Apple Silicon Mac; other hosts cannot ship the bridge."
         }
+        val windowsInput = windowsBridgeInput.orNull?.let { file(it).resolve("GrantWindowsBridge.dll") }
+        check(windowsInput != null && windowsInput.isFile) {
+            "Set -PgrantWindowsBridgeDir to the Windows CI artifact for this source revision."
+        }
         val jar = tasks.named<Jar>("jvmJar").get().archiveFile.get().asFile
         ZipFile(jar).use { zip ->
             val entry = zip.getEntry("darwin-aarch64/libGrantDesktopBridge.dylib")
@@ -135,6 +139,9 @@ val verifyDesktopPublication by tasks.registering {
             val windows = zip.getEntry("win32-x86-64/GrantWindowsBridge.dll")
             check(windows != null && windows.size > 0) {
                 "Desktop publication requires the tested Windows x64 DLL. Set -PgrantWindowsBridgeDir=<CI artifact directory>."
+            }
+            check(zip.getInputStream(windows).use { it.readBytes() }.contentEquals(windowsInput.readBytes())) {
+                "Bundled Windows bridge differs from the selected CI artifact"
             }
         }
         ZipFile(dokkaJavadocJar.get().archiveFile.get().asFile).use { zip ->

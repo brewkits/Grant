@@ -17,6 +17,7 @@ concurrency:
 jobs:
   windows-native:
     runs-on: windows-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -40,6 +41,7 @@ jobs:
   stage-and-test:
     needs: windows-native
     runs-on: macos-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -67,6 +69,7 @@ jobs:
   windows-consumer:
     needs: stage-and-test
     runs-on: windows-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4

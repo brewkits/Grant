@@ -1,6 +1,6 @@
 # Desktop preview validation — 2026-11-06
 
-Candidate: `2.7.0-alpha01`, macOS Apple Silicon, JVM 17.
+Candidate: `2.7.0-alpha01`, macOS Apple Silicon + Windows x64, JVM 17.
 Status: local artifact preparation and automated verification passed; no Central upload.
 
 ## Completed
@@ -13,14 +13,46 @@ Status: local artifact preparation and automated verification passed; no Central
 - JVM SBOM includes JNA 5.19.1, coroutines JVM 1.11.0, Kotlin stdlib 2.4.10 and annotations.
 - `GrantDesktop.isSupported(AppGrant)` exposes bridge/capability availability without
   conflating it with consent or physical camera/microphone availability. JVM ABI dump updated.
-- Desktop tests: 9 passed, 0 failed (3 native ABI probes, 4 handler tests, 2 capability tests).
+- Desktop tests: 15 passed on Windows CI (3 macOS/fallback probes, 4 macOS handler tests,
+  2 capability tests, 5 Windows mapping tests, 1 real Windows native ABI/access probe).
 - Core JVM delegate tests: 5 passed, 0 failed.
 - `:grant-desktop:checkKotlinAbi` passed after the intentional additive API update.
 - `bash verification/verify-desktop-preview.sh` passed: staging, ABI/test checks, an
   independent Maven/BOM consumer, native loading and Compose `.app` creation.
+- Full repository `./gradlew build allTests checkKotlinAbi` completed successfully in 10m 51s
+  (1,654 actionable tasks: 543 executed, 1,111 up-to-date).
+- Android Lint emitted Kotlin metadata compatibility diagnostics (metadata 2.4.0 versus
+  analyzer expectation 2.2.0) despite Gradle's successful exit. Do not interpret this as a
+  clean Android static-analysis result; investigate the lint/toolchain pairing before release.
 - Shell syntax checks and `git diff --check` passed.
 
-## Packaged application evidence
+## Windows native and packaged-consumer evidence
+
+[Desktop CI run 42240297371](https://github.com/brewkits/Grant/actions/runs/42240297371)
+passed on source commit `414d9a3`: Windows native DLL/tests, macOS universal-JAR staging,
+and a separate Windows Maven consumer built as an `.exe`. No project dependencies or
+`mavenLocal()` were used by the consumer. C++20 is required by the current MSVC/Windows SDK.
+
+The packaged Windows consumer reported:
+
+```text
+WINDOWS_CAMERA=DENIED_BY_USER
+WINDOWS_MICROPHONE=DENIED_BY_USER
+NATIVE_PERMISSION_REQUESTS=UNSUPPORTED
+BRIDGE=LOADED
+CAMERA=DENIED_ALWAYS
+MICROPHONE=DENIED_ALWAYS
+UNSUPPORTED_CONTACTS=DENIED_ALWAYS
+RESULT=PASS
+```
+
+The `WINDOWS_*` values come from the in-process WinRT API. The separate `CAMERA` and
+`MICROPHONE` lines are GrantManager's unchanged unsupported-request fallback on Windows;
+no Windows permission handlers are registered. This verifies truthful status mapping and
+packaged native loading. It does not prove interactive Settings navigation or privacy-toggle
+transitions. The runner's existing denial is not a manually exercised user-denial flow.
+
+## Packaged macOS application evidence
 
 The separate consumer resolves Grant only from staged Maven repositories, with no project
 dependencies, composite build substitution, or `mavenLocal()`. Its Grant module versions
@@ -49,9 +81,10 @@ consent requests for the packaged consumer.
 - Developer ID signed/notarized distribution and native library validation.
 - Native callback cancellation/concurrency/shutdown guarantees. The existing blocking
   native request has no timeout and is not made interruptible by coroutine cancellation.
-- Full release build/test/signature validation across the entire Android/iOS/Web module
-  family. Only the Desktop-relevant artifacts were staged during this work.
-- Windows, Linux and Intel macOS native permission support.
+- Signed release-bundle/signature validation and clean Android static analysis. Full local
+  build/tests/ABI passed, but lint metadata diagnostics remain. Only Desktop-relevant Maven
+  artifacts were staged; no complete signed release bundle was produced.
+- Interactive Windows Settings/toggle changes, Windows ARM64 JVM, Linux and Intel macOS support.
 
 These remain release gates, not successful tests. No public artifact, GitHub release, or
 issue-closing action was performed during this implementation.

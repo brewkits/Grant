@@ -10,8 +10,9 @@ preview_version=$(sed -n 's/^version = "\(.*\)"$/\1/p' grant-desktop/build.gradl
 test -n "$preview_version"
 
 bridge_args=()
-if [ -n "${GRANT_WINDOWS_BRIDGE_DIR:-}" ]; then
-    bridge_args+=("-PgrantWindowsBridgeDir=$GRANT_WINDOWS_BRIDGE_DIR")
+bridge_dir="${1:-${GRANT_WINDOWS_BRIDGE_DIR:-}}"
+if [ -n "$bridge_dir" ]; then
+    bridge_args+=("-PgrantWindowsBridgeDir=$bridge_dir")
 fi
 ./gradlew "${bridge_args[@]}" :grant-desktop:jvmTest :grant-desktop:checkKotlinAbi \
     :grant-core:publishKotlinMultiplatformPublicationToMavenCentralLocalRepository \

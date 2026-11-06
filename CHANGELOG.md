@@ -6,6 +6,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.7.0-alpha01] - Unreleased
+
+### Added
+
+- Desktop preview publication and BOM entry, with macOS Apple Silicon camera/microphone
+  handlers and bundled Windows x64 privacy bridge. The preview has not been uploaded to Central.
+- `GrantDesktop.isSupported(AppGrant)` for native permission-request capability checks.
+- `GrantDesktop.checkWindowsPrivacyStatus(AppGrant)` with explicit Windows device-class
+  access states. It reads WinRT in-process without capturing media or showing a consent dialog.
+- `GrantDesktop.openSettings(AppGrant)` for camera/microphone privacy pages on supported hosts.
+- Native Windows tests, cross-host artifact checks, and a standalone Maven consumer/demo.
+- [Linux Portal roadmap](docs/LINUX_ROADMAP.md) with environment and resource-lifecycle gates.
+
+### Fixed
+
+- Clarified the unpublished Desktop module in 2.6.0 and restored mixed mobile/Desktop/Web
+  dependency setup (`mobileMain`), addressing #88.
+
+### Limitations
+
+- Windows supports privacy queries and Settings navigation, not `GrantManager.request()`.
+- Interactive consent/privacy-toggle and distribution validation remain separate release gates.
+- Intel macOS, Windows ARM64 JVM and Linux native permission handlers are not included.
+
 ## [2.6.0] - 2026-09-12
 
 ### ✨ Added

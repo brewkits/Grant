@@ -11,10 +11,10 @@ private const val TAG = "GrantDesktop"
  * `GrantMotion`'s `initialize()` pattern on iOS. Call this once, e.g. at your Compose Desktop
  * app's `main()`, before any [dev.brewkits.grant.GrantManager] call for a desktop permission.
  *
- * A consumer that adds this module but runs on a non-macOS JVM (or on an architecture with no
- * bundled dylib — see `NativeBridgeLoader`) gets a logged notice and every desktop
- * [AppGrant] still resolves to `DENIED_ALWAYS` via `grant-core`'s own fallback delegate; this
- * module never fabricates a `GRANTED` for a permission it has no real handler for.
+ * macOS Apple Silicon registers camera/microphone permission handlers. Windows x64 offers
+ * [checkWindowsPrivacyStatus] and [openSettings] without registering native request handlers.
+ * Unsupported hosts/permissions retain core's DENIED_ALWAYS fallback. No permission is
+ * fabricated as GRANTED when a handler or bridge is unavailable.
  *
  * **Tier 2 status (ROADMAP.md v2.6.0): camera and microphone, plus Settings.** Location,
  * contacts, and calendar are planned but not yet wired — see the roadmap for why camera was
@@ -66,7 +66,10 @@ public object GrantDesktop {
 
         if (WindowsNativeBridge.library != null) {
             DesktopPermissionHandlerRegistry.settingsOpener = { openSettings(AppGrant.CAMERA) }
-            GrantLogger.i(TAG, "Windows privacy checks and settings are available; native permission requests are not registered.")
+            GrantLogger.i(
+                TAG,
+                "Windows privacy checks and settings are available; native permission requests are not registered.",
+            )
             return
         }
 
@@ -82,7 +85,10 @@ public object GrantDesktop {
         }
 
         DesktopPermissionHandlerRegistry.register(AppGrant.CAMERA.identifier, AVMediaPermissionHandler.camera(bridge))
-        DesktopPermissionHandlerRegistry.register(AppGrant.MICROPHONE.identifier, AVMediaPermissionHandler.microphone(bridge))
+        DesktopPermissionHandlerRegistry.register(
+            AppGrant.MICROPHONE.identifier,
+            AVMediaPermissionHandler.microphone(bridge),
+        )
         // openSettings() has no per-permission target on macOS worth distinguishing here —
         // System Settings' Privacy pane always opens to Camera; a real per-permission deep
         // link (Microphone, Contacts, ...) is a documented follow-up (ROADMAP.md v2.6.0), not

@@ -9,7 +9,7 @@ BOM constraint, native packaging guard, generated JVM javadoc and JVM dependency
 
 | Capability | Preview implementation |
 | --- | --- |
-| Host | JVM 17 on macOS Apple Silicon (`aarch64` / `arm64`) |
+| JVM | Java 17; macOS Apple Silicon or Windows x64 |
 | Camera / microphone | AVFoundation authorization status and native consent request |
 | Settings | `GrantDesktop.openSettings(grant)` opens Camera or Microphone privacy settings |
 | Other permissions | No built-in desktop handlers; core returns `DENIED_ALWAYS` |
@@ -88,7 +88,7 @@ without showing a prompt; it does not check user authorization or physical devic
 Limit your UI to supported capabilities and enable
 GrantLogger during integration. No new permission status enum values are introduced here.
 
-## Packaging and consent
+## macOS packaging and consent
 
 Provide `NSCameraUsageDescription` and `NSMicrophoneUsageDescription` in the host app's
 Info.plist. Launch the packaged `.app` through Finder or `open`; a bare Java process or
@@ -106,12 +106,17 @@ Sources: [Apple capture authorization](https://developer.apple.com/documentation
 ## Verification
 
 ```shell
-./gradlew :grant-desktop:jvmTest :grant-desktop:checkKotlinAbi :grant-desktop:verifyDesktopPublication
+./gradlew -PgrantWindowsBridgeDir=/path/to/tested-windows-artifact \
+  :grant-desktop:jvmTest :grant-desktop:checkKotlinAbi :grant-desktop:verifyDesktopPublication
 ```
 
 `verifyDesktopPublication` runs before Maven publish tasks. It rejects non-Apple-Silicon
 publication hosts, an absent/empty native resource, missing generated javadoc HTML, or a
-missing SBOM. Linux CI may still compile/test fallback behavior without publishing.
+missing SBOM. It requires both the macOS dylib and Windows x64 DLL. The Windows DLL is
+built using CMake, MSVC with C++20, and the Windows SDK; import the artifact from the same
+commit's successful Windows CI job. Linux CI can compile/test fallback behavior without
+publishing. The root bundle script accepts the directory as `GRANT_WINDOWS_BRIDGE_DIR`
+and preserves the DLL across its clean build.
 
 The JVM tests cover native status mapping, request dispatch, permission separation and
 real native ABI status reads on supported hosts. They do not simulate a user's consent.
