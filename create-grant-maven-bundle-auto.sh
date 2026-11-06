@@ -45,6 +45,12 @@ if [ "$(uname -s)" != "Darwin" ] || [ "$(uname -m)" != "arm64" ]; then
     exit 1
 fi
 
+# Preserve the tested Windows DLL across Gradle clean (the download may live under build/).
+: "${GRANT_WINDOWS_BRIDGE_DIR:?Set GRANT_WINDOWS_BRIDGE_DIR to the tested Windows CI artifact directory for this commit}"
+WINDOWS_BRIDGE_DIR=$(mktemp -d)
+trap 'rm -rf "$WINDOWS_BRIDGE_DIR"' EXIT
+cp "$GRANT_WINDOWS_BRIDGE_DIR/GrantWindowsBridge.dll" "$WINDOWS_BRIDGE_DIR/GrantWindowsBridge.dll"
+
 # Pre-flight checks
 echo "🔍 Pre-flight checks..."
 
@@ -69,8 +75,8 @@ BUILD_TASKS=()
 for m in "${MODULES[@]}"; do
     BUILD_TASKS+=(":$m:build")
 done
-./gradlew "${BUILD_TASKS[@]}"
-./gradlew publishAllPublicationsToMavenCentralLocalRepository
+./gradlew "-PgrantWindowsBridgeDir=$WINDOWS_BRIDGE_DIR" "${BUILD_TASKS[@]}"
+./gradlew "-PgrantWindowsBridgeDir=$WINDOWS_BRIDGE_DIR" publishAllPublicationsToMavenCentralLocalRepository
 
 echo "✅ Build complete"
 echo ""

@@ -121,7 +121,9 @@ GrantLocationAlways.shared.initialize()  // if you added grant-location-always
 `grant-desktop:2.6.0` is not published to Maven Central and is excluded from that version's BOM.
 The next **2.7.0-alpha01 preview is in development**, with Desktop publication and BOM wiring.
 It has not been uploaded to Central. See the [Desktop preview guide](grant-desktop/README.md).
-Its current native bridge supports camera and microphone on **macOS Apple Silicon only**.
+Native permission requests support camera and microphone on **macOS Apple Silicon**.
+The preview also adds **Windows x64 privacy status checks and Settings navigation**; these
+are separate from native permission requests. [Linux roadmap](docs/LINUX_ROADMAP.md).
 
 `grant-core` and `grant-testing` have published JVM and browser variants. On JVM,
 `grant-core` alone returns `DENIED_ALWAYS` for permissions without a registered desktop

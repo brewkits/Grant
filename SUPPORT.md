@@ -45,7 +45,9 @@ edge cases, and shipping an untested guess about a new OS would work against tha
 
 The upcoming `2.7.0-alpha01` preview targets **macOS Apple Silicon, camera and microphone**.
 It is not a stable Desktop support commitment and has not been uploaded to Central.
-Intel macOS, Windows and Linux native permission handlers are not included.
+Windows x64 adds device-class privacy checks and Settings navigation, not native permission
+requests. Intel macOS, Windows ARM64 JVM and Linux native permission handlers are not included.
+See the [Linux roadmap](docs/LINUX_ROADMAP.md).
 See [the preview guide](grant-desktop/README.md) for packaging requirements and release gates.
 
 ## What Grant will not do

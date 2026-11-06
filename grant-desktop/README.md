@@ -1,7 +1,8 @@
 # Grant Desktop preview
 
 **Development version: 2.7.0-alpha01. Not yet uploaded to Maven Central.**
-The 2.6.0 release does not publish `grant-desktop`. This preview adds its publication,
+The 2.6.0 release does not publish `grant-desktop`. This preview adds macOS permission
+handlers, Windows x64 privacy checks/settings, and publication,
 BOM constraint, native packaging guard, generated JVM javadoc and JVM dependency SBOM.
 
 ## Scope
@@ -10,13 +11,42 @@ BOM constraint, native packaging guard, generated JVM javadoc and JVM dependency
 | --- | --- |
 | Host | JVM 17 on macOS Apple Silicon (`aarch64` / `arm64`) |
 | Camera / microphone | AVFoundation authorization status and native consent request |
-| Settings | Opens the Camera privacy pane |
+| Settings | `GrantDesktop.openSettings(grant)` opens Camera or Microphone privacy settings |
 | Other permissions | No built-in desktop handlers; core returns `DENIED_ALWAYS` |
-| Intel macOS / Windows / Linux | No native bridge bundled |
+| Windows x64 | Device-class privacy status reads and camera/microphone Settings; no native permission requests |
+| Intel macOS / Windows ARM64 JVM / Linux | No native bridge bundled |
 
 This is a core/bridge preview. `grant-compose` and `grant-core-koin` do not have JVM
 variants; supply your own Desktop UI and DI. JNA is confined to the Desktop module.
 The bridge does not capture audio/video or add permission declarations to the host app.
+
+## Windows privacy access
+
+On Windows x64, call `GrantDesktop.checkWindowsPrivacyStatus(AppGrant.CAMERA)` or
+`AppGrant.MICROPHONE` from a background thread. The in-process WinRT
+`DeviceAccessInformation` API reports `ALLOWED`, `DENIED_BY_USER`, `DENIED_BY_SYSTEM`, or
+`UNSPECIFIED`. Missing native support, failed queries and unsupported permissions return
+`UNAVAILABLE`. Unspecified/unavailable must never be treated as permission granted.
+
+This is device-class access information, not a capture attempt or a guarantee that a
+camera/microphone is present, idle, or usable by a particular media API. Packaged/MSIX and
+ordinary full-trust apps can have different access policies. Applications must still handle
+capture errors and test their actual packaging mode.
+
+`GrantDesktop.openSettings(AppGrant.CAMERA)` and `.openSettings(AppGrant.MICROPHONE)` open
+the documented Windows privacy pages. `GrantDesktop.initialize()` also wires the existing
+parameterless `GrantManager.openSettings()` to the Camera page. A successful launch does
+not mean the user changed privacy settings.
+
+`GrantDesktop.isSupported(...)` checks native **permission-request** support and remains
+false on Windows. No Windows handlers are registered for `GrantManager.request()`; the
+existing unsupported fallback stays `DENIED_ALWAYS`. Use the Windows privacy API for
+Windows UI. The preview does not manufacture a user grant or attempt to show a WinRT
+consent dialog from a JVM worker thread.
+
+Sources: [DeviceAccessInformation](https://learn.microsoft.com/en-us/uwp/api/windows.devices.enumeration.deviceaccessinformation),
+[DeviceAccessStatus](https://learn.microsoft.com/en-us/uwp/api/windows.devices.enumeration.deviceaccessstatus),
+[Windows privacy settings URIs](https://learn.microsoft.com/en-us/windows/apps/develop/launch/launch-settings).
 
 ## Dependency and initialization
 
@@ -85,13 +115,23 @@ missing SBOM. Linux CI may still compile/test fallback behavior without publishi
 
 The JVM tests cover native status mapping, request dispatch, permission separation and
 real native ABI status reads on supported hosts. They do not simulate a user's consent.
-Run `bash verification/verify-desktop-preview.sh` for the complete automated staging,
-consumer build and native-read smoke check (also run in macOS CI).
+Run `GRANT_WINDOWS_BRIDGE_DIR=<downloaded-artifact-directory> bash verification/verify-desktop-preview.sh` for the complete automated staging,
+consumer build and native-read smoke check. `desktop.yml` builds/tests the DLL on Windows,
+stages the universal JVM artifact on macOS, then runs a separate packaged Windows consumer.
 Follow the independent consumer's instructions to build and launch the packaged app from
 staged artifacts and to exercise manual consent flows.
 
+## Demo and Linux
+
+Launch the independent consumer with `--demo` for a Compose UI. Windows shows privacy
+status/Settings controls; macOS additionally offers native permission requests. Refresh
+status after changing access in Settings. See the [consumer guide](../verification/desktop-consumer/README.md).
+Linux implementation is deferred; see the [Linux roadmap](../docs/LINUX_ROADMAP.md).
+
 ## Remaining gates before a public preview upload
 
+- On Windows, verify privacy-toggle changes and both Settings buttons in an interactive
+  Windows session with the intended packaging mode; headless CI does not prove this UX.
 - Record camera and microphone Allow/Don't Allow, repeat request, revocation, and relaunch
   against the packaged consumer's identity. Existing historical camera evidence alone is
   insufficient for both permissions.

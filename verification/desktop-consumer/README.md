@@ -4,7 +4,9 @@ This is a separate Gradle build, not a root subproject. Grant dependencies resol
 from the three staged Maven repositories, using the published BOM without explicit module
 versions. No project dependencies, composite substitution, or `mavenLocal()` are used.
 
-From the Grant repository root on an Apple Silicon Mac:
+From the Grant repository root on an Apple Silicon Mac, first download the Windows DLL
+artifact from the same commit's successful Desktop CI run. Supply its directory through
+`-PgrantWindowsBridgeDir=<directory>` when publishing Desktop below:
 
 ```shell
 ./gradlew :grant-core:publishKotlinMultiplatformPublicationToMavenCentralLocalRepository \
@@ -30,3 +32,15 @@ only this test app's consent for another run. Do not reset other applications' p
 
 The generated app is a local development package. Signing/notarization and sandboxed
 distribution remain separate release gates in `grant-desktop/README.md`.
+
+## Interactive demo
+
+Run `./gradlew -p verification/desktop-consumer -PgrantVersion=2.7.0-alpha01 run --args=--demo`
+(or use `gradlew.bat` on Windows). For identity-sensitive macOS consent, pass `--demo` to
+`open -n` on the packaged `.app` instead. On Windows, launch the packaged
+`GrantDesktopConsumer.exe --demo`.
+
+Windows UI reports the separate Windows privacy status and opens the matching Settings page.
+It deliberately has no native-request button. Test Camera and Microphone toggles, refresh,
+and launch failure handling interactively. CI only validates no-prompt status queries and
+packaged native loading, not a user's desktop interaction.
