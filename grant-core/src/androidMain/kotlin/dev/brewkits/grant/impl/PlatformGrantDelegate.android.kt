@@ -183,27 +183,39 @@ public actual class PlatformGrantDelegate(
     private fun isApproximateLocationGranted(): Boolean =
         ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
-    public actual suspend fun checkStatus(grant: GrantPermission): GrantStatus {
+    /**
+     * Reads the current status. **Takes no mutex.**
+     *
+     * It used to share the per-permission mutex with [request], which a pending system dialog
+     * holds for up to [SYSTEM_DIALOG_TIMEOUT_MS] — so a UI refresh on resume (or any other
+     * screen asking "is CAMERA granted?") hung until the user answered. Everything this reads
+     * is either an OS query or already thread-safe ([statusCacheMap] is a synchronized map,
+     * [store] guards itself), and two concurrent reads at worst both compute the same value, so
+     * the lock bought nothing but the hang. The OS state during an open dialog is simply
+     * "unchanged", which is exactly what an honest read should report.
+     */
+    public actual suspend fun checkStatus(grant: GrantPermission): GrantStatus = checkStatusInternal(grant)
+
+    /** Cache lookup + resolution. Safe to call with or without the request mutex held. */
+    private fun checkStatusInternal(grant: GrantPermission): GrantStatus {
         val identifier = grant.identifier
 
-        return getMutexFor(identifier).withLock {
-            val cached = statusCacheMap[identifier]?.let { (cachedStatus, timestamp) ->
-                if (SystemClock.elapsedRealtime() - timestamp < STATUS_CACHE_TTL_MS) cachedStatus else null
-            }
-            if (cached != null) return@withLock cached
-
-            val status = when {
-                grant is RawPermission -> resolveRawPermission(grant)
-                grant is AppGrant -> resolveAppGrant(grant)
-                // GrantPermission is sealed, so this is unreachable; reporting NOT_DETERMINED
-                // rather than throwing keeps an unknown future subtype from crashing a caller.
-                else -> GrantStatus.NOT_DETERMINED
-            }
-
-            statusCacheMap[identifier] = status to SystemClock.elapsedRealtime()
-            pruneMutexesIfNeeded()
-            status
+        val cached = statusCacheMap[identifier]?.let { (cachedStatus, timestamp) ->
+            if (SystemClock.elapsedRealtime() - timestamp < STATUS_CACHE_TTL_MS) cachedStatus else null
         }
+        if (cached != null) return cached
+
+        val status = when {
+            grant is RawPermission -> resolveRawPermission(grant)
+            grant is AppGrant -> resolveAppGrant(grant)
+            // GrantPermission is sealed, so this is unreachable; reporting NOT_DETERMINED
+            // rather than throwing keeps an unknown future subtype from crashing a caller.
+            else -> GrantStatus.NOT_DETERMINED
+        }
+
+        statusCacheMap[identifier] = status to SystemClock.elapsedRealtime()
+        pruneMutexesIfNeeded()
+        return status
     }
 
     /**
@@ -350,7 +362,7 @@ public actual class PlatformGrantDelegate(
     private suspend fun requestInternal(grant: GrantPermission): GrantStatus {
         statusCacheMap.remove(grant.identifier)
 
-        var currentStatus = checkStatus(grant)
+        var currentStatus = checkStatusInternal(grant)
         if (currentStatus == GrantStatus.GRANTED) return currentStatus
 
         // SCHEDULE_EXACT_ALARM is NOT a runtime permission — its protectionLevel is
@@ -378,6 +390,15 @@ public actual class PlatformGrantDelegate(
             return requestFullScreenIntentAccess(currentStatus)
         }
 
+        // Below API 33 there is no POST_NOTIFICATIONS runtime permission, so there is no dialog to
+        // show; the only way to change the state is the app's notification settings screen.
+        // Without this branch request() found an empty permission list below and returned
+        // silently, the request was never recorded, and a user who had switched notifications
+        // off stayed NOT_DETERMINED forever.
+        if (grant == AppGrant.NOTIFICATION && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            return requestNotificationSettings()
+        }
+
         val allPossiblePermissions = when (grant) {
             is RawPermission -> grant.androidPermissions
             is AppGrant -> grant.toAndroidGrants()
@@ -396,6 +417,10 @@ public actual class PlatformGrantDelegate(
 
         if (grant is AppGrant) store.setRequested(grant)
         else if (grant is RawPermission) store.markRawPermissionRequested(grant.identifier)
+
+        // The verdict GrantRequestActivity computed from the live
+        // shouldShowRequestPermissionRationale() — see the use after the status re-read below.
+        var dialogResult: GrantRequestActivity.GrantResult? = null
 
         val launcher = this.launcher
         if (launcher != null) {
@@ -416,13 +441,25 @@ public actual class PlatformGrantDelegate(
             // GrantRequestActivity so the system dialog still opens without requiring the
             // app to bind a launcher to its Activity/Fragment lifecycle (Issue #53).
             GrantLogger.d(TAG, "No GrantLauncher registered; using GrantRequestActivity fallback.")
-            requestViaActivity(androidPermissions)
+            dialogResult = requestViaActivity(androidPermissions)
         }
 
         // Invalidate cache immediately after system dialog returns
         statusCacheMap.remove(grant.identifier)
 
-        var finalStatus = checkStatus(grant)
+        var finalStatus = checkStatusInternal(grant)
+
+        // The dialog's own verdict is authoritative for permanence. The re-read above has to
+        // consult an Activity for shouldShowRequestPermissionRationale(), and right after the
+        // dialog closes the only Activity that was resumed is the transparent
+        // GrantRequestActivity — already finishing, so PlatformConfig.activity hides it. With no
+        // Activity to ask, a second denial was downgraded to DENIED and the rationale loop never
+        // ended. (Only the Activity fallback reports a verdict; a registered GrantLauncher does not.)
+        if (dialogResult == GrantRequestActivity.GrantResult.DENIED_PERMANENTLY &&
+            (finalStatus == GrantStatus.DENIED || finalStatus == GrantStatus.NOT_DETERMINED)
+        ) {
+            finalStatus = GrantStatus.DENIED_ALWAYS
+        }
 
         // Handle 2-step flow for LOCATION_ALWAYS (Android 11+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && 
@@ -457,7 +494,7 @@ public actual class PlatformGrantDelegate(
                         GrantRequestActivity.cleanup(bgRequestId)
                     }
                     statusCacheMap.remove(grant.identifier)
-                    finalStatus = checkStatus(grant)
+                    finalStatus = checkStatusInternal(grant)
                 }
             }
         }
@@ -475,22 +512,37 @@ public actual class PlatformGrantDelegate(
 
         val allAndroidPermissions = mutableSetOf<String>()
         grants.forEach { grant ->
-            if (grant is AppGrant) store.setRequested(grant)
-            else if (grant is RawPermission) store.markRawPermissionRequested(grant.identifier)
+            // Special-access grants have no runtime dialog; handing them to requestPermissions()
+            // is the dead click the single-request path was fixed to avoid. They need their own
+            // Settings screen, which cannot be chained inside one batch dialog.
+            if (isSpecialAccess(grant)) {
+                GrantLogger.w(
+                    TAG,
+                    "'${grant.identifier}' has no runtime dialog and was skipped in a batch " +
+                        "request; request it individually to open its Settings screen.",
+                )
+                return@forEach
+            }
 
             val permissions = when (grant) {
                 is RawPermission -> grant.androidPermissions
                 is AppGrant -> grant.toAndroidGrants()
                 else -> emptyList()
             }
-            permissions.forEach { perm ->
-                if (dev.brewkits.grant.util.ManifestValidator.isPermissionDeclared(context, perm)) {
-                    allAndroidPermissions.add(perm)
-                }
+            // Filter by manifest BEFORE recording the request, as the single path does. Recording
+            // first marked a permission the app never declared as "asked", which then escalated
+            // to DENIED_ALWAYS and pointed the user at a Settings toggle that cannot exist.
+            val declared = permissions.filter { perm ->
+                dev.brewkits.grant.util.ManifestValidator.isPermissionDeclared(context, perm)
             }
+            if (declared.isEmpty()) return@forEach
+
+            if (grant is AppGrant) store.setRequested(grant)
+            else if (grant is RawPermission) store.markRawPermissionRequested(grant.identifier)
+            allAndroidPermissions.addAll(declared)
         }
 
-        if (allAndroidPermissions.isEmpty()) return grants.associateWith { checkStatus(it) }
+        if (allAndroidPermissions.isEmpty()) return grants.associateWith { checkStatusInternal(it) }
 
         val launcher = this.launcher
         if (launcher != null) {
@@ -517,7 +569,7 @@ public actual class PlatformGrantDelegate(
         return kotlinx.coroutines.coroutineScope {
             grants.map { grant ->
                 async { 
-                    val finalStatus = checkStatus(grant)
+                    val finalStatus = checkStatusInternal(grant)
                     if (grant is AppGrant) {
                         if (finalStatus == GrantStatus.GRANTED) store.clear(grant)
                         else store.setStatus(grant, finalStatus)
@@ -599,7 +651,7 @@ public actual class PlatformGrantDelegate(
             null
         }
 
-    private suspend fun requestViaActivity(androidPermissions: List<String>) {
+    private suspend fun requestViaActivity(androidPermissions: List<String>): GrantRequestActivity.GrantResult? {
         warnIfNotMainProcess()
         val requestId = GrantRequestActivity.requestGrants(context, androidPermissions)
         val deferred = GrantRequestActivity.getResultDeferred(requestId)
@@ -613,9 +665,9 @@ public actual class PlatformGrantDelegate(
                 "No pending result for request $requestId — the system dialog was never " +
                     "shown. Reporting the current status unchanged.",
             )
-            return
+            return null
         }
-        try {
+        return try {
             withTimeout(SYSTEM_DIALOG_TIMEOUT_MS) { deferred.await() }
         } catch (e: TimeoutCancellationException) {
             // Must be caught BEFORE CancellationException — it is a subclass. This one is our
@@ -623,10 +675,12 @@ public actual class PlatformGrantDelegate(
             // outcome to absorb; a plain CancellationException means the caller's scope died
             // and must propagate.
             GrantLogger.e(TAG, "GrantRequestActivity fallback timed out", e)
+            null
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             GrantLogger.e(TAG, "GrantRequestActivity fallback error", e)
+            null
         } finally {
             GrantRequestActivity.cleanup(requestId)
         }
@@ -673,6 +727,41 @@ public actual class PlatformGrantDelegate(
                     "devices, AppGrant.BLUETOOTH_CONNECT avoids requesting BLUETOOTH_SCAN entirely.",
             )
         }
+    }
+
+    /** Grants whose state is changed on a Settings screen rather than a runtime dialog. */
+    private fun isSpecialAccess(grant: GrantPermission): Boolean = grant is AppGrant && when (grant) {
+        AppGrant.SCHEDULE_EXACT_ALARM -> Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+        AppGrant.USE_FULL_SCREEN_INTENT -> Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
+        AppGrant.NOTIFICATION -> Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
+        else -> false
+    }
+
+    /**
+     * API < 33 notification "request": records that the user was asked, drops both status
+     * caches, opens the app's notification settings, and reports the resulting status — which is
+     * DENIED_ALWAYS while notifications are off — rather than the stale pre-request value.
+     * Returning the stale NOT_DETERMINED would make a caller retry, reopening Settings forever.
+     */
+    private fun requestNotificationSettings(): GrantStatus {
+        store.setRequested(AppGrant.NOTIFICATION)
+        statusCacheMap.remove(AppGrant.NOTIFICATION.identifier)
+        notificationStatusCache = null
+
+        try {
+            val intent = android.content.Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+            GrantLogger.i(
+                TAG,
+                "Opened the notification settings screen (no runtime dialog below API 33). " +
+                    "Re-read the status when your app resumes.",
+            )
+        } catch (e: Exception) {
+            GrantLogger.e(TAG, "Could not open the notification settings screen", e)
+        }
+        return checkStatusInternal(AppGrant.NOTIFICATION)
     }
 
     private fun requestExactAlarmAccess(currentStatus: GrantStatus): GrantStatus {

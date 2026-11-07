@@ -168,8 +168,16 @@ public class GrantRequestActivity : ComponentActivity() {
         // Increase cleanup threshold to handle slow devices or long rationale reading
         private const val ORPHAN_CLEANUP_THRESHOLD_MS = 300_000L // 5 minutes
 
-        /** How long a guard may be held before a new request may take it as stale. */
-        private const val GUARD_STALE_AFTER_MS = 60_000L
+        /**
+         * How long a guard may be held before a new request may take it as stale.
+         *
+         * Must outlast the longest wait a live dialog can legitimately have: the delegate lets a
+         * request wait SYSTEM_DIALOG_TIMEOUT_MS (5 min) for the user, and ORPHAN_CLEANUP_THRESHOLD_MS
+         * reaps entries at the same horizon. At 60 s a user merely reading the dialog let a
+         * *different* permission's request steal the guard and open a second Activity over the
+         * first. The margin keeps this strictly longer than both.
+         */
+        private const val GUARD_STALE_AFTER_MS = ORPHAN_CLEANUP_THRESHOLD_MS + 5_000L
 
         /**
          * The request that currently owns the single-Activity guard, or `null` when free.
