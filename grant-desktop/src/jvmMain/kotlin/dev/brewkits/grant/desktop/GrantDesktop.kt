@@ -11,8 +11,10 @@ private const val TAG = "GrantDesktop"
  * `GrantMotion`'s `initialize()` pattern on iOS. Call this once, e.g. at your Compose Desktop
  * app's `main()`, before any [dev.brewkits.grant.GrantManager] call for a desktop permission.
  *
- * macOS Apple Silicon registers camera/microphone permission handlers. Windows x64 offers
- * [checkWindowsPrivacyStatus] and [openSettings] without registering native request handlers.
+ * macOS Apple Silicon registers camera/microphone permission handlers. Windows x64 registers
+ * read-only camera/microphone handlers (status through `GrantManager`; Windows has no consent
+ * dialog, so `request()` only reports the state) and also offers [checkWindowsPrivacyStatus] and
+ * [openSettings].
  * Unsupported hosts/permissions retain core's DENIED_ALWAYS fallback. No permission is
  * fabricated as GRANTED when a handler or bridge is unavailable.
  *
@@ -53,6 +55,13 @@ public object GrantDesktop {
     public fun isSupported(grant: AppGrant): Boolean =
         (grant == AppGrant.CAMERA || grant == AppGrant.MICROPHONE) && NativeBridgeLoader.library != null
 
+    /** Registers the read-only Windows handlers; separate so it can be tested without a Windows host. */
+    internal fun registerWindowsHandlers(client: WindowsPrivacyClient) {
+        listOf(AppGrant.CAMERA, AppGrant.MICROPHONE).forEach {
+            DesktopPermissionHandlerRegistry.register(it.identifier, WindowsPrivacyHandler(client, it))
+        }
+    }
+
     /**
      * `@Synchronized` rather than the plain flag `GrantContacts.initialize()` uses on iOS: two
      * threads calling this concurrently on a JVM could both pass an unguarded check and
@@ -64,11 +73,14 @@ public object GrantDesktop {
         if (isInitialized) return
         isInitialized = true
 
-        if (WindowsNativeBridge.library != null) {
+        val windowsBridge = WindowsNativeBridge.library
+        if (windowsBridge != null) {
+            registerWindowsHandlers(WindowsPrivacyClient(windowsBridge))
             DesktopPermissionHandlerRegistry.settingsOpener = { openSettings(AppGrant.CAMERA) }
             GrantLogger.i(
                 TAG,
-                "Windows privacy checks and settings are available; native permission requests are not registered.",
+                "Windows privacy state is available through GrantManager (read-only: Windows has no " +
+                    "consent dialog, so request() reports the state; use openSettings(grant) to guide the user).",
             )
             return
         }

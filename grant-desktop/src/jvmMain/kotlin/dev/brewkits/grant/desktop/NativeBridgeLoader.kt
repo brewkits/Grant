@@ -76,8 +76,13 @@ internal object NativeBridgeLoader {
             tempFile.deleteOnExit()
             resourceStream.use { input -> tempFile.outputStream().use { output -> input.copyTo(output) } }
             Native.load(tempFile.absolutePath, GrantDesktopBridgeLibrary::class.java)
-        } catch (e: Throwable) {
+        } catch (e: Exception) {
             GrantLogger.e(TAG, "Failed to load the native macOS bridge", e)
+            null
+        } catch (e: LinkageError) {
+            // UnsatisfiedLinkError and friends. Not Throwable: that would also swallow
+            // OutOfMemoryError and other failures that must not be reported as "bridge missing".
+            GrantLogger.e(TAG, "The native macOS bridge could not be linked", e)
             null
         }
     }
