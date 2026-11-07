@@ -10,14 +10,13 @@
 
 set -e
 
-VERSION="2.6.0"
+VERSION="2.7.0-alpha01"
 GROUP_PATH="dev/brewkits"
 BUNDLE_NAME="grant-v${VERSION}-bundle.jar"
 OUTPUT_DIR="maven-central-artifacts/v${VERSION}"
 
 # Every published library module. Keep in sync with settings.gradle.kts
-# (the `demo` module is intentionally excluded — it is not published; `grant-desktop` and
-# `desktop-harness` are likewise excluded — see their own build.gradle.kts headers).
+# demo and desktop-harness are applications, not published libraries.
 MODULES=(
     grant-core
     grant-compose
@@ -30,6 +29,7 @@ MODULES=(
     grant-tracking
     grant-testing
     grant-bom
+    grant-desktop
 )
 
 echo "=========================================="
@@ -38,6 +38,20 @@ echo "Grant Library v${VERSION}"
 echo "Modules: ${#MODULES[@]}"
 echo "=========================================="
 echo ""
+
+# Desktop carries a macOS arm64 native library; other hosts must never ship an empty bridge.
+if [ "$(uname -s)" != "Darwin" ] || [ "$(uname -m)" != "arm64" ]; then
+    echo "Desktop publication requires an Apple Silicon Mac."
+    exit 1
+fi
+
+# Preserve the tested Windows DLL across Gradle clean (the download may live under build/).
+: "${GRANT_WINDOWS_BRIDGE_DIR:?Set GRANT_WINDOWS_BRIDGE_DIR to the tested Windows CI artifact directory for this commit}"
+WINDOWS_BRIDGE_DIR=$(mktemp -d)
+trap 'rm -rf "$WINDOWS_BRIDGE_DIR"' EXIT
+cp "$GRANT_WINDOWS_BRIDGE_DIR/GrantWindowsBridge.dll" "$WINDOWS_BRIDGE_DIR/GrantWindowsBridge.dll"
+# The DLL must be provably built from this commit; verifyDesktopPublication compares this to HEAD.
+cp "$GRANT_WINDOWS_BRIDGE_DIR/bridge-source-revision.txt" "$WINDOWS_BRIDGE_DIR/bridge-source-revision.txt"
 
 # Pre-flight checks
 echo "🔍 Pre-flight checks..."
@@ -63,8 +77,8 @@ BUILD_TASKS=()
 for m in "${MODULES[@]}"; do
     BUILD_TASKS+=(":$m:build")
 done
-./gradlew "${BUILD_TASKS[@]}"
-./gradlew publishAllPublicationsToMavenCentralLocalRepository
+./gradlew "-PgrantWindowsBridgeDir=$WINDOWS_BRIDGE_DIR" "${BUILD_TASKS[@]}"
+./gradlew "-PgrantWindowsBridgeDir=$WINDOWS_BRIDGE_DIR" publishAllPublicationsToMavenCentralLocalRepository
 
 echo "✅ Build complete"
 echo ""

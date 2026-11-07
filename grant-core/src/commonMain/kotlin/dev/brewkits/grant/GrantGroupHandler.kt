@@ -291,10 +291,13 @@ public class GrantGroupHandler(
     public fun onSettingsConfirmed() {
         if (!requestMutex.tryLock()) return
         try {
+            // Read BEFORE resetState(): it clears currentGrant, so reading it afterwards (as this
+            // did) meant onSettingsOpened never fired, and there was no grant to open settings for.
+            val guided = _state.value.currentGrant
             resetState()
             onAllGrantedCallback = null
-            _state.value.currentGrant?.let { eventListener?.onSettingsOpened(it) }
-            grantManager.openSettings()
+            guided?.let { eventListener?.onSettingsOpened(it) }
+            if (guided != null) grantManager.openSettings(guided) else grantManager.openSettings()
         } finally {
             requestMutex.unlock()
         }

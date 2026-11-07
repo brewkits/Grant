@@ -457,7 +457,7 @@ public class GrantHandler(
             try {
                 resetState()
                 eventListener?.onSettingsOpened(grant)
-                grantManager.openSettings()
+                grantManager.openSettings(grant)
                 // Do NOT clear callbacks here. We wait for user to return from settings.
                 // refreshStatus() or onReturnFromSettings() will handle completion.
             } finally {
@@ -781,7 +781,7 @@ public class GrantHandler(
                                     }
                                     if (confirmed) {
                                         eventListener?.onSettingsOpened(grant)
-                                        grantManager.openSettings()
+                                        grantManager.openSettings(grant)
                                     }
                                     clearCallbacks()
                                     currentState = FlowState.Done

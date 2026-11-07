@@ -28,6 +28,9 @@ public class MultiGrantFakeManager : GrantManager {
     /** True once [openSettings] has been called. */
     public var openSettingsCalled: Boolean = false
 
+    /** The grant passed to the most recent [openSettings] overload that takes one, or `null`. */
+    public var lastOpenSettingsGrant: dev.brewkits.grant.GrantPermission? = null
+
     /** Simulates a slow platform call — [request] suspends for this long first. */
     public var delayMillis: Long = 0
 
@@ -74,6 +77,11 @@ public class MultiGrantFakeManager : GrantManager {
             results[grant] = request(grant)
         }
         return results
+    }
+
+    override fun openSettings(grant: dev.brewkits.grant.GrantPermission) {
+        lastOpenSettingsGrant = grant
+        openSettings()
     }
 
     override fun openSettings() {

@@ -1,0 +1,12 @@
+cmake_minimum_required(VERSION 3.20)
+project(GrantWindowsBridge LANGUAGES CXX)
+if(NOT WIN32 OR NOT MSVC OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
+    message(FATAL_ERROR "Build with MSVC for Windows x64")
+endif()
+add_library(GrantWindowsBridge SHARED GrantWindowsBridge.cpp)
+target_compile_features(GrantWindowsBridge PRIVATE cxx_std_20)
+target_compile_definitions(GrantWindowsBridge PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_compile_options(GrantWindowsBridge PRIVATE /W4 /WX /EHsc /Zc:__cplusplus)
+target_link_libraries(GrantWindowsBridge PRIVATE windowsapp runtimeobject shell32)
+# Avoid requiring a separately installed Visual C++ runtime in the consumer's JVM.
+set_property(TARGET GrantWindowsBridge PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")

@@ -8,6 +8,7 @@ import androidx.test.core.app.ApplicationProvider
 import dev.brewkits.grant.AppGrant
 import dev.brewkits.grant.GrantStatus
 import dev.brewkits.grant.InMemoryGrantStore
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockkObject
 import io.mockk.unmockkObject
@@ -145,6 +146,8 @@ class Issue33HotfixDuplicateRequestTest {
         // Return a deferred that is already completed with DENIED, so
         // `deferred.await()` never blocks — without this, the test would take
         // 60 seconds per call in the no-fix path.
+        // The system really starts the dialog Activity in this scenario (see awaitLaunched()).
+        coEvery { GrantRequestActivity.awaitLaunched(any(), any()) } returns true
         every { GrantRequestActivity.getResultDeferred(any()) } answers {
             CompletableDeferred<GrantRequestActivity.GrantResult>().apply {
                 complete(GrantRequestActivity.GrantResult.DENIED)
@@ -206,6 +209,8 @@ class Issue33HotfixDuplicateRequestTest {
             legacyCallCount.incrementAndGet()
             "req-${legacyCallCount.get()}"
         }
+        // The system really starts the dialog Activity in this scenario (see awaitLaunched()).
+        coEvery { GrantRequestActivity.awaitLaunched(any(), any()) } returns true
         every { GrantRequestActivity.getResultDeferred(any()) } answers {
             CompletableDeferred<GrantRequestActivity.GrantResult>().apply {
                 complete(GrantRequestActivity.GrantResult.DENIED)

@@ -32,6 +32,9 @@ public class DefaultGrantManager(
     override fun openSettings(): Unit =
         platformDelegate.openSettings()
 
+    override fun openSettings(grant: GrantPermission): Unit =
+        platformDelegate.openSettings(grant)
+
     override fun setLauncher(launcher: dev.brewkits.grant.GrantLauncher) {
         platformDelegate.setLauncher(launcher)
     }
@@ -63,5 +66,6 @@ public expect class PlatformGrantDelegate {
     public suspend fun request(grant: GrantPermission): GrantStatus
     public suspend fun request(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus>
     public fun openSettings()
+    public fun openSettings(grant: GrantPermission)
     public fun setLauncher(launcher: dev.brewkits.grant.GrantLauncher)
 }

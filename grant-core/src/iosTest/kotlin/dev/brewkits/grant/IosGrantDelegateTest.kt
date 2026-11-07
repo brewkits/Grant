@@ -405,9 +405,11 @@ class IosGrantDelegateTest {
     }
 
     @Test
-    fun `checkStatus LOCAL_NETWORK reports GRANTED on iOS`() = kotlinx.coroutines.test.runTest {
+    fun `checkStatus LOCAL_NETWORK reports NOT_DETERMINED because iOS cannot be asked`() = kotlinx.coroutines.test.runTest {
+        // Previously asserted GRANTED. iOS has a real, user-deniable Local Network permission but no
+        // API to read it, so GRANTED was fabricated; "unknown" is the honest answer.
         val status = withTimeout(3_000L) { delegate.checkStatus(AppGrant.LOCAL_NETWORK) }
-        assertTrue(status == GrantStatus.GRANTED, "LOCAL_NETWORK is a no-op on iOS and must report GRANTED, got $status")
+        assertTrue(status == GrantStatus.NOT_DETERMINED, "LOCAL_NETWORK state is unknowable on iOS; got $status")
     }
 
     @Test

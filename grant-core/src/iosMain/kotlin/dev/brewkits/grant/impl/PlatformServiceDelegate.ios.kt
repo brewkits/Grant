@@ -23,7 +23,9 @@ internal actual class PlatformServiceDelegate {
         return when (service) {
             ServiceType.LOCATION_GPS    -> checkLocationService()
             ServiceType.BLUETOOTH      -> checkBluetoothService()
-            ServiceType.WIFI           -> ServiceStatus.ENABLED  // iOS doesn't expose WiFi on/off
+            // Not a measurement: iOS has no public API for the Wi-Fi radio state. ENABLED (rather
+            // than UNKNOWN) so Wi-Fi-gated flows are not permanently blocked; see ServiceType.WIFI.
+            ServiceType.WIFI           -> ServiceStatus.ENABLED
             ServiceType.NFC            -> ServiceStatus.NOT_AVAILABLE // iOS NFC is automatic
             ServiceType.CAMERA_HARDWARE -> ServiceStatus.ENABLED  // All modern iOS devices have cameras
             ServiceType.HEALTH         -> checkHealthService()

@@ -4,6 +4,105 @@ Guide for managing dependencies and avoiding version conflicts.
 
 ---
 
+## Desktop and Web projects
+
+The upcoming 2.7.0-alpha01 preview wires Desktop into publication and its BOM, but has not
+been uploaded to Central. See the [preview guide](../grant-desktop/README.md) for staging
+and independent consumer verification. The following matrix describes released **2.6.0**.
+
+As of 2.6.0, module availability and native permission support are different:
+
+| Module | Published targets | Desktop behavior |
+| --- | --- | --- |
+| `grant-core` | Android, iOS, JVM, JS, Wasm JS | Uses registered desktop handlers; otherwise `checkStatus()` and `request()` return `DENIED_ALWAYS`, and `openSettings()` only logs a notice. |
+| `grant-testing` | Android, iOS, JVM, JS, Wasm JS | Test doubles, not native permission handlers. |
+| `grant-compose`, `grant-core-koin`, optional permission modules | Android/iOS (see the installation guide for iOS architecture exceptions) | No JVM or browser variant. |
+| `grant-desktop` | **Not published to Maven Central; not included in the BOM** | Experimental macOS Apple Silicon camera/microphone bridge in this repository. |
+
+The browser implementation in `grant-core` supports camera, microphone, location, and
+notifications through browser APIs. This does not imply equivalent native Desktop support.
+
+### Keep mobile-only dependencies in mobileMain
+
+For a module using the Kotlin Multiplatform and `com.android.library` plugins, the following
+configuration keeps the default iOS hierarchy and adds a source set shared only by Android
+and iOS. Keep your existing Android namespace/SDK configuration and plugin versions.
+
+```kotlin
+// shared/build.gradle.kts
+kotlin {
+    androidTarget()
+    iosArm64()
+    iosSimulatorArm64()
+    jvm("desktop")
+    js { browser() } // Optional: omit if your app does not target the browser.
+
+    applyDefaultHierarchyTemplate()
+
+    sourceSets {
+        val mobileMain by creating {
+            dependsOn(commonMain.get())
+            dependencies {
+                implementation("dev.brewkits:grant-core:2.6.0")
+                implementation("dev.brewkits:grant-compose:2.6.0")
+                // Add other Android/iOS-only Grant modules here as needed.
+            }
+        }
+        androidMain.get().dependsOn(mobileMain)
+        iosMain.get().dependsOn(mobileMain)
+    }
+}
+```
+
+Put code that imports these Grant APIs in `src/mobileMain/kotlin`, `androidMain`, or
+`iosMain`. `commonMain`, `desktopMain`, and browser source sets cannot access dependencies
+declared only in `mobileMain`. Shared UI can call an application-owned interface, with
+platform implementations supplied at startup. Model unsupported capabilities explicitly in
+your application instead of treating them as granted.
+
+If you need Grant's core API across all targets, move **only** `grant-core` to
+`commonMain.dependencies`; keep `grant-compose`, `grant-core-koin`, and optional permission
+modules in `mobileMain`. `grant-testing` may likewise be added to `commonTest` with an
+explicit matching version. Core alone on Desktop does not provide native handlers.
+
+The explicit hierarchy call follows Kotlin's
+[guide to adding intermediate source sets](https://kotlinlang.org/docs/multiplatform/multiplatform-hierarchy.html#creating-additional-source-sets).
+
+### Experimental macOS development
+
+There is currently no Maven Central dependency that enables Grant's native Desktop bridge.
+For development on an Apple Silicon Mac, check out Grant at tag `v2.6.0` and use the
+repository's `desktop-harness`, which depends on `grant-core` and `grant-desktop` as local
+Gradle projects:
+
+```shell
+./gradlew :desktop-harness:createDistributable
+```
+
+Launch the generated `.app` through Finder or macOS `open`, rather than directly executing
+its binary from a terminal. See
+[the harness](../desktop-harness/build.gradle.kts) for packaging and usage-description keys.
+Permission attribution must be verified against the packaged app's identity.
+
+For a separate experimental consumer, on the same Mac you can run:
+
+```shell
+./gradlew :grant-core:publishToMavenLocal :grant-desktop:publishToMavenLocal
+```
+
+Then add `mavenLocal()` before `mavenCentral()` in the consumer's dependency repositories,
+and add both `dev.brewkits:grant-core:2.6.0` and `dev.brewkits:grant-desktop:2.6.0` to its
+`desktopMain` dependencies. This is a local development build, not a supported Central
+release. Call `dev.brewkits.grant.desktop.GrantDesktop.initialize()` once before requesting
+permissions. Package the app with camera/microphone usage descriptions and the entitlements
+required for its distribution mode.
+
+Current limits: camera and microphone only; the Settings action opens the Camera pane;
+no bundled Intel macOS, Windows, or Linux bridge. Missing or unsupported bridges fall back
+to `DENIED_ALWAYS`. See [the roadmap](../ROADMAP.md) for remaining publishing work.
+
+---
+
 ## 📦 Dependencies Overview
 
 Grant library has the following dependencies:

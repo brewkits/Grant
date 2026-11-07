@@ -68,6 +68,14 @@ internal class LocationManagerDelegate : NSObject(), CLLocationManagerDelegatePr
                 return@suspendCancellableCoroutine
             }
 
+            // With Location Services switched off system-wide iOS shows no dialog and never changes
+            // the status, so waiting for a callback below would suspend forever.
+            if (!CLLocationManager.locationServicesEnabled()) {
+                cleanupAfterRequest()
+                cont.resume(currentStatus)
+                return@suspendCancellableCoroutine
+            }
+
             manager.requestWhenInUseAuthorization()
 
             cont.invokeOnCancellation {
@@ -91,6 +99,12 @@ internal class LocationManagerDelegate : NSObject(), CLLocationManagerDelegatePr
      */
     override fun locationManagerDidChangeAuthorization(manager: CLLocationManager) {
         val status = manager.authorizationStatus()
+        // iOS 14+ delivers this callback as soon as a delegate is assigned, reporting the CURRENT
+        // status — NotDetermined, before the user has seen anything. That is not an answer. Treating
+        // it as one made request() return in ~19 ms (measured on an iPhone 14 Pro Max, iOS 26.6.2)
+        // while the dialog was still on screen, so callers saw a refusal the user had not given.
+        // A real answer is always a determined status.
+        if (status == kCLAuthorizationStatusNotDetermined) return
         // Null continuation before resuming so the legacy callback below is a safe no-op if it fires.
         val cont = continuation
         if (cont != null) {
@@ -110,6 +124,8 @@ internal class LocationManagerDelegate : NSObject(), CLLocationManagerDelegatePr
         manager: CLLocationManager,
         didChangeAuthorizationStatus: CLAuthorizationStatus
     ) {
+        // Same as above: the legacy callback can also report the not-yet-answered state.
+        if (didChangeAuthorizationStatus == kCLAuthorizationStatusNotDetermined) return
         // Already consumed by the iOS 14+ callback above → safe no-op.
         val cont = continuation ?: return
         cleanupAfterRequest()

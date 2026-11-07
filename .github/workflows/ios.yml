@@ -89,6 +89,8 @@ jobs:
       - name: Build and test grant-desktop (macOS)
         run: ./gradlew :grant-desktop:build -x checkKotlinAbi
 
+      # Cross-host publication/consumer verification runs in desktop.yml after the Windows DLL build.
+
       # Runs here, not in ci.yml: the klib dumps cover the three Apple targets, which
       # only a macOS runner can compile. Fails the build when the public API surface
       # drifts from the committed api/*.api dumps — regenerate with ./gradlew updateKotlinAbi.

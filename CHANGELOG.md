@@ -6,6 +6,99 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.7.0-alpha01] - Unreleased
+
+### Added
+
+- Desktop preview publication and BOM entry, with macOS Apple Silicon camera/microphone
+  handlers and bundled Windows x64 privacy bridge. The preview has not been uploaded to Central.
+- `GrantDesktop.isSupported(AppGrant)` for native permission-request capability checks.
+- `GrantDesktop.checkWindowsPrivacyStatus(AppGrant)` with explicit Windows device-class
+  access states. It reads WinRT in-process without capturing media or showing a consent dialog.
+- `GrantDesktop.openSettings(AppGrant)` for camera/microphone privacy pages on supported hosts.
+- Windows x64 camera/microphone state is also exposed through `GrantManager` (read-only handlers), and
+  `GrantManager.openSettings(grant)` opens the Camera or Microphone privacy page on Windows and macOS.
+- Native Windows tests, cross-host artifact checks, and a standalone Maven consumer/demo.
+- [Linux Portal roadmap](docs/LINUX_ROADMAP.md) with environment and resource-lifecycle gates.
+
+### Fixed
+
+- Upgraded Android Lint independently to 9.5.1 so it can analyze Kotlin 2.4 metadata without
+  changing the Android Gradle plugin.
+- Clarified the unpublished Desktop module in 2.6.0 and restored mixed mobile/Desktop/Web
+  dependency setup (`mobileMain`), addressing #88.
+
+### Limitations
+
+- Windows has no consent dialog: `GrantManager.request()` reports the current state and cannot prompt.
+  Use `GrantDesktop.openSettings(grant)` / `GrantManager.openSettings(grant)` to guide the user.
+- Interactive consent/privacy-toggle and distribution validation remain separate release gates.
+- Intel macOS, Windows ARM64 JVM and Linux native permission handlers are not included.
+
+## [Unreleased]
+
+### ✨ Added
+
+- **`GrantManager.openSettings(grant)`** — opens the settings page for a specific permission where the platform
+  can tell them apart. `GrantHandler`, `GrantGroupHandler` and `GrantAndServiceHandler` now call it with the
+  grant they are guiding the user through. Android, iOS and web have one per-app page, so they delegate to
+  `openSettings()`. On desktop, `DesktopPermissionHandlerRegistry.permissionSettingsOpener` receives the grant;
+  `grant-desktop` uses it so Microphone opens the Microphone privacy page (macOS) instead of always Camera.
+  It is a default method, so existing `GrantManager` implementations compile unchanged, but one compiled against
+  an older Grant must be recompiled or `openSettings(grant)` will not resolve on it.
+  `FakeGrantManager`/`MultiGrantFakeManager` expose `lastOpenSettingsGrant`.
+
+### ⚠️ Behaviour changes
+
+These make a status honest where the platform cannot back the old answer. Code that matched on the
+old value needs a look.
+
+- **iOS `LOCATION` with "Precise Location: Off"** now reports `PARTIAL_GRANTED` (was `GRANTED`),
+  matching Android's "Approximate" choice. `GrantHandler`/`GrantGroupHandler` already treat
+  `PARTIAL_GRANTED` as satisfied for `LOCATION`, so flows keep working; code comparing against
+  `GRANTED` alone will now see the reduced-accuracy case.
+- **iOS `LOCAL_NETWORK`** reports `NOT_DETERMINED` (was a fabricated `GRANTED`). iOS lets the user deny
+  Local Network access but exposes no API to read it. The system still prompts on first LAN use.
+- **iOS optional module not initialised** (`grant-contacts`, `-calendar`, `-motion`, `-bluetooth`,
+  `-location-always`, `-tracking`): `checkStatus`/`request` report `DENIED_ALWAYS` with an ERROR log
+  (was `NOT_DETERMINED` with a warning). No prompt can appear until `initialize()` is called.
+- **iOS `RawPermission` with no registered handler**: `request()` reports `DENIED_ALWAYS` with an ERROR
+  log (was a permanent `NOT_DETERMINED`).
+
+### 🐛 Fixed (iOS)
+
+- `request(LOCATION)` no longer returns `NOT_DETERMINED` before the user has answered the dialog.
+  iOS 14+ reports the current status as soon as a delegate is assigned, and that was taken as the answer
+  (measured on an iPhone 14 Pro Max, iOS 26.6.2: returned after 19 ms with the dialog still on screen, so
+  `GrantHandler` showed a refusal the user had not given). It now waits for a determined status, and
+  returns immediately only when Location Services are switched off system-wide, where no dialog can appear.
+- `checkStatus()` no longer waits behind an open permission dialog for the same permission (same defect as
+  the Android fix below).
+
+### 🐛 Fixed (Android)
+
+- `request()` no longer hangs for up to 5 minutes when the system refuses to start the permission
+  dialog because the app has no visible Activity (`BAL_BLOCK`). It now returns the unchanged status
+  after 10 s with an ERROR log. Call `request()` while an Activity is visible, or bind a `GrantLauncher`.
+- `checkStatus()` no longer waits behind an open permission dialog for the same permission.
+- A second denial reported by the dialog is now `DENIED_ALWAYS` instead of `DENIED`, ending the
+  rationale loop.
+- API < 33: `request(NOTIFICATION)` opens the app's notification settings and records the request
+  (it was a silent no-op that left the status at `NOT_DETERMINED`).
+- Batch `request(list)`: filters by manifest before recording a request, and skips Settings-only
+  grants (`SCHEDULE_EXACT_ALARM`, `USE_FULL_SCREEN_INTENT`, API < 33 `NOTIFICATION`) instead of
+  passing them to the runtime dialog. Request them individually.
+- The launch guard no longer treats a dialog the user is still reading as stale after 60 s.
+- All platforms: `GrantGroupHandler.onSettingsConfirmed()` never fired `onSettingsOpened` (it cleared
+  `currentGrant` before reading it); it now does.
+- **Koin (Android)**: `grantModule` no longer crashes with "ServiceFactory not initialized" when `ServiceManager`
+  or `GrantAndServiceChecker` is resolved with only the documented setup (`androidContext` + `grantModule` +
+  `grantPlatformModule`). The module now initialises `ServiceFactory` from the Koin `Context`.
+- `LOCATION_ALWAYS`: the background (second) dialog now goes through the registered `GrantLauncher`, like the
+  first, instead of always bypassing it via `GrantRequestActivity`.
+
+---
+
 ## [2.6.0] - 2026-09-12
 
 ### ✨ Added
