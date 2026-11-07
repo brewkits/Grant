@@ -62,6 +62,8 @@ public class GrantRequestActivity : ComponentActivity() {
             }
 
             viewModel.requestId = requestId
+            // Tell the caller the system really started this Activity (see awaitLaunched()).
+            startSignals[requestId]?.complete(Unit)
 
             // Claim the guard for THIS request. Normally requestGrants() already set it to
             // this same id, and the CAS is a no-op. After process death the static guard is
@@ -164,9 +166,21 @@ public class GrantRequestActivity : ComponentActivity() {
 
         private val pendingResults = ConcurrentHashMap<String, CompletableDeferred<GrantResult>>()
         private val pendingTimestamps = ConcurrentHashMap<String, Long>()
+
+        /**
+         * Completed from `onCreate`, proving the system actually started the Activity.
+         *
+         * `startActivity()` reports nothing when the launch is refused: with no visible Activity
+         * the platform drops it (logcat: `Abort background activity starts ... BAL_BLOCK`, result
+         * code 102) and the caller would otherwise wait out the whole dialog timeout for an
+         * Activity that will never exist.
+         */
+        private val startSignals = ConcurrentHashMap<String, CompletableDeferred<Unit>>()
         
         // Increase cleanup threshold to handle slow devices or long rationale reading
         private const val ORPHAN_CLEANUP_THRESHOLD_MS = 300_000L // 5 minutes
+
+        private const val LAUNCH_POLL_INTERVAL_MS = 50L
 
         /**
          * How long a guard may be held before a new request may take it as stale.
@@ -222,6 +236,7 @@ public class GrantRequestActivity : ComponentActivity() {
 
             pendingResults[requestId] = CompletableDeferred()
             pendingTimestamps[requestId] = now
+            startSignals[requestId] = CompletableDeferred()
 
             cleanupOrphanedEntries()
 
@@ -276,6 +291,7 @@ public class GrantRequestActivity : ComponentActivity() {
 
             orphanedIds.forEach { requestId ->
                 pendingResults[requestId]?.complete(GrantResult.ERROR)
+                startSignals.remove(requestId)
                 pendingResults.remove(requestId)
                 pendingTimestamps.remove(requestId)
             }
@@ -290,12 +306,32 @@ public class GrantRequestActivity : ComponentActivity() {
         }
 
         /**
+         * Waits until [requestId]'s Activity has started, or its result is already decided (a
+         * refused launch completes it with ERROR), or [timeoutMs] passes.
+         *
+         * @return `true` if the dialog is, or was, really on its way; `false` if nothing started
+         *   in time — the launch was almost certainly blocked and no answer will ever arrive.
+         */
+        internal suspend fun awaitLaunched(requestId: String, timeoutMs: Long): Boolean {
+            val signal = startSignals[requestId] ?: return pendingResults[requestId]?.isCompleted == true
+            val result = pendingResults[requestId]
+            var waited = 0L
+            while (!signal.isCompleted && result?.isCompleted != true) {
+                if (waited >= timeoutMs) return false
+                kotlinx.coroutines.delay(LAUNCH_POLL_INTERVAL_MS)
+                waited += LAUNCH_POLL_INTERVAL_MS
+            }
+            return true
+        }
+
+        /**
          * Drops this request's pending entry and releases the guard **only if this request
          * holds it**. The compare-and-set is the fix for the defect described on [guardOwner]:
          * a blind `set(false)` here let a request that never owned the guard free it out from
          * under the one that did.
          */
         internal fun cleanup(requestId: String) {
+            startSignals.remove(requestId)
             pendingResults.remove(requestId)
             pendingTimestamps.remove(requestId)
             guardOwner.compareAndSet(requestId, null)
@@ -308,6 +344,7 @@ public class GrantRequestActivity : ComponentActivity() {
          */
         internal fun forceReleaseGuardForTest() {
             guardOwner.set(null)
+            startSignals.clear()
             pendingResults.clear()
             pendingTimestamps.clear()
         }

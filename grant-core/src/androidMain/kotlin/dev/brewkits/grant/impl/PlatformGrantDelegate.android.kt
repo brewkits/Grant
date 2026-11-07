@@ -115,6 +115,13 @@ public actual class PlatformGrantDelegate(
         private const val GUARD_RETRY_INTERVAL_MS = 50L
 
         private const val NOTIFICATION_CACHE_TTL_MS = 200L
+
+        /**
+         * How long to wait for GrantRequestActivity to actually start before concluding the
+         * system refused the launch. Creating an Activity in this process normally takes tens of
+         * milliseconds, so this is generous; it only has to beat the 5-minute dialog wait.
+         */
+        private const val ACTIVITY_START_TIMEOUT_MS = 4_000L
         private const val SYSTEM_DIALOG_TIMEOUT_MS = 300_000L // 5 minutes (matches activity cleanup)
 
         /**
@@ -479,7 +486,9 @@ public actual class PlatformGrantDelegate(
             
             if (backgroundPermissions.isNotEmpty()) {
                 val bgRequestId = GrantRequestActivity.requestGrants(context, backgroundPermissions)
-                val bgDeferred = GrantRequestActivity.getResultDeferred(bgRequestId)
+                val bgLaunched = GrantRequestActivity.awaitLaunched(bgRequestId, ACTIVITY_START_TIMEOUT_MS)
+                if (!bgLaunched) reportBlockedLaunch(bgRequestId)
+                val bgDeferred = if (bgLaunched) GrantRequestActivity.getResultDeferred(bgRequestId) else null
                 
                 if (bgDeferred != null) {
                     try {
@@ -651,9 +660,29 @@ public actual class PlatformGrantDelegate(
             null
         }
 
+    /**
+     * The system did not start the dialog Activity. Verified on an Android 14 emulator: with no
+     * visible Activity the platform aborts the launch (`BAL_BLOCK`) without throwing. Logged at
+     * ERROR so it reaches crash reporting; the caller gets the unchanged status instead of a
+     * multi-minute hang that also held the permission mutex.
+     */
+    private fun reportBlockedLaunch(requestId: String) {
+        GrantLogger.e(
+            TAG,
+            "The permission dialog did not start within ${ACTIVITY_START_TIMEOUT_MS}ms. Android " +
+                "blocks Activity launches from the background, so request() was aborted. Call " +
+                "request() while one of the app's Activities is visible (or bind a GrantLauncher).",
+        )
+        GrantRequestActivity.cleanup(requestId)
+    }
+
     private suspend fun requestViaActivity(androidPermissions: List<String>): GrantRequestActivity.GrantResult? {
         warnIfNotMainProcess()
         val requestId = GrantRequestActivity.requestGrants(context, androidPermissions)
+        if (!GrantRequestActivity.awaitLaunched(requestId, ACTIVITY_START_TIMEOUT_MS)) {
+            reportBlockedLaunch(requestId)
+            return null
+        }
         val deferred = GrantRequestActivity.getResultDeferred(requestId)
         if (deferred == null) {
             // Should not happen now that requestGrants() always leaves an entry for the

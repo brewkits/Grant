@@ -15,6 +15,7 @@ import dev.brewkits.grant.PlatformConfig
 import dev.brewkits.grant.impl.GrantRequestActivity
 import dev.brewkits.grant.impl.PlatformGrantDelegate
 import dev.brewkits.grant.util.ManifestValidator
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockkObject
 import io.mockk.unmockkObject
@@ -143,6 +144,8 @@ class Phase1AndroidReproTest {
             requested += secondArg<List<String>>()
             "r6-batch"
         }
+        // The system really starts the dialog Activity in this scenario (see awaitLaunched()).
+        coEvery { GrantRequestActivity.awaitLaunched(any(), any()) } returns true
         every { GrantRequestActivity.getResultDeferred(any()) } answers {
             CompletableDeferred<GrantRequestActivity.GrantResult>().apply {
                 complete(GrantRequestActivity.GrantResult.DENIED)
@@ -199,6 +202,8 @@ class Phase1AndroidReproTest {
 
         mockkObject(GrantRequestActivity.Companion)
         every { GrantRequestActivity.requestGrants(any(), any()) } returns "r2"
+        // The system really starts the dialog Activity in this scenario (see awaitLaunched()).
+        coEvery { GrantRequestActivity.awaitLaunched(any(), any()) } returns true
         every { GrantRequestActivity.getResultDeferred(any()) } answers {
             CompletableDeferred<GrantRequestActivity.GrantResult>().apply {
                 complete(GrantRequestActivity.GrantResult.DENIED_PERMANENTLY)
@@ -231,6 +236,8 @@ class Phase1AndroidReproTest {
         val dialogNeverAnswered = CompletableDeferred<GrantRequestActivity.GrantResult>()
         mockkObject(GrantRequestActivity.Companion)
         every { GrantRequestActivity.requestGrants(any(), any()) } returns "r5"
+        // The system really starts the dialog Activity in this scenario (see awaitLaunched()).
+        coEvery { GrantRequestActivity.awaitLaunched(any(), any()) } returns true
         every { GrantRequestActivity.getResultDeferred(any()) } returns dialogNeverAnswered
         every { GrantRequestActivity.cleanup(any()) } returns Unit
 
@@ -279,5 +286,28 @@ class Phase1AndroidReproTest {
             "a second GrantRequestActivity was launched over a dialog that is still awaiting " +
                 "the user; the guard must not be taken from a live, unanswered owner",
         )
+    }
+
+    // ── R3: a blocked Activity launch is a silent 5-minute hang ────────────────────────────
+
+    /**
+     * Confirmed on an Android 14 emulator (logcat: `Abort background activity starts ...
+     * (BAL_BLOCK) result code=102`): when the app has no visible Activity, the system refuses to
+     * start GrantRequestActivity, `startActivity()` throws nothing, and request() then waits the
+     * full dialog timeout holding the permission mutex. Robolectric records `startActivity` but
+     * never runs the Activity, which is observably the same as the system dropping the launch.
+     */
+    @Test
+    fun `R3 request returns promptly when the dialog Activity never starts`() = runBlocking {
+        shadowOf(context as Application).denyPermissions(Manifest.permission.CAMERA)
+
+        val result = withTimeoutOrNull(9_000) { delegate.request(AppGrant.CAMERA) }
+
+        assertNotNull(
+            result,
+            "request() was still waiting after 9 s although the system never started the " +
+                "dialog Activity; it must detect that and fail fast instead of hanging for minutes",
+        )
+        Unit
     }
 }
