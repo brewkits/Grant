@@ -487,7 +487,14 @@ public actual class PlatformGrantDelegate(
                 dev.brewkits.grant.util.ManifestValidator.isPermissionDeclared(context, it)
             }
             
-            if (backgroundPermissions.isNotEmpty()) {
+            val bgLauncher = this.launcher
+            if (backgroundPermissions.isNotEmpty() && bgLauncher != null) {
+                // Same mechanism as step 1. An app that bound its own launcher (multi-process,
+                // custom host Activity) must not have the second dialog routed around it.
+                awaitViaLauncher(bgLauncher, backgroundPermissions, "LOCATION_ALWAYS background step")
+                statusCacheMap.remove(grant.identifier)
+                finalStatus = checkStatusInternal(grant)
+            } else if (backgroundPermissions.isNotEmpty()) {
                 val bgRequestId = GrantRequestActivity.requestGrants(context, backgroundPermissions)
                 val bgLaunched = GrantRequestActivity.awaitLaunched(bgRequestId, ACTIVITY_START_TIMEOUT_MS)
                 if (!bgLaunched) reportBlockedLaunch(bgRequestId)
@@ -517,6 +524,21 @@ public actual class PlatformGrantDelegate(
         }
 
         return finalStatus
+    }
+
+    /** Shows [permissions] through the app's [GrantLauncher] and waits for its callback. */
+    private suspend fun awaitViaLauncher(launcher: GrantLauncher, permissions: List<String>, what: String) {
+        val deferred = kotlinx.coroutines.CompletableDeferred<Unit>()
+        launcher.launch(permissions) { _ -> deferred.complete(Unit) }
+        try {
+            withTimeout(SYSTEM_DIALOG_TIMEOUT_MS) { deferred.await() }
+        } catch (e: TimeoutCancellationException) {
+            GrantLogger.w(TAG, "$what timed out: ${e.message}")
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            GrantLogger.w(TAG, "$what failed: ${e.message}")
+        }
     }
 
     private suspend fun requestMultipleInternal(grants: List<GrantPermission>): Map<GrantPermission, GrantStatus> {
