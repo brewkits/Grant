@@ -118,10 +118,13 @@ public actual class PlatformGrantDelegate(
 
         /**
          * How long to wait for GrantRequestActivity to actually start before concluding the
-         * system refused the launch. Creating an Activity in this process normally takes tens of
-         * milliseconds, so this is generous; it only has to beat the 5-minute dialog wait.
+         * system refused the launch. Normally tens of milliseconds, but a busy main thread can
+         * delay `onCreate` for seconds — an instrumented run on an emulator measured ~3.8 s
+         * between the system's START and the Activity's first lifecycle callback — so 4 s risked
+         * reporting a launch as blocked that was merely slow. It only has to beat the 5-minute
+         * dialog wait.
          */
-        private const val ACTIVITY_START_TIMEOUT_MS = 4_000L
+        private const val ACTIVITY_START_TIMEOUT_MS = 10_000L
         private const val SYSTEM_DIALOG_TIMEOUT_MS = 300_000L // 5 minutes (matches activity cleanup)
 
         /**

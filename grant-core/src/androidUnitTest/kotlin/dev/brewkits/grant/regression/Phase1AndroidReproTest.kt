@@ -301,11 +301,11 @@ class Phase1AndroidReproTest {
     fun `R3 request returns promptly when the dialog Activity never starts`() = runBlocking {
         shadowOf(context as Application).denyPermissions(Manifest.permission.CAMERA)
 
-        val result = withTimeoutOrNull(9_000) { delegate.request(AppGrant.CAMERA) }
+        val result = withTimeoutOrNull(15_000) { delegate.request(AppGrant.CAMERA) }
 
         assertNotNull(
             result,
-            "request() was still waiting after 9 s although the system never started the " +
+            "request() was still waiting after 15 s although the system never started the " +
                 "dialog Activity; it must detect that and fail fast instead of hanging for minutes",
         )
         Unit

@@ -8,6 +8,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.MediumTest
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import org.junit.After
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import kotlin.test.assertEquals
@@ -32,6 +34,15 @@ import kotlin.test.assertTrue
 class GrantRequestActivityTest {
 
     private val context: Context = ApplicationProvider.getApplicationContext()
+
+    // GrantRequestActivity keeps its launch guard and pending-result map in process-wide statics.
+    // Without a reset, a test that leaves a request behind (e.g. the 100-request uniqueness test)
+    // makes the next test's request yield to a guard it never owned and report ERROR.
+    @Before
+    fun resetSharedState() = GrantRequestActivity.forceReleaseGuardForTest()
+
+    @After
+    fun releaseSharedState() = GrantRequestActivity.forceReleaseGuardForTest()
 
     @Test
     fun testA_RequestSinglePermission_alreadyGranted() = runBlocking {
