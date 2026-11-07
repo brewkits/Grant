@@ -6,6 +6,42 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [Unreleased]
+
+### ⚠️ Behaviour changes
+
+These make a status honest where the platform cannot back the old answer. Code that matched on the
+old value needs a look.
+
+- **iOS `LOCATION` with "Precise Location: Off"** now reports `PARTIAL_GRANTED` (was `GRANTED`),
+  matching Android's "Approximate" choice. `GrantHandler`/`GrantGroupHandler` already treat
+  `PARTIAL_GRANTED` as satisfied for `LOCATION`, so flows keep working; code comparing against
+  `GRANTED` alone will now see the reduced-accuracy case.
+- **iOS `LOCAL_NETWORK`** reports `NOT_DETERMINED` (was a fabricated `GRANTED`). iOS lets the user deny
+  Local Network access but exposes no API to read it. The system still prompts on first LAN use.
+- **iOS optional module not initialised** (`grant-contacts`, `-calendar`, `-motion`, `-bluetooth`,
+  `-location-always`, `-tracking`): `checkStatus`/`request` report `DENIED_ALWAYS` with an ERROR log
+  (was `NOT_DETERMINED` with a warning). No prompt can appear until `initialize()` is called.
+- **iOS `RawPermission` with no registered handler**: `request()` reports `DENIED_ALWAYS` with an ERROR
+  log (was a permanent `NOT_DETERMINED`).
+
+### 🐛 Fixed (Android)
+
+- `request()` no longer hangs for up to 5 minutes when the system refuses to start the permission
+  dialog because the app has no visible Activity (`BAL_BLOCK`). It now returns the unchanged status
+  after 10 s with an ERROR log. Call `request()` while an Activity is visible, or bind a `GrantLauncher`.
+- `checkStatus()` no longer waits behind an open permission dialog for the same permission.
+- A second denial reported by the dialog is now `DENIED_ALWAYS` instead of `DENIED`, ending the
+  rationale loop.
+- API < 33: `request(NOTIFICATION)` opens the app's notification settings and records the request
+  (it was a silent no-op that left the status at `NOT_DETERMINED`).
+- Batch `request(list)`: filters by manifest before recording a request, and skips Settings-only
+  grants (`SCHEDULE_EXACT_ALARM`, `USE_FULL_SCREEN_INTENT`, API < 33 `NOTIFICATION`) instead of
+  passing them to the runtime dialog. Request them individually.
+- The launch guard no longer treats a dialog the user is still reading as stale after 60 s.
+
+---
+
 ## [2.6.0] - 2026-09-12
 
 ### ✨ Added
