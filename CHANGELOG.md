@@ -50,6 +50,8 @@ old value needs a look.
   grants (`SCHEDULE_EXACT_ALARM`, `USE_FULL_SCREEN_INTENT`, API < 33 `NOTIFICATION`) instead of
   passing them to the runtime dialog. Request them individually.
 - The launch guard no longer treats a dialog the user is still reading as stale after 60 s.
+- All platforms: `GrantGroupHandler.onSettingsConfirmed()` never fired `onSettingsOpened` (it cleared
+  `currentGrant` before reading it); it now does.
 - **Koin (Android)**: `grantModule` no longer crashes with "ServiceFactory not initialized" when `ServiceManager`
   or `GrantAndServiceChecker` is resolved with only the documented setup (`androidContext` + `grantModule` +
   `grantPlatformModule`). The module now initialises `ServiceFactory` from the Koin `Context`.
