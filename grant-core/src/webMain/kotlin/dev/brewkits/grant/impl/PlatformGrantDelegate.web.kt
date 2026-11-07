@@ -73,6 +73,9 @@ public actual class PlatformGrantDelegate(
      * instead of silently doing nothing, so an integrator sees why nothing happened rather
      * than filing a "openSettings() is broken on web" bug.
      */
+    /** One per-app settings page here; there is nothing grant-specific to open. */
+    public actual fun openSettings(grant: GrantPermission) { openSettings() }
+
     public actual fun openSettings() {
         GrantLogger.w(
             TAG,

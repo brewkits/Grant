@@ -34,15 +34,19 @@ ordinary full-trust apps can have different access policies. Applications must s
 capture errors and test their actual packaging mode.
 
 `GrantDesktop.openSettings(AppGrant.CAMERA)` and `.openSettings(AppGrant.MICROPHONE)` open
-the documented Windows privacy pages. `GrantDesktop.initialize()` also wires the existing
-parameterless `GrantManager.openSettings()` to the Camera page. A successful launch does
-not mean the user changed privacy settings.
+the documented Windows privacy pages. `GrantDesktop.initialize()` also routes
+`GrantManager.openSettings(grant)` to the page matching that grant (Microphone opens the
+Microphone page; Camera and any other grant open the Camera page), and the parameterless
+`GrantManager.openSettings()` to the Camera page. A successful launch does not mean the user
+changed privacy settings.
 
-`GrantDesktop.isSupported(...)` checks native **permission-request** support and remains
-false on Windows. No Windows handlers are registered for `GrantManager.request()`; the
-existing unsupported fallback stays `DENIED_ALWAYS`. Use the Windows privacy API for
-Windows UI. The preview does not manufacture a user grant or attempt to show a WinRT
-consent dialog from a JVM worker thread.
+After `GrantDesktop.initialize()`, Windows camera/microphone state is also available through
+`GrantManager`, **read-only**: `checkStatus()` maps `ALLOWED` to `GRANTED`, `DENIED_BY_USER` and
+`DENIED_BY_SYSTEM` to `DENIED_ALWAYS`, `UNSPECIFIED` to `NOT_DETERMINED`, and an unavailable
+bridge to `DENIED_ALWAYS` with a log. `GrantManager.request()` cannot prompt on Windows, so it
+returns that same state; direct the user to Settings instead. `GrantDesktop.isSupported(...)`
+checks native **permission-request** support and remains false on Windows. The preview does not
+manufacture a user grant or attempt to show a WinRT consent dialog from a JVM worker thread.
 
 Sources: [DeviceAccessInformation](https://learn.microsoft.com/en-us/uwp/api/windows.devices.enumeration.deviceaccessinformation),
 [DeviceAccessStatus](https://learn.microsoft.com/en-us/uwp/api/windows.devices.enumeration.deviceaccessstatus),

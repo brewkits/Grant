@@ -25,6 +25,21 @@ private const val TAG = "GrantDesktop"
 public object GrantDesktop {
     private var isInitialized = false
 
+    /** The permission whose privacy page to open for [grant]; Camera is the fallback for anything else. */
+    internal fun privacyTarget(grant: dev.brewkits.grant.GrantPermission): AppGrant =
+        if (grant == AppGrant.MICROPHONE) AppGrant.MICROPHONE else AppGrant.CAMERA
+
+    /** Routes `GrantManager.openSettings(grant)` to the matching Windows privacy page. */
+    internal fun registerWindowsSettings(client: WindowsPrivacyClient) {
+        DesktopPermissionHandlerRegistry.permissionSettingsOpener = { grant ->
+            client.openSettings(privacyTarget(grant))
+        }
+    }
+
+    /** The System Settings privacy anchor for [grant]; Camera is the fallback for anything else. */
+    internal fun macPrivacyAnchor(grant: dev.brewkits.grant.GrantPermission): String =
+        if (grant == AppGrant.MICROPHONE) "Privacy_Microphone" else "Privacy_Camera"
+
     /**
      * Reads camera/microphone device-class privacy access on Windows x64 without a prompt.
      * This does not capture media, check hardware presence, or request authorization.
@@ -75,7 +90,9 @@ public object GrantDesktop {
 
         val windowsBridge = WindowsNativeBridge.library
         if (windowsBridge != null) {
-            registerWindowsHandlers(WindowsPrivacyClient(windowsBridge))
+            val windowsClient = WindowsPrivacyClient(windowsBridge)
+            registerWindowsHandlers(windowsClient)
+            registerWindowsSettings(windowsClient)
             DesktopPermissionHandlerRegistry.settingsOpener = { openSettings(AppGrant.CAMERA) }
             GrantLogger.i(
                 TAG,
@@ -106,6 +123,9 @@ public object GrantDesktop {
         // link (Microphone, Contacts, ...) is a documented follow-up (ROADMAP.md v2.6.0), not
         // a silent limitation — it's stated in the KDoc on grant_open_privacy_settings().
         DesktopPermissionHandlerRegistry.settingsOpener = { bridge.grant_open_privacy_settings("Privacy_Camera") }
+        DesktopPermissionHandlerRegistry.permissionSettingsOpener = { grant ->
+            bridge.grant_open_privacy_settings(macPrivacyAnchor(grant))
+        }
 
         GrantLogger.i(TAG, "grant-desktop initialized with the real macOS bridge (camera, microphone, settings).")
     }

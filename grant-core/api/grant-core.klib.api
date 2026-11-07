@@ -106,6 +106,7 @@ abstract interface dev.brewkits.grant/GrantManager { // dev.brewkits.grant/Grant
     abstract suspend fun checkStatus(dev.brewkits.grant/GrantPermission): dev.brewkits.grant/GrantStatus // dev.brewkits.grant/GrantManager.checkStatus|checkStatus(dev.brewkits.grant.GrantPermission){}[0]
     abstract suspend fun request(dev.brewkits.grant/GrantPermission): dev.brewkits.grant/GrantStatus // dev.brewkits.grant/GrantManager.request|request(dev.brewkits.grant.GrantPermission){}[0]
     abstract suspend fun request(kotlin.collections/List<dev.brewkits.grant/GrantPermission>): kotlin.collections/Map<dev.brewkits.grant/GrantPermission, dev.brewkits.grant/GrantStatus> // dev.brewkits.grant/GrantManager.request|request(kotlin.collections.List<dev.brewkits.grant.GrantPermission>){}[0]
+    open fun openSettings(dev.brewkits.grant/GrantPermission) // dev.brewkits.grant/GrantManager.openSettings|openSettings(dev.brewkits.grant.GrantPermission){}[0]
 }
 
 abstract interface dev.brewkits.grant/GrantStore { // dev.brewkits.grant/GrantStore|null[0]
@@ -142,6 +143,7 @@ final class dev.brewkits.grant.impl/DefaultGrantManager : dev.brewkits.grant/Gra
     constructor <init>(dev.brewkits.grant.impl/PlatformGrantDelegate) // dev.brewkits.grant.impl/DefaultGrantManager.<init>|<init>(dev.brewkits.grant.impl.PlatformGrantDelegate){}[0]
 
     final fun openSettings() // dev.brewkits.grant.impl/DefaultGrantManager.openSettings|openSettings(){}[0]
+    final fun openSettings(dev.brewkits.grant/GrantPermission) // dev.brewkits.grant.impl/DefaultGrantManager.openSettings|openSettings(dev.brewkits.grant.GrantPermission){}[0]
     final fun setLauncher(dev.brewkits.grant/GrantLauncher) // dev.brewkits.grant.impl/DefaultGrantManager.setLauncher|setLauncher(dev.brewkits.grant.GrantLauncher){}[0]
     final suspend fun checkStatus(dev.brewkits.grant/GrantPermission): dev.brewkits.grant/GrantStatus // dev.brewkits.grant.impl/DefaultGrantManager.checkStatus|checkStatus(dev.brewkits.grant.GrantPermission){}[0]
     final suspend fun request(dev.brewkits.grant/GrantPermission): dev.brewkits.grant/GrantStatus // dev.brewkits.grant.impl/DefaultGrantManager.request|request(dev.brewkits.grant.GrantPermission){}[0]
@@ -157,6 +159,7 @@ final class dev.brewkits.grant.impl/PlatformGrantDelegate { // dev.brewkits.gran
     constructor <init>(dev.brewkits.grant/GrantStore) // dev.brewkits.grant.impl/PlatformGrantDelegate.<init>|<init>(dev.brewkits.grant.GrantStore){}[0]
 
     final fun openSettings() // dev.brewkits.grant.impl/PlatformGrantDelegate.openSettings|openSettings(){}[0]
+    final fun openSettings(dev.brewkits.grant/GrantPermission) // dev.brewkits.grant.impl/PlatformGrantDelegate.openSettings|openSettings(dev.brewkits.grant.GrantPermission){}[0]
     final fun setLauncher(dev.brewkits.grant/GrantLauncher) // dev.brewkits.grant.impl/PlatformGrantDelegate.setLauncher|setLauncher(dev.brewkits.grant.GrantLauncher){}[0]
     final suspend fun checkStatus(dev.brewkits.grant/GrantPermission): dev.brewkits.grant/GrantStatus // dev.brewkits.grant.impl/PlatformGrantDelegate.checkStatus|checkStatus(dev.brewkits.grant.GrantPermission){}[0]
     final suspend fun request(dev.brewkits.grant/GrantPermission): dev.brewkits.grant/GrantStatus // dev.brewkits.grant.impl/PlatformGrantDelegate.request|request(dev.brewkits.grant.GrantPermission){}[0]

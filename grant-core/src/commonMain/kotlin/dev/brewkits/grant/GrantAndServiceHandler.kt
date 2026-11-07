@@ -258,7 +258,7 @@ public class GrantAndServiceHandler(
             pendingPermSettings = null
             pendingSvcSettings = null
             eventListener?.onSettingsOpened(grant)
-            grantManager.openSettings()
+            grantManager.openSettings(grant)
         } finally {
             requestMutex.unlock()
         }

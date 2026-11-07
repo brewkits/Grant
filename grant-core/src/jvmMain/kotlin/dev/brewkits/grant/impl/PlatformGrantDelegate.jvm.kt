@@ -59,6 +59,20 @@ public actual class PlatformGrantDelegate(
      * not just macOS). Delegates to [DesktopPermissionHandlerRegistry.settingsOpener] when one
      * is registered; logs instead of silently doing nothing when none is.
      */
+    /**
+     * Opens the privacy page for [grant] through the per-permission opener when one is registered
+     * (Camera and Microphone have separate pages on macOS and Windows), otherwise falls back to
+     * the no-argument [openSettings].
+     */
+    public actual fun openSettings(grant: GrantPermission) {
+        val opener = DesktopPermissionHandlerRegistry.permissionSettingsOpener
+        if (opener != null) {
+            opener(grant)
+            return
+        }
+        openSettings()
+    }
+
     public actual fun openSettings() {
         val opener = DesktopPermissionHandlerRegistry.settingsOpener
         if (opener != null) {

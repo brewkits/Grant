@@ -13,6 +13,9 @@ import platform.CoreLocation.kCLAuthorizationStatusRestricted
 
 private const val TAG = "LocationPermissionHandler"
 
+/** Raw `CLAccuracyAuthorization.CLAccuracyAuthorizationFullAccuracy`. */
+private const val CL_ACCURACY_FULL = 0L
+
 /**
  * Handles Location permissions via CoreLocation framework.
  *
@@ -41,13 +44,13 @@ internal class LocationPermissionHandler(
         if (!hasInfoPlistKey(TAG, requiredPlistKey)) return GrantStatus.DENIED_ALWAYS
         // Use instance authorizationStatus via the shared delegate rather than
         // the deprecated `CLLocationManager.authorizationStatus()` class method. (iOS 14+ deprecated).
-        return mapCLStatus(delegate.currentAuthorizationStatus())
+        return mapLocationStatus(delegate.currentAuthorizationStatus(), delegate.currentAccuracyAuthorization())
     }
 
     override suspend fun request(): GrantStatus {
         if (!hasInfoPlistKey(TAG, requiredPlistKey)) return GrantStatus.DENIED_ALWAYS
         val clStatus: CLAuthorizationStatus = delegate.requestWhenInUseAuthorization()
-        return mapCLStatus(clStatus)
+        return mapLocationStatus(clStatus, delegate.currentAccuracyAuthorization())
     }
 }
 
@@ -55,10 +58,19 @@ internal class LocationPermissionHandler(
 // Internal helpers
 // ────────────────────────────────────────────────────────────────────────────
 
-private fun mapCLStatus(status: CLAuthorizationStatus): GrantStatus =
+/**
+ * Maps CoreLocation's authorization to a [GrantStatus]. Internal (not private) so the mapping can
+ * be unit-tested without a live CLLocationManager.
+ *
+ * @param accuracy raw `CLAccuracyAuthorization`: 0 = full accuracy, 1 = reduced (the user chose
+ *   "Precise Location: Off"). Reduced is still usable location but not what a caller asking for
+ *   LOCATION expects; Android reports the equivalent "Approximate" choice as PARTIAL_GRANTED.
+ */
+internal fun mapLocationStatus(status: CLAuthorizationStatus, accuracy: Long): GrantStatus =
     when (status) {
-        kCLAuthorizationStatusAuthorizedAlways    -> GrantStatus.GRANTED
-        kCLAuthorizationStatusAuthorizedWhenInUse -> GrantStatus.GRANTED
+        kCLAuthorizationStatusAuthorizedAlways,
+        kCLAuthorizationStatusAuthorizedWhenInUse ->
+            if (accuracy == CL_ACCURACY_FULL) GrantStatus.GRANTED else GrantStatus.PARTIAL_GRANTED
         kCLAuthorizationStatusDenied,
         kCLAuthorizationStatusRestricted          -> GrantStatus.DENIED_ALWAYS
         kCLAuthorizationStatusNotDetermined       -> GrantStatus.NOT_DETERMINED

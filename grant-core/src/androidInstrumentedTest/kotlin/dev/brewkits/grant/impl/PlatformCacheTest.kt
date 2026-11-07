@@ -44,7 +44,7 @@ class PlatformCacheTest {
         val delegate = PlatformGrantDelegate(context, store)
 
         // First call
-        delegate.checkStatus(AppGrant.CAMERA)
+        val status1 = delegate.checkStatus(AppGrant.CAMERA)
 
         // Wait for cache to expire (1000ms TTL)
         kotlinx.coroutines.delay(1100)

@@ -3,7 +3,6 @@ package dev.brewkits.grant.di
 import dev.brewkits.grant.GrantAndServiceChecker
 import dev.brewkits.grant.GrantManager
 import dev.brewkits.grant.ServiceManager
-import dev.brewkits.grant.ServiceFactory
 import dev.brewkits.grant.impl.DefaultGrantManager
 import dev.brewkits.grant.impl.PlatformGrantDelegate
 import org.koin.core.module.Module
@@ -40,7 +39,7 @@ public val grantModule: Module = module {
 
     // Service Manager
     single<ServiceManager> {
-        ServiceFactory.createServiceManager()
+        createGrantServiceManager()
     }
 
     // Combined Checker (convenience)
