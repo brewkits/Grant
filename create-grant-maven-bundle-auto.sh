@@ -50,6 +50,8 @@ fi
 WINDOWS_BRIDGE_DIR=$(mktemp -d)
 trap 'rm -rf "$WINDOWS_BRIDGE_DIR"' EXIT
 cp "$GRANT_WINDOWS_BRIDGE_DIR/GrantWindowsBridge.dll" "$WINDOWS_BRIDGE_DIR/GrantWindowsBridge.dll"
+# The DLL must be provably built from this commit; verifyDesktopPublication compares this to HEAD.
+cp "$GRANT_WINDOWS_BRIDGE_DIR/bridge-source-revision.txt" "$WINDOWS_BRIDGE_DIR/bridge-source-revision.txt"
 
 # Pre-flight checks
 echo "🔍 Pre-flight checks..."

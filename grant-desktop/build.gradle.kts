@@ -132,6 +132,21 @@ val verifyDesktopPublication by tasks.registering {
         check(windowsInput != null && windowsInput.isFile) {
             "Set -PgrantWindowsBridgeDir to the Windows CI artifact for this source revision."
         }
+        // The DLL must have been built from THIS source revision, not merely be "a DLL that passed
+        // CI once". The Windows CI job records `git rev-parse HEAD` beside the DLL.
+        val revisionFile = windowsInput.resolveSibling("bridge-source-revision.txt")
+        check(revisionFile.isFile) {
+            "Missing bridge-source-revision.txt next to the Windows DLL. Use the CI artifact for this " +
+                "commit, or write `git rev-parse HEAD` of the commit the DLL was built from into that file."
+        }
+        val bridgeRevision = revisionFile.readText().trim()
+        val sourceRevision = ProcessBuilder("git", "rev-parse", "HEAD")
+            .directory(rootProject.projectDir).redirectErrorStream(true).start()
+            .let { process -> process.inputStream.bufferedReader().readText().trim().also { process.waitFor() } }
+        check(bridgeRevision == sourceRevision) {
+            "The Windows bridge was built from $bridgeRevision but this checkout is $sourceRevision. " +
+                "Download the artifact from the CI run for this exact commit."
+        }
         val jar = tasks.named<Jar>("jvmJar").get().archiveFile.get().asFile
         ZipFile(jar).use { zip ->
             val entry = zip.getEntry("darwin-aarch64/libGrantDesktopBridge.dylib")

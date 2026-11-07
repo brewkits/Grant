@@ -118,9 +118,13 @@ Sources: [Apple capture authorization](https://developer.apple.com/documentation
 publication hosts, an absent/empty native resource, missing generated javadoc HTML, or a
 missing SBOM. It requires both the macOS dylib and Windows x64 DLL. The Windows DLL is
 built using CMake, MSVC with C++20, and the Windows SDK; import the artifact from the same
-commit's successful Windows CI job. Linux CI can compile/test fallback behavior without
+commit's successful Windows CI job. The CI artifact also carries `bridge-source-revision.txt`
+(the output of `git rev-parse HEAD` when the DLL was built); `verifyDesktopPublication`
+refuses to publish if it is missing or differs from the checked-out commit, so a DLL from an
+earlier or different commit cannot be bundled by accident. (A DLL built by hand needs that
+file written the same way.) Linux CI can compile/test fallback behavior without
 publishing. The root bundle script accepts the directory as `GRANT_WINDOWS_BRIDGE_DIR`
-and preserves the DLL across its clean build.
+and preserves both files across its clean build.
 
 The JVM tests cover native status mapping, request dispatch, permission separation and
 real native ABI status reads on supported hosts. They do not simulate a user's consent.
