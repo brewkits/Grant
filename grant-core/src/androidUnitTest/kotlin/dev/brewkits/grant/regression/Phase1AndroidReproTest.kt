@@ -14,7 +14,6 @@ import dev.brewkits.grant.InMemoryGrantStore
 import dev.brewkits.grant.PlatformConfig
 import dev.brewkits.grant.impl.GrantRequestActivity
 import dev.brewkits.grant.impl.PlatformGrantDelegate
-import dev.brewkits.grant.util.ManifestValidator
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockkObject
@@ -72,7 +71,6 @@ class Phase1AndroidReproTest {
     @After
     fun tearDown() {
         unmockkObject(GrantRequestActivity.Companion)
-        unmockkObject(ManifestValidator)
         PlatformConfig.activity = null
         GrantRequestActivity.forceReleaseGuardForTest()
     }
@@ -168,13 +166,12 @@ class Phase1AndroidReproTest {
      * records first, so a permission the app never declared is marked "asked" and then
      * escalates to DENIED_ALWAYS — sending the user to Settings for a toggle that cannot exist.
      *
-     * (ManifestValidator is mocked because it short-circuits to `true` under Robolectric —
-     * which is itself review item 16: test-only bypass compiled into production code.)
+     * Uses the real ManifestValidator (no mocking needed: an undeclared permission is simply
+     * undeclared under Robolectric).
      */
     @Test
     fun `R6 batch request does not mark undeclared permissions as requested`() = runBlocking {
-        mockkObject(ManifestValidator)
-        every { ManifestValidator.isPermissionDeclared(any(), any()) } returns false
+        declare() // the app declares nothing
 
         delegate.request(listOf(AppGrant.CAMERA, AppGrant.MICROPHONE))
 
