@@ -6,12 +6,16 @@ import dev.brewkits.grant.InMemoryGrantStore
 import dev.brewkits.grant.RawPermission
 import dev.brewkits.grant.delegates.LocationManagerDelegate
 import dev.brewkits.grant.handlers.IosPermissionHandlerRegistry
+import dev.brewkits.grant.handlers.PermissionHandler
 import dev.brewkits.grant.impl.PlatformGrantDelegate
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import platform.CoreLocation.CLAuthorizationStatus
+import platform.CoreLocation.CLLocationManager
 import platform.CoreLocation.kCLAuthorizationStatusNotDetermined
 import platform.Foundation.NSClassFromString
 import platform.Foundation.NSDate
@@ -126,17 +130,21 @@ class Phase1IosReproTest {
     // ── R1: CoreLocation's initial delegate callback ───────────────────────────────────────
 
     /**
-     * From iOS 14, assigning a delegate to a CLLocationManager triggers an immediate
-     * `locationManagerDidChangeAuthorization` with the *current* status. The delegate sets
-     * `continuation` first and assigns itself second, so that initial NotDetermined callback
-     * would resume `requestWhenInUseAuthorization()` before the user has answered anything.
+     * R1 — CONFIRMED on a physical iPhone 14 Pro Max (iOS 26.6.2): with the old code
+     * `request(LOCATION)` returned NOT_DETERMINED after 19 ms, before anyone could answer the
+     * dialog, because iOS 14+ delivers `locationManagerDidChangeAuthorization` as soon as a
+     * delegate is assigned, reporting the *current* (NotDetermined) status, and the delegate
+     * treated that as the answer. (It did not reproduce on the Simulator, which is why this test
+     * could not catch it; the device probe did.)
      *
-     * Without a usage-description key CoreLocation shows no dialog, so a correct implementation
-     * stays suspended: nobody has answered. Returning at all means it resumed spuriously.
-     * (Only meaningful while authorisation is still NotDetermined on this simulator.)
+     * Both halves of the fixed contract are checked, whichever the host environment is:
+     *  - Location Services OFF: no dialog can ever appear, so the request must return promptly
+     *    rather than hang.
+     *  - Location Services ON: the request must stay pending until someone answers.
+     * Only meaningful while authorisation is still NotDetermined on this simulator.
      */
     @Test
-    fun `R1 requestWhenInUse stays pending until the user answers`() {
+    fun `R1 requestWhenInUse waits for a real answer and never hangs without a dialog`() {
         val locationDelegate = LocationManagerDelegate()
         if (locationDelegate.currentAuthorizationStatus() != kCLAuthorizationStatusNotDetermined) return
 
@@ -145,15 +153,54 @@ class Phase1IosReproTest {
         scope.launch { resumedWith = locationDelegate.requestWhenInUseAuthorization() }
 
         // Spin the main run loop so CoreLocation's delegate callbacks can be delivered.
-        val deadline = NSDate.dateWithTimeIntervalSinceNow(3.0)
-        NSRunLoop.currentRunLoop.runUntilDate(deadline)
+        NSRunLoop.currentRunLoop.runUntilDate(NSDate.dateWithTimeIntervalSinceNow(3.0))
 
-        val early = resumedWith
+        val result = resumedWith
+        val servicesOn = CLLocationManager.locationServicesEnabled()
         locationDelegate.dispose()
-        assertNull(
-            early,
-            "requestWhenInUseAuthorization() resumed with status $early although no one " +
-                "answered a dialog — the initial delegate callback was treated as the answer",
-        )
+        if (servicesOn) {
+            assertNull(result, "resumed with status $result although no one answered a dialog")
+        } else {
+            assertNotNull(result, "Location Services are off, so no dialog will ever appear; request() must not hang")
+        }
+    }
+
+    // ── R5 on iOS: checkStatus queues behind an unanswered request ─────────────────────────
+
+    private class HangingHandler(private val gate: CompletableDeferred<Unit>) : PermissionHandler {
+        override fun checkStatus(): GrantStatus = GrantStatus.NOT_DETERMINED
+        override suspend fun request(): GrantStatus {
+            gate.await()
+            return GrantStatus.GRANTED
+        }
+    }
+
+    /**
+     * Found on the same iPhone run that confirmed R1: once request() correctly waited for the user,
+     * a status poll for the same permission produced no output at all, because checkStatus() takes
+     * the per-permission mutex that the pending request() holds. (The R1 bug had hidden this by
+     * returning from request() after 19 ms.) A UI refresh while the system dialog is open must not
+     * hang. Same defect the Android delegate had.
+     */
+    @Test
+    fun `R5 iOS checkStatus returns while a request for the same permission awaits the user`() {
+        val id = "phase1.r5.ios.raw"
+        val gate = CompletableDeferred<Unit>()
+        IosPermissionHandlerRegistry.register(id, HangingHandler(gate))
+        val raw = RawPermission(id, emptyList(), null)
+
+        var observed: GrantStatus? = null
+        val scope = CoroutineScope(Dispatchers.Main)
+        scope.launch { delegate.request(raw) }
+        scope.launch {
+            delay(300)
+            observed = delegate.checkStatus(raw)
+        }
+        NSRunLoop.currentRunLoop.runUntilDate(NSDate.dateWithTimeIntervalSinceNow(3.0))
+
+        val result = observed
+        gate.complete(Unit) // let the pending request finish so nothing leaks into other tests
+        NSRunLoop.currentRunLoop.runUntilDate(NSDate.dateWithTimeIntervalSinceNow(0.5))
+        assertNotNull(result, "checkStatus() was still blocked after 3 s behind an unanswered request")
     }
 }

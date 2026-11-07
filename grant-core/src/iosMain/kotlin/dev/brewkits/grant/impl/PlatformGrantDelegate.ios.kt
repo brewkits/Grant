@@ -115,35 +115,43 @@ public actual class PlatformGrantDelegate(
     // PUBLIC API
     // ====================================================================
 
+    /**
+     * Reads the current status. **Does not take the per-permission mutex.**
+     *
+     * It used to share that mutex with [request], which a pending system dialog holds until the user
+     * answers, so any status poll for the same permission (a UI refresh, another screen) hung behind
+     * the dialog. Confirmed on a physical iPhone: with the dialog open, a polling `checkStatus` printed
+     * nothing at all. A read has nothing to protect — each handler's read runs on the main thread,
+     * and the shared cache is guarded by [mapsMutex] — and the OS state while a dialog is open is
+     * simply "not yet answered", which is what an honest read should report.
+     */
     public actual suspend fun checkStatus(grant: GrantPermission): GrantStatus {
         val identifier = grant.identifier
-        return getMutexFor(identifier).withLock {
-            mapsMutex.withLock {
-                statusCacheMap[identifier]?.let { (cachedStatus, timestamp) ->
-                    if (getMonotonicTimeMillis() - timestamp < STATUS_CACHE_TTL_MS) return@withLock cachedStatus
-                }
+        mapsMutex.withLock {
+            statusCacheMap[identifier]?.let { (cachedStatus, timestamp) ->
+                if (getMonotonicTimeMillis() - timestamp < STATUS_CACHE_TTL_MS) return cachedStatus
             }
-            
-            val status = if (grant is RawPermission) {
-                // Registered handlers take precedence — they own both checkStatus and request.
-                val registeredHandler = IosPermissionHandlerRegistry.get(grant.identifier)
-                if (registeredHandler != null) {
-                    runOnMain { registeredHandler.checkStatus() }
-                } else {
-                    val iosKey = grant.iosUsageKey
-                    if (iosKey != null && !hasInfoPlistKey(iosKey)) GrantStatus.DENIED_ALWAYS
-                    else if (store.isRawPermissionRequested(grant.identifier)) GrantStatus.DENIED
-                    else GrantStatus.NOT_DETERMINED
-                }
-            } else if ((grant as AppGrant) == AppGrant.NOTIFICATION) {
-                notificationHandler.checkStatusAsync()
-            } else {
-                runOnMain { handlerFor(grant).checkStatus() }
-            }
-
-            mapsMutex.withLock { statusCacheMap[identifier] = status to getMonotonicTimeMillis() }
-            status
         }
+
+        val status = if (grant is RawPermission) {
+            // Registered handlers take precedence — they own both checkStatus and request.
+            val registeredHandler = IosPermissionHandlerRegistry.get(grant.identifier)
+            if (registeredHandler != null) {
+                runOnMain { registeredHandler.checkStatus() }
+            } else {
+                val iosKey = grant.iosUsageKey
+                if (iosKey != null && !hasInfoPlistKey(iosKey)) GrantStatus.DENIED_ALWAYS
+                else if (store.isRawPermissionRequested(grant.identifier)) GrantStatus.DENIED
+                else GrantStatus.NOT_DETERMINED
+            }
+        } else if ((grant as AppGrant) == AppGrant.NOTIFICATION) {
+            notificationHandler.checkStatusAsync()
+        } else {
+            runOnMain { handlerFor(grant).checkStatus() }
+        }
+
+        mapsMutex.withLock { statusCacheMap[identifier] = status to getMonotonicTimeMillis() }
+        return status
     }
 
     public actual suspend fun request(grant: GrantPermission): GrantStatus =

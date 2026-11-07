@@ -65,6 +65,16 @@ old value needs a look.
 - **iOS `RawPermission` with no registered handler**: `request()` reports `DENIED_ALWAYS` with an ERROR
   log (was a permanent `NOT_DETERMINED`).
 
+### 🐛 Fixed (iOS)
+
+- `request(LOCATION)` no longer returns `NOT_DETERMINED` before the user has answered the dialog.
+  iOS 14+ reports the current status as soon as a delegate is assigned, and that was taken as the answer
+  (measured on an iPhone 14 Pro Max, iOS 26.6.2: returned after 19 ms with the dialog still on screen, so
+  `GrantHandler` showed a refusal the user had not given). It now waits for a determined status, and
+  returns immediately only when Location Services are switched off system-wide, where no dialog can appear.
+- `checkStatus()` no longer waits behind an open permission dialog for the same permission (same defect as
+  the Android fix below).
+
 ### 🐛 Fixed (Android)
 
 - `request()` no longer hangs for up to 5 minutes when the system refuses to start the permission
