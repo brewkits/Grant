@@ -46,7 +46,7 @@ class GrantRequestActivityTest {
     fun releaseSharedState() = GrantRequestActivity.forceReleaseGuardForTest()
 
     @Test
-    @Ignore("Flaky on an API 34 emulator (observed 2026-11: a different one of these two fails each run; passes alone). Root cause not yet found - see the audit notes. Not caused by the R3/R7 changes: the same class fails identically on the pre-change commit.")
+    @Ignore("Still flaky after the 100-Activity-launch fix in testGenerateUniqueRequestIds (3 runs on an API 34 emulator: 1 all-green, 2 with one of these two failing, each waiting on a real Activity's result; each passes alone). Residual root cause not found. Not caused by the R3/R7/ManifestValidator changes.")
     fun testA_RequestSinglePermission_alreadyGranted() = runBlocking {
         // Use a standard install-time permission
         val permission = Manifest.permission.VIBRATE
@@ -71,7 +71,7 @@ class GrantRequestActivityTest {
     }
 
     @Test
-    @Ignore("Flaky on an API 34 emulator (observed 2026-11: a different one of these two fails each run; passes alone). Root cause not yet found - see the audit notes. Not caused by the R3/R7 changes: the same class fails identically on the pre-change commit.")
+    @Ignore("Still flaky after the 100-Activity-launch fix in testGenerateUniqueRequestIds (3 runs on an API 34 emulator: 1 all-green, 2 with one of these two failing, each waiting on a real Activity's result; each passes alone). Residual root cause not found. Not caused by the R3/R7/ManifestValidator changes.")
     fun testRequestMultiplePermissions() = runBlocking {
         // Test with multiple install-time permissions
         val permissions = listOf(
@@ -124,6 +124,11 @@ class GrantRequestActivityTest {
         // Test that generated request IDs are unique
         val requestIds = mutableSetOf<String>()
 
+        // Do NOT clean up inside the loop. cleanup() releases the single-Activity launch guard, so
+        // each iteration used to win it again and start a REAL GrantRequestActivity: 100 launches
+        // in about a second (seen in logcat). That backlog delayed Activity starts by seconds and
+        // made neighbouring tests in this class time out. Holding the guard makes every request
+        // after the first yield without launching anything.
         repeat(100) {
             val requestId = GrantRequestActivity.requestGrants(
                 context,
@@ -133,8 +138,8 @@ class GrantRequestActivityTest {
                 requestIds.add(requestId),
                 "Request IDs should be unique"
             )
-            GrantRequestActivity.cleanup(requestId)
         }
+        requestIds.forEach { GrantRequestActivity.cleanup(it) }
 
         assertEquals(100, requestIds.size, "Should generate 100 unique IDs")
     }
@@ -186,7 +191,6 @@ class GrantRequestActivityTest {
      * Should handle gracefully without crashing.
      */
     @Test
-    @Ignore("Flaky on an API 34 emulator (observed 2026-11: three different tests of this class each failed in different runs, all waiting on a real Activity's result; each passes alone). Root cause not yet found. Unrelated to ManifestValidator or the R3/R7 changes.")
     fun testEmptyPermissionList() = runBlocking {
         val requestId = GrantRequestActivity.requestGrants(context, emptyList())
 
