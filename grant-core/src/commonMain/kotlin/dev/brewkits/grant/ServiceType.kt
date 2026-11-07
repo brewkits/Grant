@@ -24,7 +24,10 @@ public enum class ServiceType {
      * Wi-Fi radio status.
      *
      * - **Android**: Checked via `WifiManager.isWifiEnabled()`.
-     * - **iOS**: Limited detection via Network framework.
+     * - **iOS**: not readable. iOS exposes no public API for the Wi-Fi radio state, so this always
+     *   reports [ServiceStatus.ENABLED]. That is optimistic, not a measurement: it keeps
+     *   Wi-Fi-gated flows from being permanently blocked (an `UNKNOWN` would never count as
+     *   ready). Handle connectivity failures in your own network layer.
      */
     WIFI,
 
