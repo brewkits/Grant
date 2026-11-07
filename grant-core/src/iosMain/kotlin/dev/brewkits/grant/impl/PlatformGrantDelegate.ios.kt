@@ -184,6 +184,9 @@ public actual class PlatformGrantDelegate(
      * Opens the app's settings page in iOS Settings.
      * Logs a warning if the Settings URL cannot be resolved (e.g., App Extensions, App Clips).
      */
+    /** One per-app settings page here; there is nothing grant-specific to open. */
+    public actual fun openSettings(grant: GrantPermission) { openSettings() }
+
     public actual fun openSettings() {
         val url = NSURL.URLWithString(UIApplicationOpenSettingsURLString)
         if (url == null) {

@@ -52,6 +52,9 @@ public class FakeGrantManager(
     /** True once [openSettings] has been called. */
     public var openSettingsCalled: Boolean = false
 
+    /** The grant passed to the most recent [openSettings] overload that takes one, or `null`. */
+    public var lastOpenSettingsGrant: dev.brewkits.grant.GrantPermission? = null
+
     /** The launcher passed to [setLauncher], if any — null until a real one is captured. */
     public var capturedLauncher: GrantLauncher? = null
 
@@ -81,6 +84,11 @@ public class FakeGrantManager(
         requestCalled = true
         requestedGrants.addAll(grants)
         return grants.associateWith { requestResultMap[it] ?: mockRequestResult }
+    }
+
+    override fun openSettings(grant: dev.brewkits.grant.GrantPermission) {
+        lastOpenSettingsGrant = grant
+        openSettings()
     }
 
     override fun openSettings() {
@@ -117,6 +125,7 @@ public class FakeGrantManager(
         requestCalled = false
         requestedGrants.clear()
         openSettingsCalled = false
+        lastOpenSettingsGrant = null
         checkStatusCalls.clear()
         capturedLauncher = null
         mockStatus = GrantStatus.NOT_DETERMINED

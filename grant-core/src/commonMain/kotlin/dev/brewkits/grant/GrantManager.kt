@@ -119,6 +119,22 @@ public interface GrantManager {
     public fun openSettings()
 
     /**
+     * Opens the settings page for [grant] specifically, where the platform can tell them apart.
+     *
+     * [openSettings] has no idea which permission the user is being sent to fix. On desktop that
+     * matters: Windows and macOS keep separate Camera and Microphone privacy pages, and the
+     * no-argument call can only open one of them. Handlers call this overload with the grant they
+     * are guiding the user through.
+     *
+     * Android, iOS and web have a single per-app settings page, so the default (and their
+     * implementations) simply delegate to [openSettings]. Existing implementations of
+     * [GrantManager] need no change.
+     */
+    public fun openSettings(grant: GrantPermission) {
+        openSettings()
+    }
+
+    /**
      * Set the launcher for permission requests.
      * This must be called from the host activity or fragment.
      */

@@ -873,6 +873,9 @@ public actual class PlatformGrantDelegate(
         }
     }
 
+    /** One per-app settings page here; there is nothing grant-specific to open. */
+    public actual fun openSettings(grant: GrantPermission) { openSettings() }
+
     public actual fun openSettings() {
         try {
             val intent = android.content.Intent(

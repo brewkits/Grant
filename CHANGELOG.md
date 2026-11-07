@@ -8,6 +8,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### ✨ Added
+
+- **`GrantManager.openSettings(grant)`** — opens the settings page for a specific permission where the platform
+  can tell them apart. `GrantHandler`, `GrantGroupHandler` and `GrantAndServiceHandler` now call it with the
+  grant they are guiding the user through. Android, iOS and web have one per-app page, so they delegate to
+  `openSettings()`. On desktop, `DesktopPermissionHandlerRegistry.permissionSettingsOpener` receives the grant;
+  `grant-desktop` uses it so Microphone opens the Microphone privacy page (macOS) instead of always Camera.
+  It is a default method, so existing `GrantManager` implementations compile unchanged, but one compiled against
+  an older Grant must be recompiled or `openSettings(grant)` will not resolve on it.
+  `FakeGrantManager`/`MultiGrantFakeManager` expose `lastOpenSettingsGrant`.
+
 ### ⚠️ Behaviour changes
 
 These make a status honest where the platform cannot back the old answer. Code that matched on the

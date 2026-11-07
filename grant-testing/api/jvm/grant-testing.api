@@ -7,6 +7,7 @@ public final class dev/brewkits/grant/testing/FakeGrantManager : dev/brewkits/gr
 	public static synthetic fun configure$default (Ldev/brewkits/grant/testing/FakeGrantManager;Ldev/brewkits/grant/GrantPermission;Ldev/brewkits/grant/GrantStatus;Ldev/brewkits/grant/GrantStatus;ILjava/lang/Object;)V
 	public final fun getCapturedLauncher ()Ldev/brewkits/grant/GrantLauncher;
 	public final fun getCheckStatusCalls ()Ljava/util/List;
+	public final fun getLastOpenSettingsGrant ()Ldev/brewkits/grant/GrantPermission;
 	public final fun getMockRequestResult ()Ldev/brewkits/grant/GrantStatus;
 	public final fun getMockStatus ()Ldev/brewkits/grant/GrantStatus;
 	public final fun getOpenSettingsCalled ()Z
@@ -15,10 +16,12 @@ public final class dev/brewkits/grant/testing/FakeGrantManager : dev/brewkits/gr
 	public final fun getShouldThrow ()Ljava/lang/Exception;
 	public final fun getSimulatedDelayMs ()J
 	public fun openSettings ()V
+	public fun openSettings (Ldev/brewkits/grant/GrantPermission;)V
 	public fun request (Ldev/brewkits/grant/GrantPermission;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public fun request (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun reset ()V
 	public final fun setCapturedLauncher (Ldev/brewkits/grant/GrantLauncher;)V
+	public final fun setLastOpenSettingsGrant (Ldev/brewkits/grant/GrantPermission;)V
 	public fun setLauncher (Ldev/brewkits/grant/GrantLauncher;)V
 	public final fun setMockRequestResult (Ldev/brewkits/grant/GrantStatus;)V
 	public final fun setMockStatus (Ldev/brewkits/grant/GrantStatus;)V
@@ -71,13 +74,16 @@ public final class dev/brewkits/grant/testing/MultiGrantFakeManager : dev/brewki
 	public final fun configure (Ldev/brewkits/grant/GrantPermission;Ldev/brewkits/grant/GrantStatus;Ldev/brewkits/grant/GrantStatus;)V
 	public static synthetic fun configure$default (Ldev/brewkits/grant/testing/MultiGrantFakeManager;Ldev/brewkits/grant/GrantPermission;Ldev/brewkits/grant/GrantStatus;Ldev/brewkits/grant/GrantStatus;ILjava/lang/Object;)V
 	public final fun getDelayMillis ()J
+	public final fun getLastOpenSettingsGrant ()Ldev/brewkits/grant/GrantPermission;
 	public final fun getOpenSettingsCalled ()Z
 	public final fun getRequestCount ()I
 	public final fun isRequestCalled (Ldev/brewkits/grant/GrantPermission;)Z
 	public fun openSettings ()V
+	public fun openSettings (Ldev/brewkits/grant/GrantPermission;)V
 	public fun request (Ldev/brewkits/grant/GrantPermission;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public fun request (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun setDelayMillis (J)V
+	public final fun setLastOpenSettingsGrant (Ldev/brewkits/grant/GrantPermission;)V
 	public fun setLauncher (Ldev/brewkits/grant/GrantLauncher;)V
 	public final fun setOpenSettingsCalled (Z)V
 	public final fun setRequestCount (I)V

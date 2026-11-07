@@ -230,9 +230,14 @@ public abstract interface class dev/brewkits/grant/GrantLauncher {
 public abstract interface class dev/brewkits/grant/GrantManager {
 	public abstract fun checkStatus (Ldev/brewkits/grant/GrantPermission;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public abstract fun openSettings ()V
+	public fun openSettings (Ldev/brewkits/grant/GrantPermission;)V
 	public abstract fun request (Ldev/brewkits/grant/GrantPermission;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public abstract fun request (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public abstract fun setLauncher (Ldev/brewkits/grant/GrantLauncher;)V
+}
+
+public final class dev/brewkits/grant/GrantManager$DefaultImpls {
+	public static fun openSettings (Ldev/brewkits/grant/GrantManager;Ldev/brewkits/grant/GrantPermission;)V
 }
 
 public abstract interface class dev/brewkits/grant/GrantPermission {
@@ -454,6 +459,7 @@ public final class dev/brewkits/grant/impl/DefaultGrantManager : dev/brewkits/gr
 	public fun <init> (Ldev/brewkits/grant/impl/PlatformGrantDelegate;)V
 	public fun checkStatus (Ldev/brewkits/grant/GrantPermission;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public fun openSettings ()V
+	public fun openSettings (Ldev/brewkits/grant/GrantPermission;)V
 	public fun request (Ldev/brewkits/grant/GrantPermission;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public fun request (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public fun setLauncher (Ldev/brewkits/grant/GrantLauncher;)V
@@ -502,6 +508,7 @@ public final class dev/brewkits/grant/impl/PlatformGrantDelegate {
 	public fun <init> (Landroid/content/Context;Ldev/brewkits/grant/GrantStore;)V
 	public final fun checkStatus (Ldev/brewkits/grant/GrantPermission;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun openSettings ()V
+	public final fun openSettings (Ldev/brewkits/grant/GrantPermission;)V
 	public final fun request (Ldev/brewkits/grant/GrantPermission;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun request (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun setLauncher (Ldev/brewkits/grant/GrantLauncher;)V
@@ -515,6 +522,7 @@ public final class dev/brewkits/grant/impl/SimpleGrantManager : dev/brewkits/gra
 	public fun checkStatus (Ldev/brewkits/grant/GrantPermission;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun getSimulationMode ()Ldev/brewkits/grant/impl/SimpleGrantManager$SimulationMode;
 	public fun openSettings ()V
+	public fun openSettings (Ldev/brewkits/grant/GrantPermission;)V
 	public fun request (Ldev/brewkits/grant/GrantPermission;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public fun request (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun reset ()V

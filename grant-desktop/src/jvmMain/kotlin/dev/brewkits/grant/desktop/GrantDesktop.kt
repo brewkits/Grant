@@ -23,6 +23,10 @@ private const val TAG = "GrantDesktop"
 public object GrantDesktop {
     private var isInitialized = false
 
+    /** The System Settings privacy anchor for [grant]; Camera is the fallback for anything else. */
+    internal fun macPrivacyAnchor(grant: dev.brewkits.grant.GrantPermission): String =
+        if (grant == AppGrant.MICROPHONE) "Privacy_Microphone" else "Privacy_Camera"
+
     /**
      * `@Synchronized` rather than the plain flag `GrantContacts.initialize()` uses on iOS: two
      * threads calling this concurrently on a JVM could both pass an unguarded check and
@@ -52,6 +56,9 @@ public object GrantDesktop {
         // link (Microphone, Contacts, ...) is a documented follow-up (ROADMAP.md v2.6.0), not
         // a silent limitation — it's stated in the KDoc on grant_open_privacy_settings().
         DesktopPermissionHandlerRegistry.settingsOpener = { bridge.grant_open_privacy_settings("Privacy_Camera") }
+        DesktopPermissionHandlerRegistry.permissionSettingsOpener = { grant ->
+            bridge.grant_open_privacy_settings(macPrivacyAnchor(grant))
+        }
 
         GrantLogger.i(TAG, "grant-desktop initialized with the real macOS bridge (camera, microphone, settings).")
     }
