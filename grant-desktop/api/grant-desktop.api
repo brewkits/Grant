@@ -1,5 +1,19 @@
 public final class dev/brewkits/grant/desktop/GrantDesktop {
 	public static final field INSTANCE Ldev/brewkits/grant/desktop/GrantDesktop;
+	public final fun checkWindowsPrivacyStatus (Ldev/brewkits/grant/AppGrant;)Ldev/brewkits/grant/desktop/WindowsPrivacyStatus;
 	public final fun initialize ()V
+	public final fun isSupported (Ldev/brewkits/grant/AppGrant;)Z
+	public final fun openSettings (Ldev/brewkits/grant/AppGrant;)Z
+}
+
+public final class dev/brewkits/grant/desktop/WindowsPrivacyStatus : java/lang/Enum {
+	public static final field ALLOWED Ldev/brewkits/grant/desktop/WindowsPrivacyStatus;
+	public static final field DENIED_BY_SYSTEM Ldev/brewkits/grant/desktop/WindowsPrivacyStatus;
+	public static final field DENIED_BY_USER Ldev/brewkits/grant/desktop/WindowsPrivacyStatus;
+	public static final field UNAVAILABLE Ldev/brewkits/grant/desktop/WindowsPrivacyStatus;
+	public static final field UNSPECIFIED Ldev/brewkits/grant/desktop/WindowsPrivacyStatus;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/brewkits/grant/desktop/WindowsPrivacyStatus;
+	public static fun values ()[Ldev/brewkits/grant/desktop/WindowsPrivacyStatus;
 }
 

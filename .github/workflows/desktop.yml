@@ -1,0 +1,106 @@
+name: Desktop preview
+
+on:
+  push:
+    branches: [main, feat/desktop-windows-preview]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-native:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build native bridge and test real Windows APIs
+        run: ./gradlew.bat :grant-desktop:jvmTest --console=plain
+      - name: Record the source revision this bridge was built from
+        shell: bash
+        run: git rev-parse HEAD > grant-desktop/build/windows-native/Release/bridge-source-revision.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-bridge
+          path: |
+            grant-desktop/build/windows-native/Release/GrantWindowsBridge.dll
+            grant-desktop/build/windows-native/Release/bridge-source-revision.txt
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-native-tests
+          path: grant-desktop/build/test-results/jvmTest/
+
+  stage-and-test:
+    needs: windows-native
+    runs-on: macos-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-bridge
+          path: grant-desktop/build/windows-bridge-input
+      - name: Verify universal JVM artifact and independent macOS consumer
+        env:
+          GRANT_WINDOWS_BRIDGE_DIR: ${{ github.workspace }}/grant-desktop/build/windows-bridge-input
+        run: bash verification/verify-desktop-preview.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-staging
+          path: |
+            grant-core/build/maven-central-staging/
+            grant-desktop/build/maven-central-staging/
+            grant-bom/build/maven-central-staging/
+          if-no-files-found: error
+
+  windows-consumer:
+    needs: stage-and-test
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: desktop-staging
+          path: .
+      - name: Build and run independent Maven consumer
+        shell: pwsh
+        run: |
+          $previewVersion = (Select-String '^version = "([^"]+)"' grant-desktop/build.gradle.kts).Matches.Groups[1].Value
+          ./gradlew.bat -p verification/desktop-consumer "-PgrantVersion=$previewVersion" createDistributable run --console=plain
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $app = Resolve-Path verification/desktop-consumer/build/compose/binaries/main/app/GrantDesktopConsumer/GrantDesktopConsumer.exe
+          $report = Join-Path $env:RUNNER_TEMP 'grant-windows-consumer.txt'
+          $process = Start-Process -FilePath $app -ArgumentList "--out=$report" -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Packaged app failed: $($process.ExitCode)" }
+          $content = Get-Content $report -Raw
+          Write-Output $content
+          if ($content -notmatch 'RESULT=PASS') { throw 'Missing packaged-app success report' }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-consumer-evidence
+          path: ${{ runner.temp }}/grant-windows-consumer.txt

@@ -2,7 +2,9 @@ package dev.brewkits.grant.util
 
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Build
 import dev.brewkits.grant.AppGrant
+import dev.brewkits.grant.utils.GrantLogger
 
 /**
  * Utility for validating manifest permissions declarations.
@@ -10,6 +12,8 @@ import dev.brewkits.grant.AppGrant
  * Helps developers catch missing manifest declarations at runtime.
  */
 public object ManifestValidator {
+    private const val TAG = "ManifestValidator"
+
     /**
      * Check if a specific permission is declared in AndroidManifest.xml
      *
@@ -18,22 +22,21 @@ public object ManifestValidator {
      * @return true if permission is declared in manifest
      */
     public fun isPermissionDeclared(context: Context, permission: String): Boolean {
-        // Bypass for Unit Tests (Robolectric or generic tests)
-        // In test environments, we assume permissions are declared to avoid
-        // complex ShadowPackageManager setup in every test case.
-        if (context.packageName == "dev.brewkits.grant.test" || 
-            context.javaClass.name.contains("Shadow") ||
-            System.getProperty("robolectric.enabled") == "true") {
-            return true
-        }
-
         return try {
-            val packageInfo = context.packageManager.getPackageInfo(
-                context.packageName,
-                PackageManager.GET_PERMISSIONS
-            )
+            val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.packageManager.getPackageInfo(
+                    context.packageName,
+                    PackageManager.PackageInfoFlags.of(PackageManager.GET_PERMISSIONS.toLong()),
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_PERMISSIONS)
+            }
             packageInfo.requestedPermissions?.contains(permission) == true
         } catch (e: Exception) {
+            // "Cannot tell" is reported as "not declared", which makes request() skip the
+            // permission — so say why instead of leaving a silently missing dialog.
+            GrantLogger.e(TAG, "Could not read the manifest to check '$permission'", e)
             false
         }
     }

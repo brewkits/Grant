@@ -8,6 +8,7 @@ import androidx.test.core.app.ApplicationProvider
 import dev.brewkits.grant.AppGrant
 import dev.brewkits.grant.GrantStatus
 import dev.brewkits.grant.InMemoryGrantStore
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockkObject
 import io.mockk.unmockkObject
@@ -88,6 +89,8 @@ class Issue53NoLauncherFallbackTest {
             "issue53-request-id"
         }
         // Complete immediately so the suspending await() does not block the test.
+        // The system really starts the dialog Activity in this scenario (see awaitLaunched()).
+        coEvery { GrantRequestActivity.awaitLaunched(any(), any()) } returns true
         every { GrantRequestActivity.getResultDeferred(any()) } answers {
             CompletableDeferred<GrantRequestActivity.GrantResult>().apply {
                 complete(GrantRequestActivity.GrantResult.DENIED)
@@ -125,6 +128,8 @@ class Issue53NoLauncherFallbackTest {
             fallbackCallCount.incrementAndGet()
             "issue53-multi-id"
         }
+        // The system really starts the dialog Activity in this scenario (see awaitLaunched()).
+        coEvery { GrantRequestActivity.awaitLaunched(any(), any()) } returns true
         every { GrantRequestActivity.getResultDeferred(any()) } answers {
             CompletableDeferred<GrantRequestActivity.GrantResult>().apply {
                 complete(GrantRequestActivity.GrantResult.DENIED)

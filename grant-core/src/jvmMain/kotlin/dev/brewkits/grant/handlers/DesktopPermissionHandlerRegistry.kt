@@ -39,4 +39,13 @@ public object DesktopPermissionHandlerRegistry {
      */
     @Volatile
     public var settingsOpener: (() -> Unit)? = null
+
+    /**
+     * Like [settingsOpener] but told which permission the user is being sent to fix, so a platform
+     * with separate privacy pages (Camera, Microphone, ...) can open the right one. Preferred by
+     * `openSettings(grant)`; [settingsOpener] remains the fallback and the target of the
+     * no-argument `openSettings()`.
+     */
+    @Volatile
+    public var permissionSettingsOpener: ((dev.brewkits.grant.GrantPermission) -> Unit)? = null
 }

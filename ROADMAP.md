@@ -1,5 +1,13 @@
 # Grant Library — Roadmap
 
+> **2026-11-06 development update:** `2.7.0-alpha01` prepares the macOS Apple Silicon
+> Desktop preview for publication, adds its BOM constraint and capability query, and verifies
+> a separate staged-Maven consumer. Windows x64 privacy checks/settings and cross-host CI
+> are implemented in the same preview. [Linux roadmap](docs/LINUX_ROADMAP.md).
+> Not uploaded to Central; manual consent and distribution
+> gates remain open. See [validation evidence](docs/DESKTOP_PREVIEW_VALIDATION.md).
+> The roadmap/version notes below describe the earlier release plan.
+
 > Last updated: 2026-09-12 · Current stable: **v2.6.0** (`AppGrant.USE_FULL_SCREEN_INTENT` +
 > `GrantHandler.autoRefreshOnForeground()` — see the **v2.6.0** section immediately below).
 > JS/Wasm (Tier 1) and the macOS camera/microphone bridge (Tier 2, unpublished — `grant-desktop`
@@ -287,9 +295,19 @@ what actually defines v2.8.0's remaining scope, is **Tier 2.5 (Windows)**, not s
 - [ ] **Still not verified, and not claimed**: the `DENIED_ALWAYS` mapping from an actual user denial. macOS deliberately refuses synthesised clicks on a TCC dialog, so "Don't Allow" needs a human; the mapping is currently backed only by code inspection (`AVAuthorizationStatus` 1/2 → `DENIED_ALWAYS`) and the JVM-side unit tests. The microphone *dialog* likewise has not been clicked, though its status path is shared with camera's and reads correctly.
 - [ ] **Still not done, tracked rather than dropped**: location/contacts/calendar handlers; the `macosX64` slice (also newly KGP-deprecated — "target will be removed in a future release" — a second, independent reason not to add it speculatively); per-permission Settings deep links (currently always the Camera pane); publishing wiring (`grant-desktop` isn't yet in `create-grant-maven-bundle-auto.sh`'s `MODULES` array or the eight-module version-bump list, and gets its SBOM at that point).
 
-**Tier 2.5 — Windows, `ServiceManager` only** — *not started*
+**Tier 2.5 — Windows privacy access — preview implementation**
 
-**Explicitly out of scope, with reasons** (so it isn't re-litigated by assumption): Linux desktop (no reliable cross-environment signal), watchOS/tvOS (different problem shape, stays in Backlog below), standalone Kotlin/Native `macosArm64`/`macosX64` klib target (can't be consumed by a Compose Desktop app — this is what `grant-desktop`'s `.dylib`-over-JNA approach sidesteps).
+- [x] In-process C++/WinRT device-class camera/microphone access queries; no registry inference.
+- [x] Explicit Windows status API and per-permission Settings navigation; JVM mapping tests.
+- [x] Native Windows CI and independent packaged Maven consumer workflow.
+- [ ] Interactive privacy-toggle/Settings verification on the intended Windows packaging mode.
+- [ ] Native permission requests/MSIX consent integration (separate scope).
+
+Microphone privacy does not map to an existing `ServiceType`, and camera privacy is not
+`CAMERA_HARDWARE`. Therefore these checks use `WindowsPrivacyStatus` rather than reporting
+hardware/service availability incorrectly. `ServiceManager` remains unchanged.
+
+**Explicitly out of scope, with reasons** (so it isn't re-litigated by assumption): general Linux Desktop support (portal-specific work is planned in [the Linux roadmap](docs/LINUX_ROADMAP.md)), watchOS/tvOS (different problem shape, stays in Backlog below), standalone Kotlin/Native `macosArm64`/`macosX64` klib target (can't be consumed by a Compose Desktop app — this is what `grant-desktop`'s `.dylib`-over-JNA approach sidesteps).
 
 ### v2.9.0 — Newest-OS permission coverage
 

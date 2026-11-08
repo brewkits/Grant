@@ -11,6 +11,9 @@ import android.os.Build
 import android.provider.Settings
 import dev.brewkits.grant.ServiceStatus
 import dev.brewkits.grant.ServiceType
+import dev.brewkits.grant.utils.GrantLogger
+
+private const val TAG = "AndroidServiceDelegate"
 
 /**
  * Android implementation of service checking.
@@ -45,6 +48,7 @@ internal actual class PlatformServiceDelegate(
             context.startActivity(intent)
             true
         } catch (e: Exception) {
+            GrantLogger.w(TAG, "Could not open the settings screen for $service: ${e.message}")
             false
         }
     }
@@ -62,6 +66,9 @@ internal actual class PlatformServiceDelegate(
                 else -> ServiceStatus.DISABLED
             }
         } catch (e: Exception) {
+            // Say so: UNKNOWN keeps GrantAndServiceChecker from reporting "ready", and without a log the
+            // reason (missing permission, restricted profile, OEM quirk) is invisible.
+            GrantLogger.w(TAG, "Service status check failed; reporting UNKNOWN: ${e.message}")
             ServiceStatus.UNKNOWN
         }
     }
@@ -82,6 +89,9 @@ internal actual class PlatformServiceDelegate(
                 ServiceStatus.DISABLED
             }
         } catch (e: Exception) {
+            // Say so: UNKNOWN keeps GrantAndServiceChecker from reporting "ready", and without a log the
+            // reason (missing permission, restricted profile, OEM quirk) is invisible.
+            GrantLogger.w(TAG, "Service status check failed; reporting UNKNOWN: ${e.message}")
             ServiceStatus.UNKNOWN
         }
     }
@@ -99,6 +109,9 @@ internal actual class PlatformServiceDelegate(
                 ServiceStatus.DISABLED
             }
         } catch (e: Exception) {
+            // Say so: UNKNOWN keeps GrantAndServiceChecker from reporting "ready", and without a log the
+            // reason (missing permission, restricted profile, OEM quirk) is invisible.
+            GrantLogger.w(TAG, "Service status check failed; reporting UNKNOWN: ${e.message}")
             ServiceStatus.UNKNOWN
         }
     }
@@ -114,6 +127,9 @@ internal actual class PlatformServiceDelegate(
                 ServiceStatus.DISABLED
             }
         } catch (e: Exception) {
+            // Say so: UNKNOWN keeps GrantAndServiceChecker from reporting "ready", and without a log the
+            // reason (missing permission, restricted profile, OEM quirk) is invisible.
+            GrantLogger.w(TAG, "Service status check failed; reporting UNKNOWN: ${e.message}")
             ServiceStatus.UNKNOWN
         }
     }
@@ -133,6 +149,9 @@ internal actual class PlatformServiceDelegate(
                 ServiceStatus.NOT_AVAILABLE
             }
         } catch (e: Exception) {
+            // Say so: UNKNOWN keeps GrantAndServiceChecker from reporting "ready", and without a log the
+            // reason (missing permission, restricted profile, OEM quirk) is invisible.
+            GrantLogger.w(TAG, "Service status check failed; reporting UNKNOWN: ${e.message}")
             ServiceStatus.UNKNOWN
         }
     }
@@ -151,6 +170,9 @@ internal actual class PlatformServiceDelegate(
                 ServiceStatus.NOT_AVAILABLE
             }
         } catch (e: Exception) {
+            // Say so: UNKNOWN keeps GrantAndServiceChecker from reporting "ready", and without a log the
+            // reason (missing permission, restricted profile, OEM quirk) is invisible.
+            GrantLogger.w(TAG, "Service status check failed; reporting UNKNOWN: ${e.message}")
             ServiceStatus.UNKNOWN
         }
     }

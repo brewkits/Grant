@@ -115,35 +115,43 @@ public actual class PlatformGrantDelegate(
     // PUBLIC API
     // ====================================================================
 
+    /**
+     * Reads the current status. **Does not take the per-permission mutex.**
+     *
+     * It used to share that mutex with [request], which a pending system dialog holds until the user
+     * answers, so any status poll for the same permission (a UI refresh, another screen) hung behind
+     * the dialog. Confirmed on a physical iPhone: with the dialog open, a polling `checkStatus` printed
+     * nothing at all. A read has nothing to protect — each handler's read runs on the main thread,
+     * and the shared cache is guarded by [mapsMutex] — and the OS state while a dialog is open is
+     * simply "not yet answered", which is what an honest read should report.
+     */
     public actual suspend fun checkStatus(grant: GrantPermission): GrantStatus {
         val identifier = grant.identifier
-        return getMutexFor(identifier).withLock {
-            mapsMutex.withLock {
-                statusCacheMap[identifier]?.let { (cachedStatus, timestamp) ->
-                    if (getMonotonicTimeMillis() - timestamp < STATUS_CACHE_TTL_MS) return@withLock cachedStatus
-                }
+        mapsMutex.withLock {
+            statusCacheMap[identifier]?.let { (cachedStatus, timestamp) ->
+                if (getMonotonicTimeMillis() - timestamp < STATUS_CACHE_TTL_MS) return cachedStatus
             }
-            
-            val status = if (grant is RawPermission) {
-                // Registered handlers take precedence — they own both checkStatus and request.
-                val registeredHandler = IosPermissionHandlerRegistry.get(grant.identifier)
-                if (registeredHandler != null) {
-                    runOnMain { registeredHandler.checkStatus() }
-                } else {
-                    val iosKey = grant.iosUsageKey
-                    if (iosKey != null && !hasInfoPlistKey(iosKey)) GrantStatus.DENIED_ALWAYS
-                    else if (store.isRawPermissionRequested(grant.identifier)) GrantStatus.DENIED
-                    else GrantStatus.NOT_DETERMINED
-                }
-            } else if ((grant as AppGrant) == AppGrant.NOTIFICATION) {
-                notificationHandler.checkStatusAsync()
-            } else {
-                runOnMain { handlerFor(grant).checkStatus() }
-            }
-
-            mapsMutex.withLock { statusCacheMap[identifier] = status to getMonotonicTimeMillis() }
-            status
         }
+
+        val status = if (grant is RawPermission) {
+            // Registered handlers take precedence — they own both checkStatus and request.
+            val registeredHandler = IosPermissionHandlerRegistry.get(grant.identifier)
+            if (registeredHandler != null) {
+                runOnMain { registeredHandler.checkStatus() }
+            } else {
+                val iosKey = grant.iosUsageKey
+                if (iosKey != null && !hasInfoPlistKey(iosKey)) GrantStatus.DENIED_ALWAYS
+                else if (store.isRawPermissionRequested(grant.identifier)) GrantStatus.DENIED
+                else GrantStatus.NOT_DETERMINED
+            }
+        } else if ((grant as AppGrant) == AppGrant.NOTIFICATION) {
+            notificationHandler.checkStatusAsync()
+        } else {
+            runOnMain { handlerFor(grant).checkStatus() }
+        }
+
+        mapsMutex.withLock { statusCacheMap[identifier] = status to getMonotonicTimeMillis() }
+        return status
     }
 
     public actual suspend fun request(grant: GrantPermission): GrantStatus =
@@ -184,6 +192,9 @@ public actual class PlatformGrantDelegate(
      * Opens the app's settings page in iOS Settings.
      * Logs a warning if the Settings URL cannot be resolved (e.g., App Extensions, App Clips).
      */
+    /** One per-app settings page here; there is nothing grant-specific to open. */
+    public actual fun openSettings(grant: GrantPermission) { openSettings() }
+
     public actual fun openSettings() {
         val url = NSURL.URLWithString(UIApplicationOpenSettingsURLString)
         if (url == null) {
@@ -249,9 +260,12 @@ public actual class PlatformGrantDelegate(
                 return result
             }
             
-            GrantLogger.w(TAG, "RawPermission '${grant.identifier}' on iOS: no generic request API available. " +
-                "Implement a custom PermissionHandler for this permission and register it via IosPermissionHandlerRegistry.")
-            return GrantStatus.NOT_DETERMINED
+            // Nothing here can ever show a prompt. NOT_DETERMINED would invite an endless retry and
+            // never leave that state (nothing is recorded), so report it as unavailable instead.
+            GrantLogger.e(TAG, "RawPermission '${grant.identifier}' on iOS: no generic request API available. " +
+                "Implement a custom PermissionHandler for this permission and register it via IosPermissionHandlerRegistry. " +
+                "Reporting DENIED_ALWAYS.")
+            return GrantStatus.DENIED_ALWAYS
         }
 
         val result = when (grant as AppGrant) {
@@ -313,10 +327,13 @@ public actual class PlatformGrantDelegate(
         // Registry first, so an app that bridges AlarmKit itself wins over the fallback below.
         AppGrant.SCHEDULE_EXACT_ALARM -> IosPermissionHandlerRegistry.get(grant.identifier) ?: ExactAlarmHandler
 
+        // iOS has a real Local Network permission the user can deny, but no API to query or
+        // request it — the OS prompts on the first LAN access when NSLocalNetworkUsageDescription
+        // is present. Grant therefore cannot know the answer; see LocalNetworkHandler.
+        AppGrant.LOCAL_NETWORK        -> LocalNetworkHandler
+
+        // Android-only concept (no iOS counterpart to query).
         AppGrant.NEARBY_WIFI_DEVICES,
-        // iOS has no API to query or explicitly request local-network authorization — the
-        // OS prompts on the first LAN access when NSLocalNetworkUsageDescription is present.
-        AppGrant.LOCAL_NETWORK,
         // Android-only concept (full-screen intent from a notification, gated on API 34+).
         // iOS has no separate authorization for it beyond the standard NOTIFICATION one.
         AppGrant.USE_FULL_SCREEN_INTENT -> AlwaysGrantedHandler
@@ -350,6 +367,30 @@ public actual class PlatformGrantDelegate(
 private object AlwaysGrantedHandler : PermissionHandler {
     override fun checkStatus(): GrantStatus = GrantStatus.GRANTED
     override suspend fun request(): GrantStatus = GrantStatus.GRANTED
+}
+
+/**
+ * [AppGrant.LOCAL_NETWORK] on iOS. The user can deny it, but iOS exposes no API to read or
+ * request that state, so the only honest answer is "unknown" — never GRANTED, which would be
+ * fabricated (the same rule the web and desktop delegates follow).
+ *
+ * NOT_DETERMINED rather than DENIED_ALWAYS: access may well be allowed, and the OS prompts on
+ * the first local-network use. A caller that must react to a denial has to observe the failure
+ * of its own network call.
+ */
+private object LocalNetworkHandler : PermissionHandler {
+    private fun unknown(): GrantStatus {
+        GrantLogger.w(
+            TAG,
+            "LOCAL_NETWORK: iOS provides no API to read or request local-network authorization, " +
+                "so its state is unknown. Reporting NOT_DETERMINED instead of a fabricated GRANTED; " +
+                "the system prompts on first LAN access when NSLocalNetworkUsageDescription is set.",
+        )
+        return GrantStatus.NOT_DETERMINED
+    }
+
+    override fun checkStatus(): GrantStatus = unknown()
+    override suspend fun request(): GrantStatus = unknown()
 }
 
 /** `Info.plist` key an app declares when it uses AlarmKit (iOS 26+). */
@@ -411,13 +452,16 @@ private object ExactAlarmHandler : PermissionHandler {
  * A fallback handler for modular permissions that haven't been registered.
  */
 private class NotRegisteredHandler(private val moduleName: String, private val initCode: String) : PermissionHandler {
+    // DENIED_ALWAYS, not NOT_DETERMINED: no prompt can ever appear until the module is added and
+    // initialised, so "ask me later" is a status this platform cannot back. Logged at ERROR so a
+    // missing initialize() call surfaces in crash reporting instead of looking like a quiet no-op.
     override fun checkStatus(): GrantStatus {
-        GrantLogger.w(TAG, "Module $moduleName is not registered. Please add the dependency and call $initCode.")
-        return GrantStatus.NOT_DETERMINED
+        GrantLogger.e(TAG, "Module $moduleName is not registered. Please add the dependency and call $initCode. Reporting DENIED_ALWAYS.")
+        return GrantStatus.DENIED_ALWAYS
     }
     
     override suspend fun request(): GrantStatus {
-        GrantLogger.w(TAG, "Module $moduleName is not registered. Please add the dependency and call $initCode.")
-        return GrantStatus.NOT_DETERMINED
+        GrantLogger.e(TAG, "Module $moduleName is not registered. Please add the dependency and call $initCode. Reporting DENIED_ALWAYS.")
+        return GrantStatus.DENIED_ALWAYS
     }
 }
