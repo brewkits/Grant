@@ -1,12 +1,12 @@
 # Grant Library — Roadmap
 
-> **2026-11-06 development update:** `2.7.0-alpha01` prepares the macOS Apple Silicon
-> Desktop preview for publication, adds its BOM constraint and capability query, and verifies
-> a separate staged-Maven consumer. Windows x64 privacy checks/settings and cross-host CI
-> are implemented in the same preview. [Linux roadmap](docs/LINUX_ROADMAP.md).
-> Not uploaded to Central; manual consent and distribution
-> gates remain open. See [validation evidence](docs/DESKTOP_PREVIEW_VALIDATION.md).
-> The roadmap/version notes below describe the earlier release plan.
+> **2026-11-08:** `2.7.0-alpha01` is shipped as a **pre-release** — Maven Central
+> (`dev.brewkits:grant-bom:2.7.0-alpha01`, including `grant-desktop`) and GitHub release
+> [`v2.7.0-alpha01`](https://github.com/brewkits/Grant/releases/tag/v2.7.0-alpha01). It carries the
+> macOS Apple Silicon and Windows x64 Desktop preview plus the fixes from a `grant-core` audit.
+> What is still open is listed under **v2.7.0-alpha01 follow-ups** below.
+> See [validation evidence](docs/DESKTOP_PREVIEW_VALIDATION.md) and the [Linux roadmap](docs/LINUX_ROADMAP.md).
+> The roadmap/version notes further down describe the earlier release plan.
 
 > Last updated: 2026-09-12 · Current stable: **v2.6.0** (`AppGrant.USE_FULL_SCREEN_INTENT` +
 > `GrantHandler.autoRefreshOnForeground()` — see the **v2.6.0** section immediately below).
@@ -20,6 +20,54 @@
 ---
 
 ## 🛠️ In Progress / Upcoming
+
+### v2.7.0-alpha01 follow-ups — outstanding work
+
+*Recorded 2026-11-08 after the audit/remediation and the alpha release. Planning notes, not commitments.
+Items marked **(owner)** need something only the maintainer has (certificates, devices).*
+
+**Release hardening**
+- [ ] **(owner)** Authenticode-sign `GrantWindowsBridge.dll` (SmartScreen/AV may warn on an unsigned DLL).
+- [ ] **(owner)** Sign and notarize the macOS `libGrantDesktopBridge.dylib` for distribution.
+- [ ] `release.yml` sets `prerelease: false` on every `v*` tag; derive it from the tag (`-alpha`/`-beta`/`-rc`
+  ⇒ pre-release) so an alpha is never flipped to a full release.
+- [ ] `create-grant-maven-bundle-auto.sh` swallows `gpg` errors and prints "No GPG key found". A stale
+  `~/.gnupg/public-keys.d/pubring.db.lock` (hostname-mismatch lock from a dead pid) caused exactly that;
+  make the pre-flight report the real `gpg` error.
+
+**Verification gaps (nothing here was observed on a device)**
+- [ ] iOS Precise-Location-off ⇒ `PARTIAL_GRANTED` is only unit-tested with given values. Verify with an
+  **XCUITest** (system permission alerts can be driven automatically), not manual taps.
+- [ ] Windows: interactive Settings/privacy-toggle verification, a machine with a real camera, packaged vs
+  full-trust behaviour of `DeviceAccessInformation`.
+- [ ] macOS: Allow / Don't Allow / revoke flows through the published artifact (only the read path was re-checked).
+- [ ] Android API 26–32 notification flow: `request(NOTIFICATION)` opens notification settings and then reports
+  `DENIED_ALWAYS`, so a settings-guide dialog may appear on top of that screen. Confirm the UX on a device.
+
+**Test infrastructure**
+- [ ] Three `GrantRequestActivityTest` cases are `@Ignore`d: flaky on an API 34 emulator and also on the
+  pre-change code. Root cause unknown; two hypotheses were disproved (Activity start delay; test-APK
+  `targetSdk` 26). The instrumented suite is **not run in CI** and had not compiled since v2.1.0 until 2026-11.
+- [ ] `iosX64` test execution (needs a `macos-15-intel` job; those runners retire in Fall 2027).
+
+**Design decisions to revisit**
+- [ ] iOS `ServiceType.WIFI` reports `ENABLED` because iOS cannot read the radio and `ServiceStatus.UNKNOWN`
+  counts as not ready (a tested contract). Decide whether `GrantAndServiceChecker` should treat an
+  unreadable service differently from a failed read.
+- [ ] `GrantLogger` is off by default, so every "log at minimum" in the library is invisible to apps unless they
+  enable it. Consider an error-level default or a one-time notice.
+- [ ] `GrantHandler.request(onGranted)` silently drops a duplicate call and swallows exceptions, while
+  `requestSuspend` throws. Align the error contract.
+- [ ] `openSettings(grant)` currently delegates to the app-details page on Android/iOS; Android could open the
+  grant-specific screen (exact alarm, full-screen intent, notifications).
+- [ ] Android: `isGalleryRead()`/`STORAGE` mapping semantics on API 33+ and Health Connect `<queries>` visibility
+  (unverified: the emulator had no Health Connect to test against).
+
+**Review debt** — not read in the audit: the bodies of `GrantHandler`, `GrantGroupHandler` and
+`GrantAndServiceHandler` beyond their request/settings entry points.
+
+**Platform scope not covered**: Intel macOS, Windows ARM64 JVM, Linux (see [Linux roadmap](docs/LINUX_ROADMAP.md)).
+Windows has no consent dialog, so `request()` there reports state only.
 
 ### v2.6.0 — permission-library functionality audit ✅ *shipped*
 
@@ -413,6 +461,19 @@ from `create-grant-maven-bundle-auto.sh`'s `MODULES` array, so nothing about it 
   Stability section for the full note.
 
 ## ✅ Released
+
+### v2.7.0-alpha01 (2026-11-08, pre-release)
+- **`grant-desktop` published** (preview): macOS Apple Silicon camera/microphone with the permission request,
+  Windows x64 camera/microphone state through `GrantManager` (read-only), pinned by `grant-bom`. Closes #88.
+- **`GrantManager.openSettings(grant)`** (additive): Camera and Microphone open their own privacy page.
+- **Audit fixes** — Android: `request()` no longer hangs when the system blocks the dialog launch, `checkStatus()`
+  no longer waits behind an open dialog, second denial ⇒ `DENIED_ALWAYS`, API<33 notification request, batch and
+  launch-guard fixes, `LOCATION_ALWAYS` honours a registered launcher. iOS: `request(LOCATION)` no longer returns
+  before the user answers (reproduced on a physical iPhone only), `checkStatus()` no longer queues behind a pending
+  request. Koin (Android): `ServiceManager` no longer crashes without a manual `ServiceFactory.init`.
+- **Behaviour changes**: iOS reduced-accuracy location ⇒ `PARTIAL_GRANTED`; iOS `LOCAL_NETWORK` ⇒ `NOT_DETERMINED`;
+  uninitialised iOS optional module / unhandled iOS `RawPermission` ⇒ `DENIED_ALWAYS`. See `CHANGELOG.md`.
+- Publication refuses a Windows DLL that was not built from the checked-out commit.
 
 ### v2.6.0 (2026-09-12)
 - **`AppGrant.USE_FULL_SCREEN_INTENT`** — Android 14+ special-app-access permission for
