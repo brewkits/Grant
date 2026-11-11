@@ -29,4 +29,9 @@ public object IosPermissionHandlerRegistry {
     internal fun get(identifier: String): PermissionHandler? {
         return handlers[identifier]
     }
+
+    /** Test-only: the registry is process-global, so tests that register must clean up. */
+    internal fun unregister(identifier: String) {
+        handlers.remove(identifier)
+    }
 }

@@ -28,6 +28,8 @@ kotlin {
     sourceSets {
         iosMain.dependencies {
             implementation(project(":grant-core"))
+            // Since 3.0.0 CAMERA needs grant-camera; the probe adds exactly what a camera-only app adds.
+            implementation(project(":grant-camera"))
         }
     }
 }

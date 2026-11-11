@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
-# Checks which permission frameworks grant-core drags into a CONSUMER's iOS binary.
+# Checks which permission frameworks Grant drags into a CONSUMER's iOS binary (Issue #91).
 #
-# Input: the release static framework built by :linkage-probe, which plays a camera-only app
-# (Issue #91's reporter). The probe uses only AppGrant.CAMERA and ServiceType.CAMERA_HARDWARE.
+# Two probes, each a release static framework built by an unpublished module that plays an app:
 #
-#   ./gradlew :linkage-probe:linkReleaseFrameworkIosArm64
-#   scripts/check-ios-linkage.sh linkage-probe/build/bin/iosArm64/releaseFramework/LinkageProbe.framework/LinkageProbe
+#   camera  :linkage-probe       grant-core + grant-camera; uses CAMERA and CAMERA_HARDWARE only
+#   core    :linkage-probe-core  grant-core alone; uses NOTIFICATION and LOCATION_GPS only
 #
-# Three groups of assertions. Each is a hard failure:
+#   ./gradlew :linkage-probe:linkReleaseFrameworkIosArm64 :linkage-probe-core:linkReleaseFrameworkIosArm64
+#   scripts/check-ios-linkage.sh camera linkage-probe/build/bin/iosArm64/releaseFramework/LinkageProbe.framework/LinkageProbe
+#   scripts/check-ios-linkage.sh core   linkage-probe-core/build/bin/iosArm64/releaseFramework/LinkageProbeCore.framework/LinkageProbeCore
 #
-#   CONTROL     Must be PRESENT. The probe really uses the camera, so AVFoundation must show up.
-#               If it does not, the probe got stripped or the tool output changed, and every
-#               "absent" check below would pass for no reason.
-#   ISOLATED    Must be ABSENT. These live in opt-in modules (#25/#38/#45) that the probe does not
-#               add. Before this script, that isolation was only ever verified by hand.
-#   KNOWN_GAP   Must be PRESENT, for now. grant-core still links these (Issue #91). Pinned so the
-#               detector is shown to find a real leak on every run. When a 3.0.0 PR isolates one,
-#               this script fails until its entry moves from KNOWN_GAP to ISOLATED. That is
-#               deliberate: the fix has to be recorded, not just happen.
+# Two groups of assertions per profile. Each is a hard failure:
+#
+#   CONTROL   Must be PRESENT: what the probe really uses. If it is missing, the probe got
+#             stripped or the tool output changed, and every "absent" check would pass for no
+#             reason.
+#   ISOLATED  Must be ABSENT: every framework that lives in an opt-in module the probe does not
+#             use. Until 3.0.0, CoreLocation and Photos (and, for the core probe, AVFoundation)
+#             were linked by grant-core itself; this is what keeps them out.
 #
 # What is inspected (a static framework is an `ar` archive, so `otool -L` shows nothing useful):
 #   class:<name>     `nm -u`: an undefined reference to _OBJC_CLASS_$_<name>
@@ -25,29 +25,29 @@
 #   fw:<Framework>   `otool -l`: an LC_LINKER_OPTION autolink "-framework <Framework>" record
 set -euo pipefail
 
-BIN="${1:?usage: $0 <path to LinkageProbe.framework/LinkageProbe>}"
-[[ -f "$BIN" ]] || { echo "error: $BIN not found (build :linkage-probe:linkReleaseFrameworkIosArm64 first)" >&2; exit 2; }
+PROFILE="${1:?usage: $0 <camera|core> <path to probe framework binary>}"
+BIN="${2:?usage: $0 <camera|core> <path to probe framework binary>}"
+[[ -f "$BIN" ]] || { echo "error: $BIN not found (build the probe's linkReleaseFrameworkIosArm64 first)" >&2; exit 2; }
 
-CONTROL=(
-  "class:AVCaptureDevice"
-  "sel:requestAccessForMediaType:completionHandler:"
-  "fw:AVFoundation"
+CAMERA=( "class:AVCaptureDevice" "sel:requestAccessForMediaType:completionHandler:" "fw:AVFoundation" )   # grant-camera
+LOCATION=( "class:CLLocationManager" "sel:requestWhenInUseAuthorization" "fw:CoreLocation" )               # grant-location
+GALLERY=( "class:PHPhotoLibrary" "fw:Photos" )                                                            # grant-gallery
+OLDER_MODULES=(
+  "class:CNContactStore"          "fw:Contacts"                 # grant-contacts
+  "class:EKEventStore"            "fw:EventKit"                 # grant-calendar
+  "class:CMMotionActivityManager" "fw:CoreMotion"               # grant-motion
+  "class:CBCentralManager"        "fw:CoreBluetooth"            # grant-bluetooth
+  "class:ATTrackingManager"       "fw:AppTrackingTransparency"  # grant-tracking
+  "sel:requestAlwaysAuthorization"                              # grant-location-always
 )
 
-ISOLATED=(
-  "class:CNContactStore"        "fw:Contacts"                 # grant-contacts
-  "class:EKEventStore"          "fw:EventKit"                 # grant-calendar
-  "class:CMMotionActivityManager" "fw:CoreMotion"             # grant-motion
-  "class:CBCentralManager"      "fw:CoreBluetooth"            # grant-bluetooth
-  "class:ATTrackingManager"     "fw:AppTrackingTransparency"  # grant-tracking
-  "sel:requestAlwaysAuthorization"                            # grant-location-always
-)
-
-# Issue #91. Move an entry to ISOLATED in the PR that removes it from grant-core.
-KNOWN_GAP=(
-  "class:CLLocationManager" "sel:requestWhenInUseAuthorization" "fw:CoreLocation"
-  "class:PHPhotoLibrary"    "fw:Photos"
-)
+case "$PROFILE" in
+  camera) CONTROL=( "${CAMERA[@]}" )
+          ISOLATED=( "${LOCATION[@]}" "${GALLERY[@]}" "${OLDER_MODULES[@]}" ) ;;
+  core)   CONTROL=( "class:UNUserNotificationCenter" "fw:UserNotifications" )
+          ISOLATED=( "${CAMERA[@]}" "${LOCATION[@]}" "${GALLERY[@]}" "${OLDER_MODULES[@]}" ) ;;
+  *)      echo "error: unknown profile '$PROFILE' (expected camera or core)" >&2; exit 2 ;;
+esac
 
 UNDEF_CLASSES="$(nm -u "$BIN" 2>/dev/null | sed -n 's/.*_OBJC_CLASS_\$_//p' | sort -u)"
 STRINGS="$(strings -a "$BIN" | sort -u)"
@@ -75,20 +75,19 @@ check() {  # check <expect present|absent> <group> <item>
   fi
 }
 
-echo "iOS linkage check: $BIN"
-for i in "${CONTROL[@]}";   do check present CONTROL   "$i"; done
-for i in "${ISOLATED[@]}";  do check absent  ISOLATED  "$i"; done
-for i in "${KNOWN_GAP[@]}"; do check present KNOWN_GAP "$i"; done
+echo "iOS linkage check ($PROFILE): $BIN"
+for i in "${CONTROL[@]}";  do check present CONTROL  "$i"; done
+for i in "${ISOLATED[@]}"; do check absent  ISOLATED "$i"; done
 
 if (( failures > 0 )); then
   cat >&2 <<'MSG'
 
 FAILED. Read the group of each FAIL line:
-  CONTROL    the probe no longer exercises the camera path; the other results mean nothing.
-  ISOLATED   a framework that should live only in an opt-in module leaked back into grant-core.
-  KNOWN_GAP  a framework is no longer linked. If you isolated it on purpose (Issue #91), move
-             its entries from KNOWN_GAP to ISOLATED in this script.
+  CONTROL   the probe no longer exercises what it claims to; the other results mean nothing.
+  ISOLATED  a framework that should live only in an opt-in module is linked again. Look for a
+            new direct reference from grant-core (even behind `by lazy`) to a handler that
+            belongs in that module (Issue #91).
 MSG
   exit 1
 fi
-echo "All linkage assertions hold. (KNOWN_GAP entries are still linked; see Issue #91.)"
+echo "All linkage assertions hold."

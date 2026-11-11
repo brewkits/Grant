@@ -6,12 +6,8 @@ import dev.brewkits.grant.GrantStatus
 import dev.brewkits.grant.GrantStore
 import dev.brewkits.grant.GrantLauncher
 import dev.brewkits.grant.RawPermission
-import dev.brewkits.grant.delegates.LocationManagerDelegate
-import dev.brewkits.grant.handlers.AVPermissionHandler
 import dev.brewkits.grant.handlers.PermissionHandler
-import dev.brewkits.grant.handlers.LocationPermissionHandler
 import dev.brewkits.grant.handlers.NotificationPermissionHandler
-import dev.brewkits.grant.handlers.PhotoPermissionHandler
 import dev.brewkits.grant.handlers.IosPermissionHandlerRegistry
 import dev.brewkits.grant.utils.GrantLogger
 import dev.brewkits.grant.utils.hasInfoPlistKey
@@ -35,22 +31,20 @@ private const val TAG = "iOSGrantDelegate"
 /**
  * iOS Platform Grant Delegate — Production-ready implementation.
  *
- * Dispatches permission operations to dedicated [PermissionHandler] instances,
- * each of which owns exactly the native framework imports it needs. This ensures
- * that unused permission frameworks are **not statically linked** into the app binary,
- * preventing Apple App Store rejections caused by undeclared usage description keys.
+ * Dispatches permission operations to [PermissionHandler] instances. Every handler that needs a
+ * privacy-sensitive framework lives in an opt-in module and reaches this class only through
+ * [IosPermissionHandlerRegistry], so this file must never reference such a handler directly.
+ * Any direct reference, even behind `by lazy`, makes every consuming app link that framework
+ * (Issue #91). `scripts/check-ios-linkage.sh` checks this in CI.
  *
  * See [docs/ios/APPLE_FRAMEWORK_LINKING_ISSUE.md] for the full architectural rationale.
  *
- * **Supported permissions (17 total):**
- * - Camera / Microphone — AVFoundation
- * - Gallery / Storage   — Photos
- * - Location (WhenInUse / Always) — CoreLocation
- * - Notification        — UserNotifications
- * - Contacts            — Contacts
- * - Calendar            — EventKit
- * - Motion              — CoreMotion
- * - Bluetooth           — CoreBluetooth (via BluetoothManagerDelegate)
+ * **Where each permission is handled:**
+ * - Notification — here (UserNotifications; no usage-description key involved)
+ * - Camera / Microphone — `grant-camera` (AVFoundation)
+ * - Gallery / Storage — `grant-gallery` (Photos)
+ * - Location (when in use) — `grant-location`; always — `grant-location-always` (CoreLocation)
+ * - Contacts / Calendar / Motion / Bluetooth / App Tracking — their own modules
  * - Schedule Exact Alarm — GRANTED unless the app declares NSAlarmKitUsageDescription;
  *   see ExactAlarmHandler for why AlarmKit (iOS 26+) cannot be answered from here
  *
@@ -88,27 +82,11 @@ public actual class PlatformGrantDelegate(
         (NSProcessInfo.processInfo.systemUptime * 1000).toLong()
 
     // ====================================================================
-    // Shared delegates (lazy — only initialized if their permission is used)
+    // Handlers
     // ====================================================================
 
-    private val locationDelegate by lazy { LocationManagerDelegate() }
-
-    // ====================================================================
-    // Handlers (lazy — framework code loaded only when first accessed)
-    // ====================================================================
-
-    private val cameraHandler by lazy { AVPermissionHandler.camera() }
-    private val microphoneHandler by lazy { AVPermissionHandler.microphone() }
-    private val photoHandler by lazy { PhotoPermissionHandler() }
-
-    /** Save-only photo access — a smaller ask than [photoHandler]; see [AppGrant.GALLERY_ADD_ONLY]. */
-    private val photoAddOnlyHandler by lazy {
-        PhotoPermissionHandler(
-            accessLevel = platform.Photos.PHAccessLevelAddOnly,
-            usageDescriptionKey = "NSPhotoLibraryAddUsageDescription",
-        )
-    }
-    private val locationWhenInUseHandler by lazy { LocationPermissionHandler(delegate = locationDelegate) }
+    // The only framework-backed handler left in grant-core. UserNotifications needs no
+    // usage-description key, so linking it costs a consuming app nothing at review time.
     private val notificationHandler by lazy { NotificationPermissionHandler() }
 
     // ====================================================================
@@ -288,16 +266,19 @@ public actual class PlatformGrantDelegate(
      * and [requestInternal] due to its async-only check path.
      */
     private fun handlerFor(grant: AppGrant): PermissionHandler = when (grant) {
-        AppGrant.CAMERA               -> cameraHandler
-        AppGrant.MICROPHONE           -> microphoneHandler
+        // Moved out of grant-core in 3.0.0 (Issue #91). Unlike the modules below, these were
+        // built in through 2.x, so an app upgrading without adding the module gets a debug-build
+        // crash rather than only a log line; see NotRegisteredHandler.
+        AppGrant.CAMERA,
+        AppGrant.MICROPHONE           -> getOptionalHandler(grant, "dev.brewkits:grant-camera", "GrantCamera.initialize()", failFastInDebug = true)
 
         AppGrant.GALLERY,
         AppGrant.STORAGE,
         AppGrant.GALLERY_IMAGES_ONLY,
-        AppGrant.GALLERY_VIDEO_ONLY   -> photoHandler
-        AppGrant.GALLERY_ADD_ONLY     -> photoAddOnlyHandler
+        AppGrant.GALLERY_VIDEO_ONLY,
+        AppGrant.GALLERY_ADD_ONLY     -> getOptionalHandler(grant, "dev.brewkits:grant-gallery", "GrantGallery.initialize()", failFastInDebug = true)
 
-        AppGrant.LOCATION             -> locationWhenInUseHandler
+        AppGrant.LOCATION             -> getOptionalHandler(grant, "dev.brewkits:grant-location", "GrantLocation.initialize()", failFastInDebug = true)
         AppGrant.LOCATION_ALWAYS      -> getOptionalHandler(grant, "dev.brewkits:grant-location-always", "GrantLocationAlways.initialize()")
 
         AppGrant.NOTIFICATION         -> notificationHandler   // unreachable here; handled above
@@ -339,8 +320,14 @@ public actual class PlatformGrantDelegate(
         AppGrant.USE_FULL_SCREEN_INTENT -> AlwaysGrantedHandler
     }
 
-    private fun getOptionalHandler(grant: AppGrant, moduleName: String, initCode: String): PermissionHandler {
-        return IosPermissionHandlerRegistry.get(grant.identifier) ?: NotRegisteredHandler(moduleName, initCode)
+    private fun getOptionalHandler(
+        grant: AppGrant,
+        moduleName: String,
+        initCode: String,
+        failFastInDebug: Boolean = false,
+    ): PermissionHandler {
+        return IosPermissionHandlerRegistry.get(grant.identifier)
+            ?: NotRegisteredHandler(grant, moduleName, initCode, failFastInDebug)
     }
 
     // ====================================================================
@@ -450,18 +437,37 @@ private object ExactAlarmHandler : PermissionHandler {
 
 /**
  * A fallback handler for modular permissions that haven't been registered.
+ *
+ * DENIED_ALWAYS, not NOT_DETERMINED: no prompt can ever appear until the module is added and
+ * initialised, so "ask me later" is a status this platform cannot back. Logged at ERROR so a
+ * missing initialize() call surfaces in crash reporting instead of looking like a quiet no-op.
+ *
+ * [failFastInDebug] is set only for CAMERA/MICROPHONE, GALLERY* and LOCATION. Those were built
+ * into grant-core until 3.0.0, so an upgrading app that forgets the new module silently starts
+ * reporting DENIED_ALWAYS for a permission it used to get. In a debug binary that throws an
+ * [AssertionError] instead: an `Error`, not an `Exception`, so the `catch (e: Exception)` blocks
+ * in GrantHandler cannot swallow it and the mistake shows up on the developer's first run, not
+ * in production. Release builds keep the log-and-deny behaviour. The older opt-in modules keep
+ * their existing behaviour; changing theirs would be a separate decision.
  */
-private class NotRegisteredHandler(private val moduleName: String, private val initCode: String) : PermissionHandler {
-    // DENIED_ALWAYS, not NOT_DETERMINED: no prompt can ever appear until the module is added and
-    // initialised, so "ask me later" is a status this platform cannot back. Logged at ERROR so a
-    // missing initialize() call surfaces in crash reporting instead of looking like a quiet no-op.
-    override fun checkStatus(): GrantStatus {
-        GrantLogger.e(TAG, "Module $moduleName is not registered. Please add the dependency and call $initCode. Reporting DENIED_ALWAYS.")
+private class NotRegisteredHandler(
+    private val grant: AppGrant,
+    private val moduleName: String,
+    private val initCode: String,
+    private val failFastInDebug: Boolean,
+) : PermissionHandler {
+
+    @OptIn(kotlin.experimental.ExperimentalNativeApi::class)
+    private fun deny(): GrantStatus {
+        val message = "AppGrant.${grant.name} needs module $moduleName on iOS. Add the dependency and call $initCode."
+        if (failFastInDebug && Platform.isDebugBinary) {
+            throw AssertionError("$message (Thrown in debug builds only; release builds report DENIED_ALWAYS.)")
+        }
+        GrantLogger.e(TAG, "$message Reporting DENIED_ALWAYS.")
         return GrantStatus.DENIED_ALWAYS
     }
-    
-    override suspend fun request(): GrantStatus {
-        GrantLogger.e(TAG, "Module $moduleName is not registered. Please add the dependency and call $initCode. Reporting DENIED_ALWAYS.")
-        return GrantStatus.DENIED_ALWAYS
-    }
+
+    override fun checkStatus(): GrantStatus = deny()
+
+    override suspend fun request(): GrantStatus = deny()
 }

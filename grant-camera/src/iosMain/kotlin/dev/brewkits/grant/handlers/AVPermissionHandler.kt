@@ -20,9 +20,11 @@ private const val TAG = "AVPermissionHandler"
 /**
  * Handles Camera and Microphone permissions via AVFoundation.
  *
- * AVFoundation is considered a "safe" framework by Apple — apps commonly
- * use it for media playback without needing camera/microphone access. Apple
- * does NOT require usage description keys merely for AVFoundation being linked.
+ * Lives in `grant-camera`, not `grant-core` (Issue #91). The `AVCaptureDevice` authorization
+ * calls below are what App Store Connect looks for when it asks for NSCameraUsageDescription /
+ * NSMicrophoneUsageDescription, so an app that never captures media should not carry them.
+ * (Earlier KDoc called AVFoundation "safe" to link for that reason. That is true of playback
+ * APIs, not of these.)
  *
  * Use the factory functions [camera] and [microphone] to create instances.
  */
