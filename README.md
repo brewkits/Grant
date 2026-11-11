@@ -49,7 +49,7 @@ fun CameraScreen(viewModel: CameraViewModel) {
 
 - **Logic-first API** — works in ViewModels, repositories, or composables. No Activity or Fragment references, no lifecycle binding.
 - **Adds no permissions to your app** — `grant-core` declares zero `<uses-permission>` entries, so nothing appears on your Play listing that you did not ask for. The Android counterpart to the iOS framework isolation below.
-- **iOS framework isolation** — Contacts, Calendar, Motion, Bluetooth, background location, and App Tracking Transparency live in opt-in modules. Leave a module out and its framework is never linked, so Apple's static scanner never demands that module's `NSUsageDescription` key. **Known gap ([#91](https://github.com/brewkits/Grant/issues/91)):** `CoreLocation` (when-in-use), `Photos`, and `AVFoundation` are still in `grant-core` itself and are linked into every iOS app that uses it, even one that never requests location, photos, or camera/microphone. Isolating them is planned for 3.0.0; until then see the workaround in [the linking guide](docs/ios/APPLE_FRAMEWORK_LINKING_ISSUE.md#6-known-gap--frameworks-still-in-grant-core-issue-91).
+- **iOS framework isolation** — every permission backed by a privacy-sensitive iOS framework lives in an opt-in module: Location, Gallery, Camera/Microphone, Contacts, Calendar, Motion, Bluetooth, background location, and App Tracking Transparency. Leave a module out and its framework is never linked, so Apple's static scanner never demands that module's `NSUsageDescription` key. As of 3.0.0 this includes `CoreLocation`, `Photos` and `AVFoundation`, which were built into `grant-core` until then ([#91](https://github.com/brewkits/Grant/issues/91)). CI checks it on every PR by inspecting real release binaries.
 - **iOS crash guard** — validates `Info.plist` keys before requesting, turning the classic `SIGABRT` production crash into a clear error.
 - **Android process-death recovery** — a request in flight survives system-initiated process death via `SavedStateHandle`, with no timeouts.
 - **Deadlock-free by construction** — reentrant locking plus a `withTimeout` test policy that converts silent deadlocks into failing tests.
@@ -71,7 +71,9 @@ A [BOM](#versioning-with-the-bom) keeps every module's version in sync without r
 kotlin {
     sourceSets {
         commonMain.dependencies {
-            implementation(platform("dev.brewkits:grant-bom:2.5.0")) // pins every dev.brewkits:grant-* line below
+            // 3.0.0 is in development, not yet on Maven Central. On 2.x, drop the
+            // grant-location / grant-gallery / grant-camera lines (those were in grant-core).
+            implementation(platform("dev.brewkits:grant-bom:3.0.0")) // pins every dev.brewkits:grant-* line below
             implementation("dev.brewkits:grant-core")
 
             // Optional
@@ -80,6 +82,10 @@ kotlin {
 
             // Optional per-permission modules. Omitting a module means its iOS
             // framework is never linked — no phantom NSUsageDescription keys.
+            // The first three were part of grant-core until 3.0.0 (see the Migration Guide).
+            implementation("dev.brewkits:grant-location")         // Location, when in use (iOS CoreLocation)
+            implementation("dev.brewkits:grant-gallery")          // Gallery / Storage (iOS Photos)
+            implementation("dev.brewkits:grant-camera")           // Camera + Microphone (iOS AVFoundation)
             implementation("dev.brewkits:grant-contacts")         // Contacts (iOS CNContactStore)
             implementation("dev.brewkits:grant-calendar")         // Calendar (iOS EventKit)
             implementation("dev.brewkits:grant-motion")           // Motion (iOS CoreMotion)
@@ -95,20 +101,31 @@ kotlin {
 ```
 
 No BOM? Every artifact above also resolves with an explicit version, e.g.
-`implementation("dev.brewkits:grant-core:2.5.0")`.
+`implementation("dev.brewkits:grant-core:3.0.0")`.
 
 **Android** needs no setup: Grant ships a self-contained transparent Activity, so `request()` opens the system dialog from anywhere. Prefer your own `ActivityResultLauncher`? Register it once with `grantManager.setLauncher(...)` and Grant uses it instead.
 
-**iOS** needs one call per optional module at app startup:
+**iOS** needs one call per optional module at app startup, from Swift or from your shared Kotlin
+code (`GrantCamera.initialize()` etc. are no-ops on the other platforms):
 
 ```swift
 // AppDelegate / @main entry point
+GrantLocation.shared.initialize()        // if you added grant-location
+GrantGallery.shared.initialize()         // if you added grant-gallery
+GrantCamera.shared.initialize()          // if you added grant-camera
 GrantContacts.shared.initialize()        // if you added grant-contacts
 GrantCalendar.shared.initialize()        // if you added grant-calendar
 GrantMotion.shared.initialize()          // if you added grant-motion
 GrantBluetooth.shared.initialize()       // if you added grant-bluetooth
 GrantLocationAlways.shared.initialize()  // if you added grant-location-always
 ```
+
+> [!WARNING]
+> **3.0.0 — Location, Gallery and Camera/Microphone moved out of `grant-core` on iOS.** Add
+> `grant-location`, `grant-gallery` and/or `grant-camera` and call their `initialize()`. Without
+> them, those permissions report `DENIED_ALWAYS` in release builds, and a debug build stops with an
+> `AssertionError` naming the module to add. Android and the browser need no change. See the
+> [Migration Guide](docs/MIGRATION_GUIDE.md#upgrading-from-grant-2x-to-300).
 
 > [!WARNING]
 > **2.3.0 — `grant-compose` no longer ships an `iosX64` target.** Compose Multiplatform 1.11 stopped publishing iosX64 artifacts. All other modules keep iosX64; Intel-Mac-simulator consumers of `grant-compose` should stay on 2.2.3. Details in the [Migration Guide](docs/MIGRATION_GUIDE.md).
@@ -119,7 +136,7 @@ GrantLocationAlways.shared.initialize()  // if you added grant-location-always
 ### Desktop and Web projects
 
 `grant-desktop:2.6.0` is not published to Maven Central and is excluded from that version's BOM.
-The next **2.7.0-alpha01 preview is in development**, with Desktop publication and BOM wiring.
+The next **3.0.0-alpha01 preview is in development** (it absorbs the planned 2.7.0), with Desktop publication and BOM wiring.
 It has not been uploaded to Central. See the [Desktop preview guide](grant-desktop/README.md).
 Native permission requests support camera and microphone on **macOS Apple Silicon**.
 The preview also adds **Windows x64 privacy status checks and Settings navigation**; these
@@ -354,6 +371,7 @@ aspirational.
 | `grant-compose` | 30 KB |
 | `grant-core-koin` | 7 KB |
 | `grant-contacts` · `grant-calendar` · `grant-motion` · `grant-bluetooth` · `grant-location-always` · `grant-tracking` | ~2 KB each |
+| `grant-location` · `grant-gallery` · `grant-camera` (new in 3.0.0; sizes not yet measured) | — |
 | `grant-testing` (test-only — see [Testing](#testing) below) | 20 KB |
 
 Download size is not app size. In a real R8-minified build (the demo, with

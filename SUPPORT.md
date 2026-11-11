@@ -43,7 +43,7 @@ edge cases, and shipping an untested guess about a new OS would work against tha
 
 ## Desktop preview (in development)
 
-The upcoming `2.7.0-alpha01` preview targets **macOS Apple Silicon, camera and microphone**.
+The upcoming `3.0.0-alpha01` preview (which absorbs the planned 2.7.0) targets **macOS Apple Silicon, camera and microphone**.
 It is not a stable Desktop support commitment and has not been uploaded to Central.
 Windows x64 adds device-class privacy checks and Settings navigation, not native permission
 requests. Intel macOS, Windows ARM64 JVM and Linux native permission handlers are not included.

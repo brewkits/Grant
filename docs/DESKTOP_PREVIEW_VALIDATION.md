@@ -1,11 +1,11 @@
 # Desktop preview validation — 2026-11-06
 
-Candidate: `2.7.0-alpha01`, macOS Apple Silicon + Windows x64, JVM 17.
+Candidate: `3.0.0-alpha01` (formerly planned as `2.7.0-alpha01`), macOS Apple Silicon + Windows x64, JVM 17.
 Status: local artifact preparation and automated verification passed; no Central upload.
 
 ## Completed
 
-- All 12 library build files and the bundle script use `2.7.0-alpha01`.
+- All 15 library build files and the bundle script use `3.0.0-alpha01` (`grant-location`, `grant-gallery` and `grant-camera` were added in 3.0.0).
 - Desktop is included in the preview BOM and Central bundle module list.
 - Desktop JVM publication includes sources, generated Dokka javadoc and a CycloneDX SBOM.
 - Native resource inspected in the staged JVM JAR:

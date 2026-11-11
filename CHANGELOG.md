@@ -6,9 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [2.7.0-alpha01] - Unreleased
+## [3.0.0-alpha01] - Unreleased
+
+3.0.0 absorbs the Desktop preview that was planned as 2.7.0-alpha01 (its entries follow the
+breaking change below). See the [Migration Guide](docs/MIGRATION_GUIDE.md#upgrading-from-grant-2x-to-300).
+
+### 💥 Breaking (iOS)
+
+- **Location, Gallery and Camera/Microphone moved out of `grant-core` into opt-in modules**
+  ([#91](https://github.com/brewkits/Grant/issues/91)): `grant-location` (`LOCATION`,
+  `ServiceType.LOCATION_GPS`, `LocationTemporaryFullAccuracyHandler`), `grant-gallery`
+  (`GALLERY*`, `STORAGE`) and `grant-camera` (`CAMERA`, `MICROPHONE`). Until now, every iOS app
+  using `grant-core` linked `CoreLocation`, `Photos` and `AVFoundation`. App Store Connect could
+  then ask it for location, photo or camera purpose strings it did not need (ITMS-90683). Add the
+  module and call its `initialize()`. Android and the browser are unaffected.
+- Without its module, an affected permission throws `AssertionError` in **debug** builds (an
+  `Error`, so `GrantHandler` cannot swallow it) and reports `DENIED_ALWAYS` with an error log in
+  release builds. `ServiceType.LOCATION_GPS` reports `UNKNOWN`. Older opt-in modules keep their
+  existing log-and-deny behaviour.
 
 ### Added
+
+- `grant-location`, `grant-gallery`, `grant-camera`, with every target `grant-core` has, so they
+  can live in `commonMain`. Included in `grant-bom`.
+- `IosServiceRegistry` in `grant-core`: lets a module supply an iOS service check.
+- CI linkage check (`scripts/check-ios-linkage.sh`, two probe apps) that inspects real release
+  binaries and fails if a framework from an unused opt-in module is linked.
 
 - Desktop preview publication and BOM entry, with macOS Apple Silicon camera/microphone
   handlers and bundled Windows x64 privacy bridge. The preview has not been uploaded to Central.

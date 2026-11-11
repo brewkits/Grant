@@ -1,6 +1,6 @@
 # Grant Desktop preview
 
-**Development version: 2.7.0-alpha01. Not yet uploaded to Maven Central.**
+**Development version: 3.0.0-alpha01 (formerly planned as 2.7.0-alpha01). Not yet uploaded to Maven Central.**
 The 2.6.0 release does not publish `grant-desktop`. This preview adds macOS permission
 handlers, Windows x64 privacy checks/settings, and publication,
 BOM constraint, native packaging guard, generated JVM javadoc and JVM dependency SBOM.
@@ -62,7 +62,7 @@ kotlin {
     sourceSets {
         val desktopMain by getting {
             dependencies {
-                implementation(platform("dev.brewkits:grant-bom:2.7.0-alpha01"))
+                implementation(platform("dev.brewkits:grant-bom:3.0.0-alpha01"))
                 implementation("dev.brewkits:grant-core")
                 implementation("dev.brewkits:grant-desktop")
             }

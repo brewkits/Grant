@@ -6,7 +6,7 @@ Guide for managing dependencies and avoiding version conflicts.
 
 ## Desktop and Web projects
 
-The upcoming 2.7.0-alpha01 preview wires Desktop into publication and its BOM, but has not
+The upcoming 3.0.0-alpha01 preview (which absorbs the planned 2.7.0) wires Desktop into publication and its BOM, but has not
 been uploaded to Central. See the [preview guide](../grant-desktop/README.md) for staging
 and independent consumer verification. The following matrix describes released **2.6.0**.
 
@@ -18,6 +18,12 @@ As of 2.6.0, module availability and native permission support are different:
 | `grant-testing` | Android, iOS, JVM, JS, Wasm JS | Test doubles, not native permission handlers. |
 | `grant-compose`, `grant-core-koin`, optional permission modules | Android/iOS (see the installation guide for iOS architecture exceptions) | No JVM or browser variant. |
 | `grant-desktop` | **Not published to Maven Central; not included in the BOM** | Experimental macOS Apple Silicon camera/microphone bridge in this repository. |
+
+**3.0.0 (in development):** `grant-location`, `grant-gallery` and `grant-camera` are new and,
+unlike the other optional permission modules, publish **every** target `grant-core` does
+(Android, iOS, JVM, JS, Wasm JS). Their `initialize()` is a no-op outside iOS, so they can go
+in `commonMain` next to `grant-core`. On iOS they are required for Location, Gallery and
+Camera/Microphone; see the [Migration Guide](MIGRATION_GUIDE.md#upgrading-from-grant-2x-to-300).
 
 The browser implementation in `grant-core` supports camera, microphone, location, and
 notifications through browser APIs. This does not imply equivalent native Desktop support.
@@ -46,6 +52,7 @@ kotlin {
                 implementation("dev.brewkits:grant-core:2.6.0")
                 implementation("dev.brewkits:grant-compose:2.6.0")
                 // Add other Android/iOS-only Grant modules here as needed.
+                // (On 3.0.0, grant-location/-gallery/-camera can stay in commonMain.)
             }
         }
         androidMain.get().dependsOn(mobileMain)

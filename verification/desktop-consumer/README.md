@@ -13,7 +13,7 @@ artifact from the same commit's successful Desktop CI run. Supply its directory 
   :grant-core:publishJvmPublicationToMavenCentralLocalRepository \
   :grant-desktop:publishAllPublicationsToMavenCentralLocalRepository \
   :grant-bom:publishAllPublicationsToMavenCentralLocalRepository
-./gradlew -p verification/desktop-consumer -PgrantVersion=2.7.0-alpha01 createDistributable
+./gradlew -p verification/desktop-consumer -PgrantVersion=3.0.0-alpha01 createDistributable
 open -n verification/desktop-consumer/build/compose/binaries/main/app/GrantDesktopConsumer.app \
   --args --out=/tmp/grant-desktop-consumer.txt
 cat /tmp/grant-desktop-consumer.txt
@@ -35,7 +35,7 @@ distribution remain separate release gates in `grant-desktop/README.md`.
 
 ## Interactive demo
 
-Run `./gradlew -p verification/desktop-consumer -PgrantVersion=2.7.0-alpha01 run --args=--demo`
+Run `./gradlew -p verification/desktop-consumer -PgrantVersion=3.0.0-alpha01 run --args=--demo`
 (or use `gradlew.bat` on Windows). For identity-sensitive macOS consent, pass `--demo` to
 `open -n` on the packaged `.app` instead. On Windows, launch the packaged
 `GrantDesktopConsumer.exe --demo`.

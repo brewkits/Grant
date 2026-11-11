@@ -8,7 +8,7 @@ targeting **Android**, **iOS**, and (via `grant-core` alone) the **browser**.
 `grant-core` has a published JVM variant, but native Desktop handlers are not included.
 `grant-desktop:2.6.0` is an experimental macOS Apple Silicon bridge available only from source;
 it is not on Maven Central or in that version's BOM. The upcoming
-[2.7.0-alpha01 preview](../../grant-desktop/README.md) adds publication/BOM wiring, pending release. For mixed mobile/Desktop/Web projects, see
+[3.0.0-alpha01 preview](../../grant-desktop/README.md) adds publication/BOM wiring, pending release. For mixed mobile/Desktop/Web projects, see
 [the support matrix and mobileMain setup](../DEPENDENCY_MANAGEMENT.md#desktop-and-web-projects)
 before adding Android/iOS-only modules to `commonMain`.
 
@@ -40,26 +40,33 @@ dependencyResolutionManagement {
 Add the modules you need to your shared module's `commonMain` source set. Only
 `grant-core` is required — every other module is optional.
 
+> **Version note:** this snippet describes 3.0.0, which is in development and not yet on
+> Maven Central. On 2.x, Camera, Microphone, Gallery and foreground Location are part of
+> `grant-core`: leave out the `grant-location`, `grant-gallery` and `grant-camera` lines.
+> All Grant modules must use the same version.
+
 ```kotlin
 // shared/build.gradle.kts
 kotlin {
     sourceSets {
         commonMain.dependencies {
-            implementation("dev.brewkits:grant-core:2.5.0")            // Required
+            implementation("dev.brewkits:grant-core:3.0.0")            // Required
 
-            implementation("dev.brewkits:grant-compose:2.5.0")         // Optional: Compose dialogs
-            implementation("dev.brewkits:grant-core-koin:2.5.0")       // Optional: Koin DI support
+            implementation("dev.brewkits:grant-compose:3.0.0")         // Optional: Compose dialogs
+            implementation("dev.brewkits:grant-core-koin:3.0.0")       // Optional: Koin DI support
 
             // Optional: add only the permission modules you actually use on iOS.
             // Omitting a module means its iOS framework is never linked — no phantom
-            // NSUsageDescription keys for that module. (grant-core itself still links
-            // CoreLocation, Photos and AVFoundation — Issue #91, planned fix in 3.0.0.)
-            implementation("dev.brewkits:grant-contacts:2.5.0")        // Optional: Contacts (iOS CNContactStore)
-            implementation("dev.brewkits:grant-calendar:2.5.0")        // Optional: Calendar (iOS EventKit)
-            implementation("dev.brewkits:grant-motion:2.5.0")          // Optional: Motion (iOS CoreMotion)
-            implementation("dev.brewkits:grant-bluetooth:2.5.0")       // Optional: Bluetooth (iOS CoreBluetooth)
-            implementation("dev.brewkits:grant-location-always:2.5.0") // Optional: background "always" location (iOS requestAlwaysAuthorization)
-            implementation("dev.brewkits:grant-tracking:2.5.0")        // Optional: App Tracking Transparency (iOS ATTrackingManager)
+            // NSUsageDescription keys for that module.
+            implementation("dev.brewkits:grant-location:3.0.0")        // Optional: Location, when in use (iOS CoreLocation)
+            implementation("dev.brewkits:grant-gallery:3.0.0")         // Optional: Gallery / Storage (iOS Photos)
+            implementation("dev.brewkits:grant-camera:3.0.0")          // Optional: Camera + Microphone (iOS AVFoundation)
+            implementation("dev.brewkits:grant-contacts:3.0.0")        // Optional: Contacts (iOS CNContactStore)
+            implementation("dev.brewkits:grant-calendar:3.0.0")        // Optional: Calendar (iOS EventKit)
+            implementation("dev.brewkits:grant-motion:3.0.0")          // Optional: Motion (iOS CoreMotion)
+            implementation("dev.brewkits:grant-bluetooth:3.0.0")       // Optional: Bluetooth (iOS CoreBluetooth)
+            implementation("dev.brewkits:grant-location-always:3.0.0") // Optional: background "always" location (iOS requestAlwaysAuthorization)
+            implementation("dev.brewkits:grant-tracking:3.0.0")        // Optional: App Tracking Transparency (iOS ATTrackingManager)
         }
     }
 }
@@ -69,7 +76,10 @@ kotlin {
 
 | Module | When to add it |
 |---|---|
-| `grant-core` | Always. Camera, foreground Location, Gallery, Microphone, Notifications, Storage, etc. |
+| `grant-core` | Always. Notifications and the shared API. On Android and the browser it also handles Camera, Location, Gallery, etc. |
+| `grant-location` | Your app requests foreground location or checks `ServiceType.LOCATION_GPS` (links iOS `CoreLocation`). Before 3.0.0 this was in `grant-core`. |
+| `grant-gallery` | Your app requests photo library access, including save-only `GALLERY_ADD_ONLY` (links iOS `Photos`). Before 3.0.0 this was in `grant-core`. |
+| `grant-camera` | Your app requests Camera or Microphone (links iOS `AVFoundation`). Before 3.0.0 this was in `grant-core`. |
 | `grant-compose` | You want ready-made `GrantDialog` / `GrantGroupDialog` composables. |
 | `grant-core-koin` | You use Koin for dependency injection. |
 | `grant-contacts` | Your app reads/writes Contacts (links iOS `Contacts.framework`). |
@@ -124,6 +134,9 @@ See [GRANTS.md](../grant-core/GRANTS.md) for the full permission → manifest ma
 
    ```swift
    // iOS — AppDelegate / @main entry point
+   GrantLocation.shared.initialize()        // if you added grant-location
+   GrantGallery.shared.initialize()         // if you added grant-gallery
+   GrantCamera.shared.initialize()          // if you added grant-camera
    GrantContacts.shared.initialize()        // if you added grant-contacts
    GrantCalendar.shared.initialize()        // if you added grant-calendar
    GrantMotion.shared.initialize()          // if you added grant-motion
@@ -132,8 +145,12 @@ See [GRANTS.md](../grant-core/GRANTS.md) for the full permission → manifest ma
    GrantTracking.shared.initialize()        // if you added grant-tracking
    ```
 
-   `grant-core` permissions (Camera, foreground Location, Gallery, Microphone,
-   Notifications) need no `initialize()` call.
+   Only Notifications needs no module. Since 3.0.0, Camera, Microphone, Gallery
+   and foreground Location do: without the module they report `DENIED_ALWAYS`,
+   and a debug build stops with an `AssertionError` naming the module to add.
+   `grant-location`, `grant-gallery` and `grant-camera` publish every target
+   `grant-core` does (Android, iOS, JS, Wasm, JVM), so they can go in `commonMain`,
+   and their `initialize()` can be called from shared Kotlin code.
 
 ## Verify the Setup
 

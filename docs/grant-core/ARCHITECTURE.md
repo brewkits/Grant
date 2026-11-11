@@ -70,10 +70,22 @@ The sensitive frameworks and selectors are isolated into their own Gradle module
 | `grant-motion` | `CoreMotion.framework` | v2.0.0 |
 | `grant-bluetooth` | `CoreBluetooth.framework` | v2.2.0 |
 | `grant-location-always` | the `requestAlwaysAuthorization` selector (background location) | v2.2.0 |
+| `grant-location` | `CoreLocation.framework` (when in use; also the `LOCATION_GPS` service check) | 3.0.0 |
+| `grant-gallery` | `Photos.framework` | 3.0.0 |
+| `grant-camera` | `AVFoundation.framework` (camera, microphone) | 3.0.0 |
 
-`CoreLocation` (when-in-use only — `grant-core` calls only `requestWhenInUseAuthorization`), `Photos`, and `AVFoundation` remain in `grant-core`. **They are linked into every consuming iOS app, even one that never requests location, photos, or camera/microphone** (Issue #91). `PlatformGrantDelegate.handlerFor()` is a single `when` over all `AppGrant` values, so any use of `GrantManager` keeps every handler reachable. The `-weak_framework` flags in each module's `build.gradle.kts` apply only to the framework this repository builds itself. They are not carried in the published klib and do not change how a consumer's app links. Isolating these three is planned for 3.0.0; see [the linking guide, Section 6](../ios/APPLE_FRAMEWORK_LINKING_ISSUE.md#6-known-gap--frameworks-still-in-grant-core-issue-91).
+Since 3.0.0, `grant-core`'s iOS code references no privacy-sensitive framework except
+UserNotifications, which needs no usage-description key. Through 2.x, `CoreLocation`, `Photos` and
+`AVFoundation` stayed in `grant-core` and were linked into **every** consuming app (Issue #91).
+`PlatformGrantDelegate.handlerFor()` is a single `when` over all `AppGrant` values, so any direct
+reference there, even behind `by lazy`, keeps the handler and its framework reachable. That is why
+those grants now resolve only through `IosPermissionHandlerRegistry`, and the `LOCATION_GPS` check
+through `IosServiceRegistry`. `scripts/check-ios-linkage.sh` enforces this in CI against two
+release-built probe apps. See [the linking guide, Section 6](../ios/APPLE_FRAMEWORK_LINKING_ISSUE.md#6-known-gap--frameworks-still-in-grant-core-issue-91).
 
-> **Note:** Status-checking in core still maps `kCLAuthorizationStatusAuthorizedAlways → GRANTED`, which is a harmless enum read — Apple's scanner inspects method selectors, not enum value comparisons.
+The `-weak_framework` flags in the opt-in modules' `build.gradle.kts` apply only to frameworks this
+repository builds itself. They are not carried in the published klib and do not change how a
+consumer's app links.
 
 ### Custom Registry
 For permissions not natively supported by the core library, or for developers wanting to override default behavior, `IosPermissionHandlerRegistry` allows runtime registration of custom `IosPermissionHandler` implementations for any `RawPermission` identifier.
