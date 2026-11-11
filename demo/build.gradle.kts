@@ -69,7 +69,11 @@ kotlin {
             implementation(project(":grant-core-koin"))
             implementation(project(":grant-compose"))
 
-            // Optional permission modules (required for Contacts/Calendar/Motion on iOS)
+            // Optional permission modules (each must be added and initialized to work on iOS).
+            // grant-location / grant-gallery / grant-camera were part of grant-core until 3.0.0.
+            implementation(project(":grant-location"))
+            implementation(project(":grant-gallery"))
+            implementation(project(":grant-camera"))
             implementation(project(":grant-contacts"))
             implementation(project(":grant-calendar"))
             implementation(project(":grant-motion"))

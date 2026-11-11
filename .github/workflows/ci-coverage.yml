@@ -46,6 +46,9 @@ jobs:
           :grant-motion:koverHtmlReport
           :grant-bluetooth:koverHtmlReport
           :grant-location-always:koverHtmlReport
+          :grant-location:koverHtmlReport
+          :grant-gallery:koverHtmlReport
+          :grant-camera:koverHtmlReport
           :grant-tracking:koverHtmlReport
           :grant-testing:koverHtmlReport :grant-testing:koverVerify
 
@@ -62,5 +65,8 @@ jobs:
             grant-motion/build/reports/kover/html
             grant-bluetooth/build/reports/kover/html
             grant-location-always/build/reports/kover/html
+            grant-location/build/reports/kover/html
+            grant-gallery/build/reports/kover/html
+            grant-camera/build/reports/kover/html
             grant-tracking/build/reports/kover/html
             grant-testing/build/reports/kover/html

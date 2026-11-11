@@ -26,6 +26,9 @@ MODULES=(
     grant-motion
     grant-bluetooth
     grant-location-always
+    grant-location
+    grant-gallery
+    grant-camera
     grant-tracking
     grant-testing
     grant-bom

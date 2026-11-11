@@ -526,16 +526,13 @@ abstract interface dev.brewkits.grant.handlers/PermissionHandler { // dev.brewki
 }
 
 // Targets: [ios]
-final class dev.brewkits.grant.handlers/LocationTemporaryFullAccuracyHandler : dev.brewkits.grant.handlers/PermissionHandler { // dev.brewkits.grant.handlers/LocationTemporaryFullAccuracyHandler|null[0]
-    constructor <init>(kotlin/String) // dev.brewkits.grant.handlers/LocationTemporaryFullAccuracyHandler.<init>|<init>(kotlin.String){}[0]
-
-    final fun checkStatus(): dev.brewkits.grant/GrantStatus // dev.brewkits.grant.handlers/LocationTemporaryFullAccuracyHandler.checkStatus|checkStatus(){}[0]
-    final suspend fun request(): dev.brewkits.grant/GrantStatus // dev.brewkits.grant.handlers/LocationTemporaryFullAccuracyHandler.request|request(){}[0]
+final object dev.brewkits.grant.handlers/IosPermissionHandlerRegistry { // dev.brewkits.grant.handlers/IosPermissionHandlerRegistry|null[0]
+    final fun register(kotlin/String, dev.brewkits.grant.handlers/PermissionHandler) // dev.brewkits.grant.handlers/IosPermissionHandlerRegistry.register|register(kotlin.String;dev.brewkits.grant.handlers.PermissionHandler){}[0]
 }
 
 // Targets: [ios]
-final object dev.brewkits.grant.handlers/IosPermissionHandlerRegistry { // dev.brewkits.grant.handlers/IosPermissionHandlerRegistry|null[0]
-    final fun register(kotlin/String, dev.brewkits.grant.handlers/PermissionHandler) // dev.brewkits.grant.handlers/IosPermissionHandlerRegistry.register|register(kotlin.String;dev.brewkits.grant.handlers.PermissionHandler){}[0]
+final object dev.brewkits.grant.handlers/IosServiceRegistry { // dev.brewkits.grant.handlers/IosServiceRegistry|null[0]
+    final fun register(dev.brewkits.grant/ServiceType, kotlin/Function0<dev.brewkits.grant/ServiceStatus>) // dev.brewkits.grant.handlers/IosServiceRegistry.register|register(dev.brewkits.grant.ServiceType;kotlin.Function0<dev.brewkits.grant.ServiceStatus>){}[0]
 }
 
 // Targets: [ios]

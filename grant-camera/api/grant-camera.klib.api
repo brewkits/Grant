@@ -1,0 +1,11 @@
+// Klib ABI Dump
+// Targets: [iosArm64, iosSimulatorArm64, iosX64, js, wasmJs]
+// Rendering settings:
+// - Signature version: 2
+// - Show manifest properties: true
+// - Show declarations: true
+
+// Library unique name: <dev.brewkits:grant-camera>
+final object dev.brewkits.grant.camera/GrantCamera { // dev.brewkits.grant.camera/GrantCamera|null[0]
+    final fun initialize() // dev.brewkits.grant.camera/GrantCamera.initialize|initialize(){}[0]
+}

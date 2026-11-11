@@ -84,6 +84,11 @@ jobs:
       - name: Build grant-location-always
         run: ./gradlew :grant-location-always:build -x checkKotlinAbi
 
+      # Split out of grant-core in 3.0.0 (Issue #91). Unlike the modules above, these declare
+      # js/wasmJs/jvm too (no-op initialize()), so `build` here also compiles those targets.
+      - name: Build grant-location, grant-gallery, grant-camera
+        run: ./gradlew :grant-location:build :grant-gallery:build :grant-camera:build -x checkKotlinAbi
+
       # New in v2.4.0 (App Tracking Transparency, PR #75). Android target only here — grant-tracking
       # also declares iosArm64/iosX64/iosSimulatorArm64, which this Linux host cannot cross-compile;
       # ios.yml's root checkKotlinAbi and its iOS test step cover the Apple side.
