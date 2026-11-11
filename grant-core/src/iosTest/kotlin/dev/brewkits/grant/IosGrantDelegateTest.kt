@@ -56,40 +56,9 @@ class IosGrantDelegateTest {
         )
     }
 
-    @Test
-    fun `checkStatus CAMERA returns valid status`() = kotlinx.coroutines.test.runTest {
-        assertValidStatus(AppGrant.CAMERA)
-    }
-
-    @Test
-    fun `checkStatus MICROPHONE returns valid status`() = kotlinx.coroutines.test.runTest {
-        assertValidStatus(AppGrant.MICROPHONE)
-    }
-
-    @Test
-    fun `checkStatus GALLERY returns valid status`() = kotlinx.coroutines.test.runTest {
-        assertValidStatus(AppGrant.GALLERY)
-    }
-
-    @Test
-    fun `checkStatus GALLERY_IMAGES_ONLY returns valid status`() = kotlinx.coroutines.test.runTest {
-        assertValidStatus(AppGrant.GALLERY_IMAGES_ONLY)
-    }
-
-    @Test
-    fun `checkStatus GALLERY_VIDEO_ONLY returns valid status`() = kotlinx.coroutines.test.runTest {
-        assertValidStatus(AppGrant.GALLERY_VIDEO_ONLY)
-    }
-
-    @Test
-    fun `checkStatus STORAGE returns valid status`() = kotlinx.coroutines.test.runTest {
-        assertValidStatus(AppGrant.STORAGE)
-    }
-
-    @Test
-    fun `checkStatus LOCATION returns valid status`() = kotlinx.coroutines.test.runTest {
-        assertValidStatus(AppGrant.LOCATION)
-    }
+    // CAMERA / MICROPHONE, GALLERY* / STORAGE and LOCATION moved to grant-camera, grant-gallery
+    // and grant-location in 3.0.0 (Issue #91). Their real-delegate checkStatus/request tests live
+    // in those modules' iosTest; here, unregistered, they fail fast (SplitModulesFailFastTest).
 
     @Test
     fun `checkStatus LOCATION_ALWAYS returns valid status`() = kotlinx.coroutines.test.runTest {
@@ -157,16 +126,11 @@ class IosGrantDelegateTest {
     // ====================================================================
 
     // Permissions safe to call on Simulator without crashing:
-    // Camera, Microphone, Gallery, Storage, Location, Motion, Bluetooth, SCHEDULE_EXACT_ALARM
+    // LOCATION_ALWAYS, Motion, Bluetooth, SCHEDULE_EXACT_ALARM
     // Notification / Contacts / Calendar require main RunLoop callbacks — tested via mapping logic only.
+    // Grants handled by grant-camera / grant-gallery / grant-location are not listed: unregistered
+    // here, they fail fast by design (see SplitModulesFailFastTest).
     private val simulatorSafePermissions = listOf(
-        AppGrant.CAMERA,
-        AppGrant.MICROPHONE,
-        AppGrant.GALLERY,
-        AppGrant.GALLERY_IMAGES_ONLY,
-        AppGrant.GALLERY_VIDEO_ONLY,
-        AppGrant.STORAGE,
-        AppGrant.LOCATION,
         AppGrant.LOCATION_ALWAYS,
         AppGrant.MOTION,
         AppGrant.BLUETOOTH,
@@ -291,32 +255,6 @@ class IosGrantDelegateTest {
     }
 
     @Test
-    fun `request CAMERA does not deadlock on simulator`() = kotlinx.coroutines.test.runTest {
-        // No NSCameraUsageDescription in test environment → handler returns DENIED_ALWAYS.
-        // The deadlock from Issue #29 occurred before this early-return, making this a valid guard.
-        val result = withTimeout(3_000L) { delegate.request(AppGrant.CAMERA) }
-        assertTrue(result in validStatuses, "request(CAMERA) must complete and return a valid status")
-    }
-
-    @Test
-    fun `request MICROPHONE does not deadlock on simulator`() = kotlinx.coroutines.test.runTest {
-        val result = withTimeout(3_000L) { delegate.request(AppGrant.MICROPHONE) }
-        assertTrue(result in validStatuses, "request(MICROPHONE) must complete and return a valid status")
-    }
-
-    @Test
-    fun `request GALLERY does not deadlock on simulator`() = kotlinx.coroutines.test.runTest {
-        val result = withTimeout(3_000L) { delegate.request(AppGrant.GALLERY) }
-        assertTrue(result in validStatuses, "request(GALLERY) must complete and return a valid status")
-    }
-
-    @Test
-    fun `request LOCATION does not deadlock on simulator`() = kotlinx.coroutines.test.runTest {
-        val result = withTimeout(3_000L) { delegate.request(AppGrant.LOCATION) }
-        assertTrue(result in validStatuses, "request(LOCATION) must complete and return a valid status")
-    }
-
-    @Test
     fun `request CONTACTS does not deadlock on simulator`() = kotlinx.coroutines.test.runTest {
         val result = withTimeout(3_000L) { delegate.request(AppGrant.CONTACTS) }
         assertTrue(result in validStatuses, "request(CONTACTS) must complete and return a valid status")
@@ -371,18 +309,6 @@ class IosGrantDelegateTest {
     }
 
     @Test
-    fun `request GALLERY_IMAGES_ONLY does not deadlock on simulator`() = kotlinx.coroutines.test.runTest {
-        val result = withTimeout(3_000L) { delegate.request(AppGrant.GALLERY_IMAGES_ONLY) }
-        assertTrue(result in validStatuses, "request(GALLERY_IMAGES_ONLY) must complete and return a valid status")
-    }
-
-    @Test
-    fun `request GALLERY_VIDEO_ONLY does not deadlock on simulator`() = kotlinx.coroutines.test.runTest {
-        val result = withTimeout(3_000L) { delegate.request(AppGrant.GALLERY_VIDEO_ONLY) }
-        assertTrue(result in validStatuses, "request(GALLERY_VIDEO_ONLY) must complete and return a valid status")
-    }
-
-    @Test
     fun `request BLUETOOTH_ADVERTISE does not deadlock on simulator`() = kotlinx.coroutines.test.runTest {
         val result = withTimeout(3_000L) { delegate.request(AppGrant.BLUETOOTH_ADVERTISE) }
         assertTrue(result in validStatuses, "request(BLUETOOTH_ADVERTISE) must complete and return a valid status")
@@ -428,11 +354,13 @@ class IosGrantDelegateTest {
 
     @Test
     fun `request batch of permissions does not deadlock`() = kotlinx.coroutines.test.runTest {
+        // Grants that grant-core answers without any module, so the batch exercises the
+        // multi-mutex lock chain rather than the fail-fast of an unregistered module.
         val grants = listOf(
             AppGrant.SCHEDULE_EXACT_ALARM,
-            AppGrant.CAMERA,
-            AppGrant.MICROPHONE,
-            AppGrant.LOCATION
+            AppGrant.NEARBY_WIFI_DEVICES,
+            AppGrant.LOCAL_NETWORK,
+            AppGrant.LOCATION_ALWAYS
         )
         val results = withTimeout(5_000L) { delegate.request(grants) }
         assertEquals(grants.size, results.size, "Batch request must return a result for every permission")

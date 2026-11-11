@@ -4,7 +4,6 @@ import dev.brewkits.grant.AppGrant
 import dev.brewkits.grant.GrantStatus
 import kotlin.test.Test
 import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
 import kotlin.test.assertEquals
 
 /**
@@ -32,18 +31,6 @@ class IosHandlerPatternTest {
     fun alwaysGrantedHandler_checkStatus_returnsGranted() {
         val handler = AlwaysGrantedHandlerTestProxy
         assertEquals(GrantStatus.GRANTED, handler.checkStatus())
-    }
-
-    /**
-     * Verify AVPermissionHandler factory creates distinct instances for camera and microphone,
-     * preventing handler cross-contamination.
-     */
-    @Test
-    fun avPermissionHandler_camera_and_microphone_are_distinct_instances() {
-        val camera = AVPermissionHandler.camera()
-        val microphone = AVPermissionHandler.microphone()
-        // Different instances — would share state if factory is broken
-        assertTrue(camera !== microphone, "camera and microphone handlers must be distinct instances")
     }
 
     /**

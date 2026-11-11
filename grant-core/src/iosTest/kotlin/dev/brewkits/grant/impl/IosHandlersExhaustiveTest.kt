@@ -25,8 +25,21 @@ class IosHandlersExhaustiveTest {
     fun testDispatchAllAppGrants() = runTest {
         val allAppGrants = AppGrant.values()
         
+        // Handled by grant-camera / grant-gallery / grant-location since 3.0.0. Unregistered in
+        // this binary, they must fail fast with AssertionError; anything else must return a status.
+        val splitOut = setOf(
+            AppGrant.CAMERA, AppGrant.MICROPHONE, AppGrant.GALLERY, AppGrant.GALLERY_IMAGES_ONLY,
+            AppGrant.GALLERY_VIDEO_ONLY, AppGrant.GALLERY_ADD_ONLY, AppGrant.STORAGE, AppGrant.LOCATION,
+        )
+
         allAppGrants.forEach { grant ->
             if (grant == AppGrant.NOTIFICATION) return@forEach
+            if (grant in splitOut) {
+                assertFailsWith<AssertionError>("$grant without its module must fail fast") {
+                    delegate.checkStatus(grant)
+                }
+                return@forEach
+            }
             try {
                 val status = delegate.checkStatus(grant)
                 assertNotNull(status, "Status for $grant should not be null")
@@ -44,10 +57,6 @@ class IosHandlersExhaustiveTest {
     @Test
     fun testSpecificHandlers() = runTest {
         val targetGrants = listOf(
-            AppGrant.CAMERA,
-            AppGrant.MICROPHONE,
-            AppGrant.GALLERY,
-            AppGrant.LOCATION,
             AppGrant.LOCATION_ALWAYS,
             AppGrant.CONTACTS,
             AppGrant.CALENDAR,
@@ -67,12 +76,7 @@ class IosHandlersExhaustiveTest {
         }
     }
 
-    @Test
-    fun testGalleryVariants() = runTest {
-        assertNotNull(delegate.checkStatus(AppGrant.GALLERY_IMAGES_ONLY))
-        assertNotNull(delegate.checkStatus(AppGrant.GALLERY_VIDEO_ONLY))
-        assertNotNull(delegate.checkStatus(AppGrant.STORAGE))
-    }
+    // testGalleryVariants moved with the gallery handler: grant-gallery's GrantGalleryIosTest.
 
     @Test
     fun testBluetoothVariants() = runTest {
