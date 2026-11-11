@@ -43,3 +43,4 @@ include(":grant-desktop")
 // Deliberately not "grant-desktop-harness" — see desktop-harness/build.gradle.kts's header
 // comment for why this module must never be mistaken for a published library.
 include(":desktop-harness")
+include(":linkage-probe")

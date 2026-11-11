@@ -48,6 +48,17 @@ jobs:
       - name: Build iOS Framework
         run: ./gradlew :grant-core:linkDebugFrameworkIosArm64 :grant-core:linkDebugFrameworkIosSimulatorArm64
 
+      # What grant-core drags into a CONSUMER's binary (Issue #91). :linkage-probe plays a
+      # camera-only app. The script fails if (a) the probe stops exercising the camera path, so
+      # the other checks would pass vacuously, (b) a framework isolated into an opt-in module
+      # (Contacts, EventKit, CoreMotion, CoreBluetooth, ATT, requestAlwaysAuthorization) leaks
+      # back, or (c) a known-gap framework (CoreLocation, Photos) disappears without the script
+      # being updated to record it as isolated. Release build on purpose: that is where DCE runs.
+      - name: Check iOS framework linkage (Issue #91)
+        run: |
+          ./gradlew :linkage-probe:linkReleaseFrameworkIosArm64
+          scripts/check-ios-linkage.sh linkage-probe/build/bin/iosArm64/releaseFramework/LinkageProbe.framework/LinkageProbe
+
       # Every module with a real iosTest suite, not just the three that had one when this line
       # was first written. grant-contacts and grant-motion are listed even though — as of this
       # change — they have no iosTest files yet (PR #77 adds them): calling the test task on a
