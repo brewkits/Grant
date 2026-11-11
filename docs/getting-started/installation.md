@@ -52,7 +52,8 @@ kotlin {
 
             // Optional: add only the permission modules you actually use on iOS.
             // Omitting a module means its iOS framework is never linked — no phantom
-            // NSUsageDescription keys, no App Store rejections.
+            // NSUsageDescription keys for that module. (grant-core itself still links
+            // CoreLocation, Photos and AVFoundation — Issue #91, planned fix in 3.0.0.)
             implementation("dev.brewkits:grant-contacts:2.5.0")        // Optional: Contacts (iOS CNContactStore)
             implementation("dev.brewkits:grant-calendar:2.5.0")        // Optional: Calendar (iOS EventKit)
             implementation("dev.brewkits:grant-motion:2.5.0")          // Optional: Motion (iOS CoreMotion)

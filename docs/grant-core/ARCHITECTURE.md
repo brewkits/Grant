@@ -71,7 +71,7 @@ The sensitive frameworks and selectors are isolated into their own Gradle module
 | `grant-bluetooth` | `CoreBluetooth.framework` | v2.2.0 |
 | `grant-location-always` | the `requestAlwaysAuthorization` selector (background location) | v2.2.0 |
 
-`CoreLocation` (when-in-use only — `grant-core` calls only `requestWhenInUseAuthorization`), `Photos`, and `AVFoundation` remain in `grant-core` and are weak-linked there. Each optional module also uses `-weak_framework` for defense in depth.
+`CoreLocation` (when-in-use only — `grant-core` calls only `requestWhenInUseAuthorization`), `Photos`, and `AVFoundation` remain in `grant-core`. **They are linked into every consuming iOS app, even one that never requests location, photos, or camera/microphone** (Issue #91). `PlatformGrantDelegate.handlerFor()` is a single `when` over all `AppGrant` values, so any use of `GrantManager` keeps every handler reachable. The `-weak_framework` flags in each module's `build.gradle.kts` apply only to the framework this repository builds itself. They are not carried in the published klib and do not change how a consumer's app links. Isolating these three is planned for 3.0.0; see [the linking guide, Section 6](../ios/APPLE_FRAMEWORK_LINKING_ISSUE.md#6-known-gap--frameworks-still-in-grant-core-issue-91).
 
 > **Note:** Status-checking in core still maps `kCLAuthorizationStatusAuthorizedAlways → GRANTED`, which is a harmless enum read — Apple's scanner inspects method selectors, not enum value comparisons.
 
