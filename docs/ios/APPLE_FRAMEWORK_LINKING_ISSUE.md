@@ -2,7 +2,7 @@
 
 > **Related:** Issue #25, Issue #38, Issue #45  
 > **Severity:** 🔴 Critical (causes App Store rejection at upload time)  
-> **Status:** ✅ FULLY RESOLVED — Contacts/Calendar/Motion in v2.0.0; Bluetooth + always-Location in v2.2.0 — see [Section 5](#5-resolution--v200--v220)
+> **Status:** ⚠️ PARTIALLY RESOLVED — Contacts/Calendar/Motion isolated in v2.0.0; Bluetooth + always-Location in v2.2.0 (see [Section 5](#5-resolution--v200--v220)). `CoreLocation` (when-in-use), `Photos`, and `AVFoundation` are **still linked by `grant-core`** — see [Section 6](#6-known-gap--frameworks-still-in-grant-core-issue-91) (Issue #91).
 
 ---
 
@@ -123,7 +123,7 @@ Permission handlers whose mere presence in the binary triggers an Apple `NSUsage
 | `grant-bluetooth` | `BluetoothPermissionHandler.kt` | `CoreBluetooth.framework` | v2.2.0 |
 | `grant-location-always` | `LocationAlwaysPermissionHandler.kt` | the `requestAlwaysAuthorization` selector (background location) | v2.2.0 |
 
-`grant-core` retains Camera (`AVFoundation`), Gallery (`Photos`), foreground Location (`CoreLocation`), and Notification (`UserNotifications`) — frameworks/APIs expected in the vast majority of iOS apps.
+`grant-core` retains Camera (`AVFoundation`), Gallery (`Photos`), foreground Location (`CoreLocation`), and Notification (`UserNotifications`). This was justified as "frameworks expected in the vast majority of iOS apps" — an assumption Issue #91 disproved: a camera-only app still gets `CoreLocation` linked. See [Section 6](#6-known-gap--frameworks-still-in-grant-core-issue-91).
 
 For Location specifically: `grant-core` now calls **only** `requestWhenInUseAuthorization` (an explicit, statically-linked call). The `requestAlwaysAuthorization` selector lives solely in `grant-location-always`, so an app that only needs foreground location never has that selector in its binary and is never asked for `NSLocationAlwaysAndWhenInUseUsageDescription`. Status-checking in core still reads the `kCLAuthorizationStatusAuthorizedAlways` enum constant (a harmless value comparison — Apple's scanner inspects `__objc_methname` method selectors, not enum reads).
 
@@ -192,7 +192,51 @@ If you don't add the module, **do not add the key**. An app with a usage descrip
 
 ---
 
-## 6. Build Stage Reference
+## 6. Known Gap — Frameworks Still in `grant-core` (Issue #91)
+
+Section 5 isolated five frameworks/selectors. Three are **not** isolated, and every iOS app that depends
+on `grant-core` links them, whether or not it ever requests the matching permission:
+
+| Framework | Kept reachable by | `NSUsageDescription` key at risk |
+|---|---|---|
+| `CoreLocation` | `PlatformGrantDelegate.handlerFor()` (`AppGrant.LOCATION -> LocationPermissionHandler`), `PlatformServiceDelegate.checkLocationService()` (`ServiceType.LOCATION_GPS`), and the public `LocationTemporaryFullAccuracyHandler` | `NSLocationWhenInUseUsageDescription` |
+| `Photos` | `handlerFor()` → `PhotoPermissionHandler` (`GALLERY*`, `STORAGE`) | `NSPhotoLibraryUsageDescription` / `NSPhotoLibraryAddUsageDescription` |
+| `AVFoundation` | `handlerFor()` → `AVPermissionHandler` (`CAMERA`, `MICROPHONE`) | `NSCameraUsageDescription` / `NSMicrophoneUsageDescription` |
+
+Your app not referencing `AppGrant.LOCATION` does not help. `handlerFor()` is one `when` over every
+`AppGrant`, so any use of `GrantManager` keeps every branch reachable. `by lazy` defers *construction*,
+not linkage.
+
+**The `-weak_framework` flags in `grant-core/build.gradle.kts` do not affect your app.** They are set on
+the `GrantCore` framework this repository builds for itself. Linker options on a `binaries.framework { }`
+block are not carried in the published `.klib`, so your own framework links these normally. Section 2,
+Layer 3, explains why weak linking would not satisfy the scanner anyway.
+
+**Reported evidence (Issue #91, `grant-core` 2.6.0, Release archive of a camera + gallery app):**
+`nm -u` lists `_OBJC_CLASS_$_CLLocationManager`, `otool -L` lists `CoreLocation.framework`, and `strings`
+finds `requestWhenInUseAuthorization`. To check your own app:
+
+```bash
+BIN="MyApp.xcarchive/Products/Applications/MyApp.app/MyApp"
+nm -u "$BIN" | grep -E 'CLLocationManager|PHPhotoLibrary|AVCaptureDevice'
+otool -L "$BIN" | grep -E 'CoreLocation|Photos|AVFoundation'
+```
+
+**Planned fix (3.0.0):** move each handler into its own opt-in module, the same way as Section 5. This
+is breaking: an app that uses `AppGrant.LOCATION`/`CAMERA`/`GALLERY` on iOS will need to add a module
+and call its `initialize()`. Section 3 explains why a DCE-only builder DSL that leaves the code in
+`grant-core` does not count as a fix.
+
+**Workaround until then:** if App Store Connect flags ITMS-90683 for one of the keys above, add that key
+to `Info.plist`. Apple's own guidance for this error says a purpose string is required even when the
+reference comes from a third-party library and your app never calls the API. Write a truthful string
+(for example, that the app does not use your location). This is the one case where the "do not add the
+key" advice in Section 5 does not apply: that advice is for modules you can leave out, and these three
+frameworks cannot be left out yet.
+
+---
+
+## 7. Build Stage Reference
 
 | Build stage | Who runs it | What it produces | Affects App Store rejection? |
 |---|---|---|---|
@@ -204,7 +248,7 @@ If you don't add the module, **do not add the key**. An app with a usage descrip
 
 ---
 
-## 7. Key Takeaways
+## 8. Key Takeaways
 
 > **Lesson 1 — `import platform.X.*` registers the framework at compile time, not link time.**  
 > The K/N ObjC interop toolchain emits framework name metadata into the `.klib` when it processes `import` declarations. DCE and linker flags run later and cannot retract this metadata.
@@ -223,11 +267,12 @@ If you don't add the module, **do not add the key**. An app with a usage descrip
 
 ---
 
-## 8. References
+## 9. References
 
 - [Issue #25](https://github.com/brewkits/Grant/issues/25) — Original App Store rejection report
 - [Issue #38](https://github.com/brewkits/Grant/issues/38) — Regression confirmed in v1.4.1; DCE limitation discovered via testing
 - [PR #39](https://github.com/brewkits/Grant/pull/39) — Opt-in Builder DSL (considered, found insufficient due to compile-time metadata)
+- [Issue #91](https://github.com/brewkits/Grant/issues/91) — `CoreLocation` still linked by `grant-core` in a camera-only app; see Section 6
 - [Apple — Describing use of required reason APIs](https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_use_of_required_reason_api)
 - [Apple — Privacy manifest files](https://developer.apple.com/documentation/bundleresources/privacy_manifest_files)
 - [Kotlin/Native — Interoperability with Objective-C](https://kotlinlang.org/docs/native-objc-interop.html)
