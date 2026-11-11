@@ -1,10 +1,10 @@
 // A Maven BOM (Bill of Materials), not a code module — pure Gradle `java-platform`, no Kotlin
 // plugin. Grant is 12 modules that must always move in lockstep (see this repo's own
 // create-grant-maven-bundle-auto.sh, which bumps all of them from one VERSION variable); this
-// lets a *consumer* get the same guarantee without retyping "2.7.0-alpha01" on every line:
+// lets a *consumer* get the same guarantee without retyping "3.0.0-alpha01" on every line:
 //
 //   dependencies {
-//       implementation(platform("dev.brewkits:grant-bom:2.7.0-alpha01"))
+//       implementation(platform("dev.brewkits:grant-bom:3.0.0-alpha01"))
 //       implementation("dev.brewkits:grant-core")          // no version needed
 //       implementation("dev.brewkits:grant-compose")       // no version needed
 //       implementation("dev.brewkits:grant-tracking")      // no version needed
@@ -20,7 +20,7 @@ plugins {
 }
 
 group = "dev.brewkits"
-version = "2.7.0-alpha01"
+version = "3.0.0-alpha01"
 
 // This module has no dependencies of its own to declare transitively — it exists purely to
 // pin sibling versions — so the default (closed) constraint set is correct; javaPlatform.
@@ -28,7 +28,7 @@ version = "2.7.0-alpha01"
 
 dependencies {
     constraints {
-        // project(...) rather than a hardcoded "dev.brewkits:grant-core:2.7.0-alpha01" string: Gradle's
+        // project(...) rather than a hardcoded "dev.brewkits:grant-core:3.0.0-alpha01" string: Gradle's
         // publish plugin resolves each project reference to that project's own group/name/version
         // when generating the POM, so this file cannot drift from the real published coordinates
         // the way a hand-typed string list could.
@@ -63,7 +63,7 @@ publishing {
 
             groupId = "dev.brewkits"
             artifactId = "grant-bom"
-            version = "2.7.0-alpha01"
+            version = "3.0.0-alpha01"
 
             pom {
                 name.set("KMP Grant BOM")
