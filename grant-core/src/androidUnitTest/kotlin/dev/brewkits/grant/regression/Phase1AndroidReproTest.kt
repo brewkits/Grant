@@ -48,7 +48,8 @@ import kotlin.test.assertTrue
  *
  * Not reproducible under Robolectric (need a real device — tracked separately):
  *  - R1 iOS location resuming early on the delegate's initial callback
- *  - R3 background-activity-launch block when the app is not in the foreground
+ *  - R3 the real background-activity-launch block (BAL_BLOCK); the R3 test below approximates
+ *    it, since Robolectric records startActivity but never starts the Activity
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [Build.VERSION_CODES.S], manifest = Config.NONE)
@@ -298,12 +299,19 @@ class Phase1AndroidReproTest {
     fun `R3 request returns promptly when the dialog Activity never starts`() = runBlocking {
         shadowOf(context as Application).denyPermissions(Manifest.permission.CAMERA)
 
-        val result = withTimeoutOrNull(15_000) { delegate.request(AppGrant.CAMERA) }
+        // The defect is a 5-minute hang (SYSTEM_DIALOG_TIMEOUT_MS). The fix gives up after
+        // ACTIVITY_START_TIMEOUT_MS, so the budget is derived from that constant, not a literal.
+        // A fixed 15 s went stale when the start timeout was raised from 4 s to 10 s (e165337):
+        // with ~2-4 s of Robolectric overhead on top, CI runs exceeded it and R3 went red while
+        // the behaviour under test was correct. 15 s of headroom still sits far below 5 minutes.
+        val budgetMs = PlatformGrantDelegate.ACTIVITY_START_TIMEOUT_MS + 15_000
+        val result = withTimeoutOrNull(budgetMs) { delegate.request(AppGrant.CAMERA) }
 
         assertNotNull(
             result,
-            "request() was still waiting after 15 s although the system never started the " +
-                "dialog Activity; it must detect that and fail fast instead of hanging for minutes",
+            "request() was still waiting after ${budgetMs / 1000} s although the system never " +
+                "started the dialog Activity; it must detect that and fail fast instead of " +
+                "hanging for minutes",
         )
         Unit
     }

@@ -311,15 +311,19 @@ public class GrantRequestActivity : ComponentActivity() {
          *
          * @return `true` if the dialog is, or was, really on its way; `false` if nothing started
          *   in time — the launch was almost certainly blocked and no answer will ever arrive.
+         *
+         * [timeoutMs] is measured on a monotonic clock. It used to be the sum of the poll
+         * delays, but each `delay()` overruns a little, so a 10 s timeout measured 11.7 s under
+         * Robolectric and longer on a loaded CI runner. That drift is what pushed the R3 test
+         * past its budget.
          */
         internal suspend fun awaitLaunched(requestId: String, timeoutMs: Long): Boolean {
             val signal = startSignals[requestId] ?: return pendingResults[requestId]?.isCompleted == true
             val result = pendingResults[requestId]
-            var waited = 0L
+            val started = kotlin.time.TimeSource.Monotonic.markNow()
             while (!signal.isCompleted && result?.isCompleted != true) {
-                if (waited >= timeoutMs) return false
+                if (started.elapsedNow().inWholeMilliseconds >= timeoutMs) return false
                 kotlinx.coroutines.delay(LAUNCH_POLL_INTERVAL_MS)
-                waited += LAUNCH_POLL_INTERVAL_MS
             }
             return true
         }
