@@ -92,12 +92,25 @@ android {
     }
 }
 
+// Maven Central rejects a `jar`-packaged artifact with no javadoc jar (grant-core-jvm failed the
+// v2.4.0 upload on exactly this). This module's jvm() target is a plain jar publication, so it
+// gets the same fix as grant-core and grant-testing.
+val dokkaJavadocJar by tasks.registering(Jar::class) {
+    dependsOn(tasks.named("dokkaGeneratePublicationHtml"))
+    archiveClassifier.set("javadoc")
+    from(layout.buildDirectory.dir("dokka/html"))
+}
+
 publishing {
     repositories {
         maven {
             name = "MavenCentralLocal"
             url = uri(layout.buildDirectory.dir("maven-central-staging"))
         }
+    }
+
+    publications.named("jvm", MavenPublication::class) {
+        artifact(dokkaJavadocJar)
     }
 
     publications.configureEach {
