@@ -370,8 +370,7 @@ aspirational.
 | `grant-core` | 293 KB |
 | `grant-compose` | 30 KB |
 | `grant-core-koin` | 7 KB |
-| `grant-contacts` · `grant-calendar` · `grant-motion` · `grant-bluetooth` · `grant-location-always` · `grant-tracking` | ~2 KB each |
-| `grant-location` · `grant-gallery` · `grant-camera` (new in 3.0.0; sizes not yet measured) | — |
+| `grant-location` · `grant-gallery` · `grant-camera` · `grant-contacts` · `grant-calendar` · `grant-motion` · `grant-bluetooth` · `grant-location-always` · `grant-tracking` | ~2 KB each |
 | `grant-testing` (test-only — see [Testing](#testing) below) | 20 KB |
 
 Download size is not app size. In a real R8-minified build (the demo, with
