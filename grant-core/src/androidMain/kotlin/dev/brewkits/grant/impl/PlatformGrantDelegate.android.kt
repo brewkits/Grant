@@ -124,7 +124,8 @@ public actual class PlatformGrantDelegate(
          * reporting a launch as blocked that was merely slow. It only has to beat the 5-minute
          * dialog wait.
          */
-        private const val ACTIVITY_START_TIMEOUT_MS = 10_000L
+        // Internal, not private: the R3 regression test derives its time budget from it.
+        internal const val ACTIVITY_START_TIMEOUT_MS = 10_000L
         private const val SYSTEM_DIALOG_TIMEOUT_MS = 300_000L // 5 minutes (matches activity cleanup)
 
         /**
