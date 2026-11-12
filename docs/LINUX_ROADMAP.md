@@ -1,6 +1,6 @@
 # Linux Desktop roadmap
 
-Status: planned, no Linux native permission support is shipped by the 2.7.0 preview.
+Status: planned, no Linux native permission support is shipped by the 3.0.0 preview (formerly planned as 2.7.0).
 This roadmap has acceptance criteria rather than a promised release date.
 
 ## Product scope

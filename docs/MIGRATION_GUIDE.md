@@ -1,7 +1,7 @@
 # Migration Guide to Grant
 
-**Version:** 2.6.0
-**Last Updated:** September 12, 2026
+**Version:** 3.0.0-alpha01 (in development)
+**Last Updated:** November 12, 2026
 
 This guide helps you migrate from previous versions of Grant or other permission libraries.
 
@@ -9,6 +9,7 @@ This guide helps you migrate from previous versions of Grant or other permission
 
 ## 📚 Table of Contents
 
+0. [Upgrading from Grant 2.x to 3.0.0](#upgrading-from-grant-2x-to-300)
 1. [Upgrading from Grant 2.5.0 to 2.6.0](#upgrading-from-grant-250-to-260)
 2. [Upgrading from Grant 2.4.0 to 2.5.0](#upgrading-from-grant-240-to-250)
 3. [Upgrading from Grant 2.3.0 to 2.4.0](#upgrading-from-grant-230-to-240)
@@ -23,6 +24,85 @@ This guide helps you migrate from previous versions of Grant or other permission
 12. [From Native Android APIs](#from-native-android-apis)
 13. [Common Migration Patterns](#common-migration-patterns)
 14. [Troubleshooting](#troubleshooting)
+
+---
+
+## 💥 Upgrading from Grant 2.x to 3.0.0
+
+> 3.0.0 is in development (`3.0.0-alpha01`) and not yet on Maven Central. It also absorbs the
+> Desktop preview that was planned as 2.7.0; see `CHANGELOG.md` for those additions.
+
+### What changed
+
+On **iOS**, Location (when in use), Gallery and Camera/Microphone moved out of `grant-core` into
+three opt-in modules ([#91](https://github.com/brewkits/Grant/issues/91)). Until 2.x,
+`grant-core` linked `CoreLocation`, `Photos` and `AVFoundation` into **every** app that used it,
+including a camera-only app that never touched location. App Store Connect could then ask that
+app for `NSLocationWhenInUseUsageDescription` (ITMS-90683). These are the same moves 2.0.0 and
+2.2.0 made for Contacts, Calendar, Motion, Bluetooth and background location.
+
+| If your app uses… | Add | Call at startup |
+|---|---|---|
+| `AppGrant.LOCATION`, `ServiceType.LOCATION_GPS`, `LocationTemporaryFullAccuracyHandler` | `grant-location` | `GrantLocation.initialize()` |
+| `AppGrant.GALLERY`, `GALLERY_IMAGES_ONLY`, `GALLERY_VIDEO_ONLY`, `GALLERY_ADD_ONLY`, `STORAGE` | `grant-gallery` | `GrantGallery.initialize()` |
+| `AppGrant.CAMERA`, `AppGrant.MICROPHONE` | `grant-camera` | `GrantCamera.initialize()` |
+
+**Android and the browser need no change.** `grant-core` still handles these permissions there,
+and each new module's `initialize()` is a no-op on those platforms.
+
+### Steps
+
+1. Bump every Grant artifact to `3.0.0` (or use `grant-bom:3.0.0`).
+2. Add the modules from the table that your app needs. They publish every target `grant-core`
+   does (Android, iOS, JS, Wasm, JVM), so `commonMain` is fine:
+
+   ```kotlin
+   commonMain.dependencies {
+       implementation(platform("dev.brewkits:grant-bom:3.0.0"))
+       implementation("dev.brewkits:grant-core")
+       implementation("dev.brewkits:grant-location") // if you use LOCATION / LOCATION_GPS
+       implementation("dev.brewkits:grant-gallery")  // if you use GALLERY* / STORAGE
+       implementation("dev.brewkits:grant-camera")   // if you use CAMERA / MICROPHONE
+   }
+   ```
+
+3. Call each module's `initialize()` once, before the first request. From shared Kotlin:
+
+   ```kotlin
+   GrantLocation.initialize()
+   GrantGallery.initialize()
+   GrantCamera.initialize()
+   ```
+
+   or from Swift: `GrantLocation.shared.initialize()` and so on.
+
+4. If you added `NSLocationWhenInUseUsageDescription`, `NSPhotoLibraryUsageDescription`,
+   `NSCameraUsageDescription` or `NSMicrophoneUsageDescription` to `Info.plist` **only** because
+   App Store Connect demanded it for a feature you don't have (the #91 workaround), you can now
+   leave out that module and remove the key.
+
+### If you forget a module
+
+| Build | `CAMERA` / `MICROPHONE` / `GALLERY*` / `STORAGE` / `LOCATION` | `ServiceType.LOCATION_GPS` |
+|---|---|---|
+| Debug | throws `AssertionError` naming the module to add | `UNKNOWN`, logged at ERROR |
+| Release | `DENIED_ALWAYS`, logged at ERROR | `UNKNOWN`, logged at ERROR |
+
+The debug-build error is deliberate. These permissions worked without a module in 2.x, so a
+silent `DENIED_ALWAYS` after upgrading would look like the user had refused. It is an `Error`,
+not an `Exception`, so `GrantHandler`'s error handling cannot hide it. The older opt-in modules
+(Contacts, Calendar, …) keep their 2.x behaviour: `DENIED_ALWAYS` plus an error log, in debug
+too.
+
+### Source compatibility
+
+- `LocationTemporaryFullAccuracyHandler` moved to `grant-location`. It is in the same package
+  (`dev.brewkits.grant.handlers`), so your import compiles once the module is added.
+- New in `grant-core`: `IosServiceRegistry`, the service-side counterpart of
+  `IosPermissionHandlerRegistry`. You only need it if you supply your own iOS service check.
+- **Tests:** `grant-testing`'s fakes are unaffected. iOS tests that drive the real
+  `PlatformGrantDelegate` for these grants must call the module's `initialize()` in their setup.
+  Otherwise they hit the debug-build `AssertionError`.
 
 ---
 

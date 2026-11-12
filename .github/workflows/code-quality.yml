@@ -55,6 +55,9 @@ jobs:
           :grant-motion:lintDebug
           :grant-bluetooth:lintDebug
           :grant-location-always:lintDebug
+          :grant-location:lintDebug
+          :grant-gallery:lintDebug
+          :grant-camera:lintDebug
           :grant-tracking:lintDebug
           :grant-testing:lintDebug
 

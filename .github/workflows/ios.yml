@@ -48,16 +48,16 @@ jobs:
       - name: Build iOS Framework
         run: ./gradlew :grant-core:linkDebugFrameworkIosArm64 :grant-core:linkDebugFrameworkIosSimulatorArm64
 
-      # What grant-core drags into a CONSUMER's binary (Issue #91). :linkage-probe plays a
-      # camera-only app. The script fails if (a) the probe stops exercising the camera path, so
-      # the other checks would pass vacuously, (b) a framework isolated into an opt-in module
-      # (Contacts, EventKit, CoreMotion, CoreBluetooth, ATT, requestAlwaysAuthorization) leaks
-      # back, or (c) a known-gap framework (CoreLocation, Photos) disappears without the script
-      # being updated to record it as isolated. Release build on purpose: that is where DCE runs.
+      # What Grant drags into a CONSUMER's binary (Issue #91). Two probes: :linkage-probe plays a
+      # camera-only app (grant-core + grant-camera), :linkage-probe-core an app on grant-core alone.
+      # Each fails if its CONTROL framework is missing (the probe was stripped, so the other checks
+      # would pass vacuously) or if any framework from an opt-in module it does not use is linked.
+      # Release build on purpose: that is where DCE runs.
       - name: Check iOS framework linkage (Issue #91)
         run: |
-          ./gradlew :linkage-probe:linkReleaseFrameworkIosArm64
-          scripts/check-ios-linkage.sh linkage-probe/build/bin/iosArm64/releaseFramework/LinkageProbe.framework/LinkageProbe
+          ./gradlew :linkage-probe:linkReleaseFrameworkIosArm64 :linkage-probe-core:linkReleaseFrameworkIosArm64
+          scripts/check-ios-linkage.sh camera linkage-probe/build/bin/iosArm64/releaseFramework/LinkageProbe.framework/LinkageProbe
+          scripts/check-ios-linkage.sh core linkage-probe-core/build/bin/iosArm64/releaseFramework/LinkageProbeCore.framework/LinkageProbeCore
 
       # Every module with a real iosTest suite, not just the three that had one when this line
       # was first written. grant-contacts and grant-motion are listed even though — as of this
@@ -82,6 +82,9 @@ jobs:
           :grant-core:iosSimulatorArm64Test
           :grant-bluetooth:iosSimulatorArm64Test
           :grant-location-always:iosSimulatorArm64Test
+          :grant-location:iosSimulatorArm64Test
+          :grant-gallery:iosSimulatorArm64Test
+          :grant-camera:iosSimulatorArm64Test
           :grant-calendar:iosSimulatorArm64Test
           :grant-contacts:iosSimulatorArm64Test
           :grant-motion:iosSimulatorArm64Test

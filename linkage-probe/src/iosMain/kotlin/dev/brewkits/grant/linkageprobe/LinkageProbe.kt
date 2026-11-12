@@ -6,6 +6,7 @@ import dev.brewkits.grant.GrantStatus
 import dev.brewkits.grant.ServiceFactory
 import dev.brewkits.grant.ServiceStatus
 import dev.brewkits.grant.ServiceType
+import dev.brewkits.grant.camera.GrantCamera
 
 /**
  * Everything a camera-only app does with Grant (Issue #91's reporter): a GrantManager used only
@@ -20,6 +21,10 @@ import dev.brewkits.grant.ServiceType
  * check exists to measure.
  */
 public object LinkageProbe {
+    init {
+        GrantCamera.initialize()
+    }
+
     private val grants = GrantFactory.create()
     private val services = ServiceFactory.createServiceManager()
 

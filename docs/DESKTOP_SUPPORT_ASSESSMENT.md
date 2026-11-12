@@ -6,7 +6,7 @@ a recommendation, not a release commitment or a claim that the gates have passed
 
 ## Implementation follow-up
 
-The 2.7.0-alpha01 preview now has publication/BOM wiring, a capability query, handler and
+The 3.0.0-alpha01 preview (formerly planned as 2.7.0-alpha01) now has publication/BOM wiring, a capability query, handler and
 capability tests, Windows x64 privacy status/Settings APIs, plus an independent staged-Maven
 consumer. Native Windows CI and the packaged Windows consumer have passed. See
 [validation evidence](DESKTOP_PREVIEW_VALIDATION.md) for completed checks and open manual

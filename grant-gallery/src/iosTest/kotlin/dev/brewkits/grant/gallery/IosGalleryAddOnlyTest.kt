@@ -1,8 +1,9 @@
-package dev.brewkits.grant.impl
+package dev.brewkits.grant.gallery
 
 import dev.brewkits.grant.AppGrant
 import dev.brewkits.grant.GrantStatus
 import dev.brewkits.grant.InMemoryGrantStore
+import dev.brewkits.grant.impl.PlatformGrantDelegate
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
 import kotlin.test.BeforeTest
@@ -11,7 +12,8 @@ import kotlin.test.assertTrue
 
 /**
  * [AppGrant.GALLERY_ADD_ONLY] on iOS routes to a `PhotoPermissionHandler` configured with
- * `PHAccessLevelAddOnly` and `NSPhotoLibraryAddUsageDescription`.
+ * `PHAccessLevelAddOnly` and `NSPhotoLibraryAddUsageDescription`. Since 3.0.0 that handler is
+ * registered by [GrantGallery.initialize]; without it these calls throw in a debug binary.
  *
  * Per the CLAUDE.md rule, every path through the real delegate gets a `withTimeout`-wrapped
  * test so a silent deadlock surfaces as a failing test rather than a hang. The handler is
@@ -33,6 +35,7 @@ class IosGalleryAddOnlyTest {
 
     @BeforeTest
     fun setup() {
+        GrantGallery.initialize()
         delegate = PlatformGrantDelegate(InMemoryGrantStore())
     }
 

@@ -1,0 +1,5 @@
+public final class dev/brewkits/grant/location/GrantLocation {
+	public static final field INSTANCE Ldev/brewkits/grant/location/GrantLocation;
+	public final fun initialize ()V
+}
+

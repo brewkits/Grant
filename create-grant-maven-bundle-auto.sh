@@ -10,7 +10,7 @@
 
 set -e
 
-VERSION="2.7.0-alpha01"
+VERSION="3.0.0-alpha01"
 GROUP_PATH="dev/brewkits"
 BUNDLE_NAME="grant-v${VERSION}-bundle.jar"
 OUTPUT_DIR="maven-central-artifacts/v${VERSION}"
@@ -26,6 +26,9 @@ MODULES=(
     grant-motion
     grant-bluetooth
     grant-location-always
+    grant-location
+    grant-gallery
+    grant-camera
     grant-tracking
     grant-testing
     grant-bom

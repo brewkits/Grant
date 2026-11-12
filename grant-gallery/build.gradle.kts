@@ -1,0 +1,172 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+plugins {
+    alias(libs.plugins.kotlinMultiplatform)
+    alias(libs.plugins.androidLibrary)
+    alias(libs.plugins.kover)
+    id("maven-publish")
+    alias(libs.plugins.dokka)
+    alias(libs.plugins.cyclonedx)
+}
+
+group = "dev.brewkits"
+version = "3.0.0-alpha01"
+
+kotlin {
+    androidTarget {
+        publishLibraryVariants("release")
+
+        compilations.all {
+            compileTaskProvider.configure {
+                compilerOptions {
+                    jvmTarget.set(JvmTarget.JVM_17)
+                }
+            }
+        }
+    }
+
+    jvmToolchain(17)
+
+    // Every public declaration must state its visibility and return type explicitly.
+    // The ABI gate below records what the public surface IS; this stops something
+    // becoming public by accident in the first place.
+    explicitApi()
+
+    // Public API surface lock (KGP 2.4 built-in ABI validation, klib included).
+    // Dumps live in api/ and are verified by CI. See grant-core for rationale.
+    @OptIn(org.jetbrains.kotlin.gradle.dsl.abi.ExperimentalAbiValidation::class)
+    abiValidation {
+    }
+
+    listOf(
+        iosX64(),
+        iosArm64(),
+        iosSimulatorArm64()
+    ).forEach { iosTarget ->
+        iosTarget.binaries.framework {
+            baseName = "GrantGallery"
+            isStatic = true
+        }
+    }
+
+    // Every target grant-core has, not just android + iOS like grant-bluetooth. CAMERA,
+    // MICROPHONE and LOCATION are three of the four grants grant-core backs in the browser
+    // (and CAMERA is what grant-desktop serves on the JVM), so a Compose Multiplatform app
+    // adds this module to commonMain. Without these targets, dependency resolution would fail
+    // for its js/wasmJs/jvm variants. initialize() is a no-op on all of them; only iOS needs
+    // the handler moved out of grant-core (Issue #91).
+    js {
+        browser()
+    }
+    @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
+    wasmJs {
+        browser()
+    }
+    jvm()
+
+    sourceSets {
+        commonMain.dependencies {
+            implementation(project(":grant-core"))
+        }
+
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
+            implementation(libs.kotlinx.coroutines.test)
+            implementation(libs.turbine)
+            implementation(project(":grant-testing"))
+        }
+    }
+}
+
+android {
+    namespace = "dev.brewkits.grant.gallery"
+    compileSdk = libs.versions.android.compileSdk.get().toInt()
+
+    defaultConfig {
+        minSdk = libs.versions.android.minSdk.get().toInt()
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+}
+
+// Maven Central rejects a `jar`-packaged artifact with no javadoc jar (grant-core-jvm failed the
+// v2.4.0 upload on exactly this). This module's jvm() target is a plain jar publication, so it
+// gets the same fix as grant-core and grant-testing.
+val dokkaJavadocJar by tasks.registering(Jar::class) {
+    dependsOn(tasks.named("dokkaGeneratePublicationHtml"))
+    archiveClassifier.set("javadoc")
+    from(layout.buildDirectory.dir("dokka/html"))
+}
+
+publishing {
+    repositories {
+        maven {
+            name = "MavenCentralLocal"
+            url = uri(layout.buildDirectory.dir("maven-central-staging"))
+        }
+    }
+
+    publications.named("jvm", MavenPublication::class) {
+        artifact(dokkaJavadocJar)
+    }
+
+    publications.configureEach {
+        (this as? MavenPublication)?.let {
+            groupId = "dev.brewkits"
+            version = "3.0.0-alpha01"
+
+            pom {
+                name.set("KMP Grant Gallery")
+                description.set("Photo library permission handler for KMP Grant (isolates Photos on iOS)")
+                url.set("https://github.com/brewkits/grant")
+
+                licenses {
+                    license {
+                        name.set("The Apache License, Version 2.0")
+                        url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
+                    }
+                }
+
+                developers {
+                    developer {
+                        id.set("brewkits")
+                        name.set("Brewkits")
+                        email.set("vietnguyentuan@gmail.com")
+                    }
+                }
+
+                scm {
+                    connection.set("scm:git:git://github.com/brewkits/Grant.git")
+                    developerConnection.set("scm:git:ssh://github.com/brewkits/Grant.git")
+                    url.set("https://github.com/brewkits/Grant")
+                }
+            }
+        }
+    }
+}
+
+// Software Bill of Materials for this published artifact.
+// ./gradlew cyclonedxBom  ->  <module>/build/reports/bom.json
+//
+// Applied per published module rather than at the root: the root task would also walk
+// :demo, whose Kotlin/Native and Compose configurations CycloneDX 1.4 cannot resolve, and
+// a per-artifact BOM is the right granularity for consumers anyway.
+tasks.named<org.cyclonedx.gradle.CycloneDxTask>("cyclonedxBom") {
+    // Runtime dependencies are the ones that actually reach a consumer.
+    setIncludeConfigs(listOf("releaseRuntimeClasspath"))
+    notCompatibleWithConfigurationCache("CycloneDX 1.4 resolves configurations at execution time")
+}
+
+// No kover `verify { minBound(...) }` here, deliberately.
+//
+// Measured 2026-09-04: kover reports 1/1 lines = 100% for this module, and that number is
+// meaningless. The only class it instruments is the Android `Grant*` entry point, whose
+// `initialize()` is a documented no-op; the actual logic — the iOS handler that maps the
+// platform's authorization status — is Kotlin/Native, which kover does not measure at all.
+//
+// A floor would therefore pass at 100% forever while the code that matters stays unmeasured.
+// The real safety net for this module is its iosTest suite, which exercises the handler on a
+// simulator.

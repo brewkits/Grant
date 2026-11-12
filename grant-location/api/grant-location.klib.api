@@ -1,0 +1,20 @@
+// Klib ABI Dump
+// Targets: [iosArm64, iosSimulatorArm64, iosX64, js, wasmJs]
+// Alias: ios => [iosArm64, iosSimulatorArm64, iosX64]
+// Rendering settings:
+// - Signature version: 2
+// - Show manifest properties: true
+// - Show declarations: true
+
+// Library unique name: <dev.brewkits:grant-location>
+final object dev.brewkits.grant.location/GrantLocation { // dev.brewkits.grant.location/GrantLocation|null[0]
+    final fun initialize() // dev.brewkits.grant.location/GrantLocation.initialize|initialize(){}[0]
+}
+
+// Targets: [ios]
+final class dev.brewkits.grant.handlers/LocationTemporaryFullAccuracyHandler : dev.brewkits.grant.handlers/PermissionHandler { // dev.brewkits.grant.handlers/LocationTemporaryFullAccuracyHandler|null[0]
+    constructor <init>(kotlin/String) // dev.brewkits.grant.handlers/LocationTemporaryFullAccuracyHandler.<init>|<init>(kotlin.String){}[0]
+
+    final fun checkStatus(): dev.brewkits.grant/GrantStatus // dev.brewkits.grant.handlers/LocationTemporaryFullAccuracyHandler.checkStatus|checkStatus(){}[0]
+    final suspend fun request(): dev.brewkits.grant/GrantStatus // dev.brewkits.grant.handlers/LocationTemporaryFullAccuracyHandler.request|request(){}[0]
+}

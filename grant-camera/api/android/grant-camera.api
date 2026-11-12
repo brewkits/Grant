@@ -1,0 +1,5 @@
+public final class dev/brewkits/grant/camera/GrantCamera {
+	public static final field INSTANCE Ldev/brewkits/grant/camera/GrantCamera;
+	public final fun initialize ()V
+}
+

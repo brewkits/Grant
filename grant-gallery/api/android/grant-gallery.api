@@ -1,0 +1,5 @@
+public final class dev/brewkits/grant/gallery/GrantGallery {
+	public static final field INSTANCE Ldev/brewkits/grant/gallery/GrantGallery;
+	public final fun initialize ()V
+}
+

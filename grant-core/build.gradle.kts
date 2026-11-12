@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "dev.brewkits"
-version = "2.7.0-alpha01"
+version = "3.0.0-alpha01"
 
 kotlin {
     androidTarget {
@@ -78,12 +78,9 @@ kotlin {
         iosTarget.binaries.framework {
             baseName = "GrantCore"
             isStatic = true
-            // Fix Issue #25: Use weak-linked frameworks for sensitive permissions.
-            // This provides an additional layer of safety to prevent Apple from
-            // flagging unused frameworks during App Store static analysis scans.
-            linkerOpts("-weak_framework", "CoreLocation")
-            linkerOpts("-weak_framework", "Photos")
-            linkerOpts("-weak_framework", "AVFoundation")
+            // No -weak_framework flags. grant-core no longer references CoreLocation, Photos or
+            // AVFoundation (they moved to grant-location/-gallery/-camera in 3.0.0, Issue #91).
+            // The old flags only ever applied to this framework, never to a consumer's binary.
         }
     }
 
@@ -216,7 +213,7 @@ publishing {
     publications.configureEach {
         (this as? MavenPublication)?.let {
             groupId = "dev.brewkits"
-            version = "2.7.0-alpha01"
+            version = "3.0.0-alpha01"
 
             pom {
                 name.set("KMP Grant")

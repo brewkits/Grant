@@ -3,7 +3,7 @@ package dev.brewkits.grant.impl
 import dev.brewkits.grant.ServiceStatus
 import dev.brewkits.grant.ServiceType
 import dev.brewkits.grant.utils.GrantLogger
-import platform.CoreLocation.CLLocationManager
+import dev.brewkits.grant.handlers.IosServiceRegistry
 import platform.Foundation.NSBundle
 import platform.Foundation.NSURL
 import platform.Foundation.NSClassFromString
@@ -71,9 +71,23 @@ internal actual class PlatformServiceDelegate {
         }
     }
 
+    /**
+     * The real check needs `CLLocationManager`, which lives in `grant-location` (Issue #91): any
+     * reference from here would link CoreLocation into every app that uses `ServiceManager`.
+     * Without that module, the honest answer is UNKNOWN, never a guessed ENABLED.
+     */
     private fun checkLocationService(): ServiceStatus {
+        val checker = IosServiceRegistry.get(ServiceType.LOCATION_GPS)
+        if (checker == null) {
+            GrantLogger.e(
+                TAG,
+                "ServiceType.LOCATION_GPS needs dev.brewkits:grant-location on iOS. Add the dependency " +
+                    "and call GrantLocation.initialize(). Reporting UNKNOWN.",
+            )
+            return ServiceStatus.UNKNOWN
+        }
         return try {
-            if (CLLocationManager.locationServicesEnabled()) ServiceStatus.ENABLED else ServiceStatus.DISABLED
+            checker()
         } catch (e: Exception) {
             ServiceStatus.UNKNOWN
         }
