@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [3.0.0-alpha01] - Unreleased
+## [3.0.0] - 2026-11-15
 
 3.0.0 absorbs the Desktop preview that was planned as 2.7.0-alpha01 (its entries follow the
 breaking change below). See the [Migration Guide](docs/MIGRATION_GUIDE.md#upgrading-from-grant-2x-to-300).

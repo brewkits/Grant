@@ -1,6 +1,6 @@
 # Migration Guide to Grant
 
-**Version:** 3.0.0-alpha01 (in development)
+**Version:** 3.0.0
 **Last Updated:** November 12, 2026
 
 This guide helps you migrate from previous versions of Grant or other permission libraries.
@@ -29,7 +29,7 @@ This guide helps you migrate from previous versions of Grant or other permission
 
 ## 💥 Upgrading from Grant 2.x to 3.0.0
 
-> 3.0.0 is in development (`3.0.0-alpha01`) and not yet on Maven Central. It also absorbs the
+> 3.0.0 also absorbs the
 > Desktop preview that was planned as 2.7.0; see `CHANGELOG.md` for those additions.
 
 ### What changed
