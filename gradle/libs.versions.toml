@@ -7,7 +7,7 @@ androidx-activity = "1.12.1"
 androidx-appcompat = "1.7.1"
 androidx-core = "1.17.0"
 androidx-lifecycle = "2.9.6"
-composeMultiplatform = "1.11.1"
+composeMultiplatform = "1.12.1"
 kotlin = "2.4.10"
 
 koin = "4.2.2"
