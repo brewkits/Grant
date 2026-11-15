@@ -136,7 +136,7 @@ GrantLocationAlways.shared.initialize()  // if you added grant-location-always
 ### Desktop and Web projects
 
 `grant-desktop:2.6.0` is not published to Maven Central and is excluded from that version's BOM.
-The next **3.0.0-alpha01 preview is in development** (it absorbs the planned 2.7.0), with Desktop publication and BOM wiring.
+**3.0.0** (which absorbs the planned 2.7.0) adds Desktop publication and BOM wiring as a preview.
 It has not been uploaded to Central. See the [Desktop preview guide](grant-desktop/README.md).
 Native permission requests support camera and microphone on **macOS Apple Silicon**.
 The preview also adds **Windows x64 privacy status checks and Settings navigation**; these

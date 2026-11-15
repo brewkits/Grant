@@ -6,7 +6,7 @@ Guide for managing dependencies and avoiding version conflicts.
 
 ## Desktop and Web projects
 
-The upcoming 3.0.0-alpha01 preview (which absorbs the planned 2.7.0) wires Desktop into publication and its BOM, but has not
+The Desktop preview in 3.0.0 (which absorbs the planned 2.7.0) wires Desktop into publication and its BOM, but has not
 been uploaded to Central. See the [preview guide](../grant-desktop/README.md) for staging
 and independent consumer verification. The following matrix describes released **2.6.0**.
 

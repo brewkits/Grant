@@ -8,7 +8,7 @@ targeting **Android**, **iOS**, and (via `grant-core` alone) the **browser**.
 `grant-core` has a published JVM variant, but native Desktop handlers are not included.
 `grant-desktop:2.6.0` is an experimental macOS Apple Silicon bridge available only from source;
 it is not on Maven Central or in that version's BOM. The upcoming
-[3.0.0-alpha01 preview](../../grant-desktop/README.md) adds publication/BOM wiring, pending release. For mixed mobile/Desktop/Web projects, see
+[3.0.0 preview](../../grant-desktop/README.md) adds publication/BOM wiring, pending release. For mixed mobile/Desktop/Web projects, see
 [the support matrix and mobileMain setup](../DEPENDENCY_MANAGEMENT.md#desktop-and-web-projects)
 before adding Android/iOS-only modules to `commonMain`.
 
